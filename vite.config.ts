@@ -14,10 +14,7 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['total_nursing_icon.png'],
-        filename: 'manifest.webmanifest',
-        devOptions: {
-          enabled: true
-        },
+        filename: 'manifest.json',
         manifest: {
           name: 'TOTAL 간호 EMR',
           short_name: '간호EMR',
@@ -25,34 +22,22 @@ export default defineConfig(({mode}) => {
           theme_color: '#FF99FF',
           background_color: '#ffffff',
           display: 'standalone',
-          scope: '/',
           start_url: '/',
           icons: [
             {
-              src: '/total_nursing_icon.png',
+              src: 'total_nursing_icon.png',
               sizes: '192x192',
-              type: 'image/png',
-              purpose: 'any'
+              type: 'image/png'
             },
             {
-              src: '/total_nursing_icon.png',
+              src: 'total_nursing_icon.png',
               sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any'
-            },
-            {
-              src: '/total_nursing_icon.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'maskable'
-            },
-            {
-              src: '/total_nursing_icon.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'maskable'
+              type: 'image/png'
             }
           ]
+        },
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,png,svg,ico}']
         }
       })
     ],
