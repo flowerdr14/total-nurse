@@ -14,6 +14,7 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['total_nursing_icon.png'],
+        filename: 'manifest.webmanifest',
         devOptions: {
           enabled: true
         },
@@ -24,19 +25,32 @@ export default defineConfig(({mode}) => {
           theme_color: '#FF99FF',
           background_color: '#ffffff',
           display: 'standalone',
+          scope: '/',
           start_url: '/',
           icons: [
             {
-              src: 'total_nursing_icon.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any maskable'
-            },
-            {
-              src: 'total_nursing_icon.png',
+              src: '/total_nursing_icon.png',
               sizes: '192x192',
               type: 'image/png',
-              purpose: 'any maskable'
+              purpose: 'any'
+            },
+            {
+              src: '/total_nursing_icon.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: '/total_nursing_icon.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'maskable'
+            },
+            {
+              src: '/total_nursing_icon.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable'
             }
           ]
         }
