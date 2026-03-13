@@ -7,34 +7,35 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: './',
+    base: '/',
     plugins: [
       react(), 
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['total_nursing_icon.ico'],
+        includeAssets: ['total_nursing_icon.png'],
+        devOptions: {
+          enabled: true
+        },
         manifest: {
           name: 'TOTAL 간호 EMR',
           short_name: '간호EMR',
           description: '실시간 연동 간호 기록 시스템',
           theme_color: '#FF99FF',
+          background_color: '#ffffff',
+          display: 'standalone',
+          start_url: '/',
           icons: [
             {
-              src: 'total_nursing_icon.ico',
-              sizes: '64x64 32x32 24x24 16x16',
-              type: 'image/x-icon'
-            },
-            {
-              src: 'total_nursing_icon.ico',
-              sizes: '192x192',
-              type: 'image/x-icon',
+              src: 'total_nursing_icon.png',
+              sizes: '512x512',
+              type: 'image/png',
               purpose: 'any maskable'
             },
             {
-              src: 'total_nursing_icon.ico',
-              sizes: '512x512',
-              type: 'image/x-icon',
+              src: 'total_nursing_icon.png',
+              sizes: '192x192',
+              type: 'image/png',
               purpose: 'any maskable'
             }
           ]

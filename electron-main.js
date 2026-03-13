@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 app.name = "TOTAL 간호";
 
 const DATA_PATH = path.join(app.getPath('userData'), 'patients.json');
-const ICON_PATH = path.join(__dirname, 'total_nursing_icon.ico');
+const ICON_PATH = path.join(__dirname, 'public/total_nursing_icon.png');
 
 function createWindow() {
   const icon = nativeImage.createFromPath(ICON_PATH);

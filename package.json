@@ -27,13 +27,13 @@
       "dist/**/*",
       "electron-main.js",
       "package.json",
-      "total_nursing_icon.ico"
+      "public/total_nursing_icon.png"
     ],
     "win": {
       "target": [
         "portable"
       ],
-      "icon": "total_nursing_icon.ico",
+      "icon": "public/total_nursing_icon.png",
       "artifactName": "${productName}_${version}.${ext}"
     }
   },
