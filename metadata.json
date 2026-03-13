@@ -1,0 +1,5 @@
+{
+  "name": "TOTAL 간호",
+  "description": "A comprehensive Electronic Medical Record (EMR) system with modules for Admission, Lab Results, Prescriptions, Outpatient, and ER records.",
+  "requestFramePermissions": []
+}
