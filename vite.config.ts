@@ -22,16 +22,18 @@ export default defineConfig(({mode}) => {
           theme_color: '#FF99FF',
           background_color: '#ffffff',
           display: 'standalone',
+          display_override: ['window-controls-overlay', 'standalone'],
+          orientation: 'any',
           start_url: '/',
           icons: [
             {
-              src: 'total_nursing_icon.png',
-              sizes: '192x192',
+              src: 'https://cdn-icons-png.flaticon.com/512/2376/2376100.png',
+              sizes: '512x512',
               type: 'image/png'
             },
             {
-              src: 'total_nursing_icon.png',
-              sizes: '512x512',
+              src: 'https://cdn-icons-png.flaticon.com/192/2376/2376100.png',
+              sizes: '192x192',
               type: 'image/png'
             }
           ]

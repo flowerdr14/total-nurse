@@ -11,7 +11,8 @@ import {
   Search, 
   FileText,
   Cloud,
-  CloudOff
+  CloudOff,
+  Copy
 } from 'lucide-react';
 import { db } from './firebase';
 import { 
@@ -34,6 +35,13 @@ declare global {
 
 type TabType = 'admission' | 'lab' | 'prescription' | 'outpatient' | 'er' | 'none';
 
+interface SoapBlock {
+  s: string;
+  o: string;
+  a: string;
+  p: string;
+}
+
 interface Patient {
   id: string;
   name: string;
@@ -55,7 +63,8 @@ interface Patient {
   weight: string;
   // Additional fields for records
   admissionDate: string;
-  soap: string;
+  soapNote: string;
+  soapBlocks: SoapBlock[];
   exam: string;
   labRows: string[][];
   regimenRows: string[][];
@@ -93,7 +102,8 @@ const INITIAL_FORM_DATA: Patient = {
   height: '',
   weight: '',
   admissionDate: '',
-  soap: '',
+  soapNote: '',
+  soapBlocks: [],
   exam: '',
   labRows: Array(10).fill(0).map(() => Array(12).fill('')),
   regimenRows: Array(4).fill(0).map(() => Array(4).fill('')),
@@ -107,6 +117,26 @@ const INITIAL_FORM_DATA: Patient = {
   imagingNote: '',
   imagingPhotos: [],
   prescriptionNotes: PRESCRIPTION_SUB_TABS.reduce((acc, tab) => ({ ...acc, [tab]: '' }), {}),
+};
+
+const ACCOUNTS: Record<string, { pw: string, name: string }> = {
+  'jungroo_2': { pw: 'haesol123', name: '정루이' },
+  'U_joongh': { pw: 'haesol123', name: '유중혁' },
+  'kangjooo': { pw: 'haesol123', name: '강동주' },
+  'lilly_lil': { pw: 'haesol123', name: '릴리' },
+  'mincook': { pw: 'haesol123', name: '박민국' },
+  'chanho8': { pw: 'haesol123', name: '찬호' },
+  'sonamoo': { pw: 'haesol123', name: '소나무' },
+  'ikjoooon': { pw: 'haesol123', name: '이익준' },
+  'gagaeun': { pw: 'haesol123', name: '최가은' },
+  'jiapark84': { pw: 'haesol123', name: '박지아' },
+  'leegarden': { pw: 'haesol123', name: '이정원' },
+  'jeongout7': { pw: 'haesol123', name: '이정인' },
+  'peppersun': { pw: 'haesol123', name: '순후추' },
+  'dohahado': { pw: 'haesol123', name: '도하' },
+  'taehyns64': { pw: 'haesol123', name: '박태현' },
+  'siuuhyun': { pw: 'haesol123', name: '이수현' },
+  'sheepone': { pw: 'haesol123', name: '양재원' },
 };
 
 // --- Components ---
@@ -162,6 +192,9 @@ const EditableSummary = ({ label, value, onChange }: { label: string, value: str
 // --- Main App ---
 
 export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loginId, setLoginId] = useState('');
+  const [loginPw, setLoginPw] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('none');
   const [prescriptionSubTab, setPrescriptionSubTab] = useState<string>(PRESCRIPTION_SUB_TABS[0]);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -170,6 +203,17 @@ export default function App() {
   const [formData, setFormData] = useState<Patient>(INITIAL_FORM_DATA);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, patientId: string } | null>(null);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const user = ACCOUNTS[loginId];
+    if (user && user.pw === loginPw) {
+      setIsLoggedIn(true);
+    } else {
+      alert('아이디 또는 비밀번호가 틀렸습니다.');
+    }
+  };
 
   // Load data from Firestore (Real-time)
   useEffect(() => {
@@ -184,6 +228,9 @@ export default function App() {
           labRows: typeof data.labRows === 'string' ? JSON.parse(data.labRows) : data.labRows,
           regimenRows: typeof data.regimenRows === 'string' ? JSON.parse(data.regimenRows) : data.regimenRows,
           imagingPhotos: typeof data.imagingPhotos === 'string' ? JSON.parse(data.imagingPhotos) : (data.imagingPhotos || []),
+          soapNote: data.soapNote || data.soap || '',
+          soapBlocks: typeof data.soapBlocks === 'string' ? JSON.parse(data.soapBlocks) : (data.soapBlocks || []),
+          exam: data.exam || '',
         } as Patient);
       });
       setPatients(patientsData);
@@ -204,6 +251,13 @@ export default function App() {
 
     return () => unsubscribe();
   }, []); // Empty dependency array to run only once on mount
+
+  // Close context menu on click anywhere
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, []);
 
   // Save selection preference locally
   useEffect(() => {
@@ -241,16 +295,52 @@ export default function App() {
     try {
       const id = selectedPatientId || Date.now().toString();
       
+      // Append timestamp to record fields in Korean time
+      const now = new Date();
+      const userName = ACCOUNTS[loginId]?.name || loginId;
+      const timestamp = `\n[저장됨: ${now.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} / ${userName}]`;
+      
+      const appendTimestamp = (text: string) => {
+        if (!text) return "";
+        const cleaned = text.replace(/\n\[저장됨: .*\]/g, "").trim();
+        return cleaned ? cleaned + timestamp : "";
+      };
+
+      const newPrescriptionNotes = { ...formData.prescriptionNotes };
+      Object.keys(newPrescriptionNotes).forEach(key => {
+        newPrescriptionNotes[key] = appendTimestamp(newPrescriptionNotes[key]);
+      });
+
       const patientData = { 
         ...formData, 
         id,
         labRows: JSON.stringify(formData.labRows),
         regimenRows: JSON.stringify(formData.regimenRows),
-        imagingPhotos: JSON.stringify(formData.imagingPhotos || [])
+        imagingPhotos: JSON.stringify(formData.imagingPhotos || []),
+        soapNote: appendTimestamp(formData.soapNote),
+        soapBlocks: JSON.stringify(formData.soapBlocks),
+        exam: formData.exam, // Removed timestamp
+        outpatientExam: formData.outpatientExam, // Removed timestamp
+        outpatientNote: formData.outpatientNote, // Removed timestamp
+        erLabNote: formData.erLabNote, // Removed timestamp
+        imagingNote: formData.imagingNote, // Removed timestamp
+        prescriptionNotes: newPrescriptionNotes
       };
       
       await setDoc(doc(db, "patients", id), patientData);
       
+      // Update local state
+      setFormData(prev => ({ 
+        ...prev, 
+        soapNote: patientData.soapNote,
+        exam: patientData.exam,
+        outpatientExam: patientData.outpatientExam,
+        outpatientNote: patientData.outpatientNote,
+        erLabNote: patientData.erLabNote,
+        imagingNote: patientData.imagingNote,
+        prescriptionNotes: patientData.prescriptionNotes
+      }));
+
       if (!selectedPatientId) {
         setSelectedPatientId(id);
       }
@@ -301,6 +391,37 @@ export default function App() {
     updateField('prescriptionNotes', newNotes);
   };
 
+  const addSoapBlock = () => {
+    setFormData(prev => ({
+      ...prev,
+      soapBlocks: [...prev.soapBlocks, { s: '', o: '', a: '', p: '' }]
+    }));
+  };
+
+  const updateSoapBlock = (index: number, field: keyof SoapBlock, value: string) => {
+    setFormData(prev => {
+      const newBlocks = [...prev.soapBlocks];
+      newBlocks[index] = { ...newBlocks[index], [field]: value };
+      return { ...prev, soapBlocks: newBlocks };
+    });
+  };
+
+  const removeSoapBlock = (index: number) => {
+    setFormData(prev => {
+      const newBlocks = [...prev.soapBlocks];
+      newBlocks.splice(index, 1);
+      return { ...prev, soapBlocks: newBlocks };
+    });
+  };
+
+  const duplicateSoapBlock = (index: number) => {
+    setFormData(prev => {
+      const newBlocks = [...prev.soapBlocks];
+      newBlocks.splice(index + 1, 0, { ...newBlocks[index] });
+      return { ...prev, soapBlocks: newBlocks };
+    });
+  };
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -342,8 +463,8 @@ export default function App() {
         return (
           <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
             <div className="flex-1 flex flex-col gap-4">
-              <div className="border-2 border-black flex flex-col h-[60%]">
-                <div className="border-b-2 border-black text-center font-bold py-1 flex flex-col items-center">
+              <div className="border-2 border-black flex flex-col h-[60%] overflow-y-auto">
+                <div className="border-b-2 border-black text-center font-bold py-1 flex flex-col items-center shrink-0 bg-gray-50">
                   <span>입원일</span>
                   <input 
                     type="text" 
@@ -353,24 +474,66 @@ export default function App() {
                     placeholder="YYYY-MM-DD"
                   />
                 </div>
-                <div className="p-2 flex-1 relative">
-                  <div className="absolute top-2 left-2 bg-[#999] text-white px-4 py-1 rounded font-bold">SOAP</div>
+                <div className="bg-[#999] text-white px-4 py-1 font-bold shrink-0">SOAP</div>
+                <div className="p-2 flex-1 flex flex-col gap-4 min-h-full">
+                  {formData.soapBlocks.map((block, idx) => (
+                    <div key={idx} className="border-2 border-black relative bg-white shadow-sm shrink-0">
+                      <div className="absolute -top-2 -right-2 flex gap-1 z-10">
+                        <button 
+                          onClick={() => duplicateSoapBlock(idx)}
+                          className="bg-blue-500 text-white rounded-full p-1 hover:bg-blue-600 shadow-md"
+                          title="복제"
+                        >
+                          <Copy size={14} />
+                        </button>
+                        <button 
+                          onClick={() => removeSoapBlock(idx)}
+                          className="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-md"
+                          title="삭제"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <table className="w-full border-collapse">
+                        <tbody>
+                          {[
+                            { id: 's', label: 'Subjective' },
+                            { id: 'o', label: 'Objective' },
+                            { id: 'a', label: 'Assessment' },
+                            { id: 'p', label: 'Plan' }
+                          ].map((row) => (
+                            <tr key={row.id} className="border-b border-black last:border-0">
+                              <td className="w-32 bg-[#C0C0C0] border-r-2 border-black p-2 text-center font-bold text-gray-700">
+                                {row.label}
+                              </td>
+                              <td className="p-0">
+                                <textarea 
+                                  value={block[row.id as keyof SoapBlock]}
+                                  onChange={(e) => updateSoapBlock(idx, row.id as keyof SoapBlock, e.target.value)}
+                                  className="w-full h-16 p-2 resize-none focus:outline-none block"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
                   <textarea 
-                    value={formData.soap}
-                    onChange={(e) => updateField('soap', e.target.value)}
-                    className="w-full h-full pt-10 resize-none focus:outline-none" 
+                    value={formData.soapNote}
+                    onChange={(e) => updateField('soapNote', e.target.value)}
+                    placeholder="여기에 자유롭게 기록하세요..."
+                    className="w-full flex-1 p-2 resize-none focus:outline-none block" 
                   />
                 </div>
               </div>
-              <div className="border-2 border-black flex flex-col h-[40%]">
-                <div className="p-2 flex-1 relative">
-                  <div className="absolute top-2 left-2 bg-[#999] text-white px-4 py-1 rounded font-bold">EXAM</div>
-                  <textarea 
-                    value={formData.exam}
-                    onChange={(e) => updateField('exam', e.target.value)}
-                    className="w-full h-full pt-10 resize-none focus:outline-none" 
-                  />
-                </div>
+              <div className="border-2 border-black flex flex-col h-[40%] overflow-y-auto">
+                <div className="bg-[#999] text-white px-4 py-1 font-bold shrink-0">EXAM</div>
+                <textarea 
+                  value={formData.exam}
+                  onChange={(e) => updateField('exam', e.target.value)}
+                  className="w-full flex-1 p-2 resize-none focus:outline-none block min-h-[80px]" 
+                />
               </div>
             </div>
             <div className="w-80 border-2 border-black p-4 flex flex-col gap-2">
@@ -424,6 +587,19 @@ export default function App() {
                 <label className="flex items-center gap-1">
                   <input type="radio" name="gender" checked={formData.gender === 'F'} onChange={() => updateField('gender', 'F')} /> 여
                 </label>
+              </div>
+
+              <div className="mt-4 border-t-2 border-black pt-4">
+                <div className="bg-gray-700 text-white px-3 py-1 font-bold text-sm mb-2">경과기록</div>
+                <div className="flex flex-col gap-2">
+                  <button 
+                    onClick={addSoapBlock}
+                    className="py-3 bg-gray-300 border-2 border-black font-bold text-lg hover:bg-gray-400 flex flex-col items-center"
+                  >
+                    <span>S, O, A, P 블록 추가</span>
+                    <span className="text-[10px] font-normal">(표 형태 블록 생성)</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -639,6 +815,20 @@ export default function App() {
                     </label>
                   </div>
                 </div>
+
+                {/* 응급실 기록 퀵 메뉴 */}
+                <div className="mt-auto border-t-2 border-black p-4 bg-gray-200">
+                  <div className="bg-gray-700 text-white px-3 py-1 font-bold text-sm mb-2">경과기록</div>
+                  <div className="flex flex-col gap-2">
+                    <button 
+                      onClick={addSoapBlock}
+                      className="py-3 bg-gray-300 border-2 border-black font-bold text-lg hover:bg-gray-400 flex flex-col items-center"
+                    >
+                      <span>S, O, A, P 블록 추가</span>
+                      <span className="text-[10px] font-normal">(표 형태 블록 생성)</span>
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className="border-2 border-black flex-1 flex flex-col">
                 <div className="bg-[#5a9a9a] text-white font-bold p-2 text-center">V/S</div>
@@ -665,21 +855,67 @@ export default function App() {
                 <div className="flex-1 bg-gray-50"></div>
               </div>
             </div>
-            <div className="flex-1 flex flex-col gap-4">
-              <div className="border-2 border-black flex-1 relative">
-                <div className="absolute top-2 left-2 bg-[#5a9a9a] text-white px-4 py-1 rounded font-bold">SOAP</div>
-                <textarea 
-                  value={formData.soap}
-                  onChange={(e) => updateField('soap', e.target.value)}
-                  className="w-full h-full pt-12 p-4 resize-none focus:outline-none" 
-                />
+            <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
+              <div className="border-2 border-black flex flex-col min-h-[60%]">
+                <div className="bg-[#999] text-white font-bold p-2 text-lg shrink-0">SOAP</div>
+                <div className="p-2 flex-1 flex flex-col gap-4 min-h-full">
+                  {formData.soapBlocks.map((block, idx) => (
+                    <div key={idx} className="border-2 border-black relative bg-white shadow-sm shrink-0">
+                      <div className="absolute -top-2 -right-2 flex gap-1 z-10">
+                        <button 
+                          onClick={() => duplicateSoapBlock(idx)}
+                          className="bg-blue-500 text-white rounded-full p-1 hover:bg-blue-600 shadow-md"
+                          title="복제"
+                        >
+                          <Copy size={14} />
+                        </button>
+                        <button 
+                          onClick={() => removeSoapBlock(idx)}
+                          className="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-md"
+                          title="삭제"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <table className="w-full border-collapse">
+                        <tbody>
+                          {[
+                            { id: 's', label: 'Subjective' },
+                            { id: 'o', label: 'Objective' },
+                            { id: 'a', label: 'Assessment' },
+                            { id: 'p', label: 'Plan' }
+                          ].map((row) => (
+                            <tr key={row.id} className="border-b border-black last:border-0">
+                              <td className="w-32 bg-[#C0C0C0] border-r-2 border-black p-2 text-center font-bold text-gray-700">
+                                {row.label}
+                              </td>
+                              <td className="p-0">
+                                <textarea 
+                                  value={block[row.id as keyof SoapBlock]}
+                                  onChange={(e) => updateSoapBlock(idx, row.id as keyof SoapBlock, e.target.value)}
+                                  className="w-full h-16 p-2 resize-none focus:outline-none block"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                  <textarea 
+                    value={formData.soapNote}
+                    onChange={(e) => updateField('soapNote', e.target.value)}
+                    placeholder="여기에 자유롭게 기록하세요..."
+                    className="w-full flex-1 p-2 resize-none focus:outline-none block" 
+                  />
+                </div>
               </div>
-              <div className="border-2 border-black flex-1 relative">
-                <div className="absolute top-2 left-2 bg-[#5a9a9a] text-white px-4 py-1 rounded font-bold">EXAM</div>
+              <div className="border-2 border-black flex flex-col min-h-[40%]">
+                <div className="bg-[#999] text-white font-bold p-2 text-lg shrink-0">EXAM</div>
                 <textarea 
                   value={formData.exam}
                   onChange={(e) => updateField('exam', e.target.value)}
-                  className="w-full h-full pt-12 p-4 resize-none focus:outline-none" 
+                  className="w-full flex-1 p-2 resize-none focus:outline-none block min-h-[80px]" 
                 />
               </div>
             </div>
@@ -699,6 +935,44 @@ export default function App() {
         return null;
     }
   };
+
+  if (!isLoggedIn) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#D0D0D0] font-sans">
+        <div className="w-96 bg-white border-4 border-black p-8 shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
+          <div className="text-2xl font-black mb-6 border-b-4 border-black pb-2">HAE-SOL EMR LOGIN</div>
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <div>
+              <label className="block font-bold mb-1">ID</label>
+              <input 
+                type="text" 
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
+                className="w-full border-2 border-black p-2 focus:outline-none"
+                placeholder=""
+              />
+            </div>
+            <div>
+              <label className="block font-bold mb-1">PASSWORD</label>
+              <input 
+                type="password" 
+                value={loginPw}
+                onChange={(e) => setLoginPw(e.target.value)}
+                className="w-full border-2 border-black p-2 focus:outline-none"
+                placeholder=""
+              />
+            </div>
+            <button 
+              type="submit"
+              className="mt-4 bg-blue-500 text-white font-black py-3 border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all"
+            >
+              LOGIN
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen min-w-[1200px] bg-[#D0D0D0] font-sans overflow-hidden">
@@ -762,6 +1036,14 @@ export default function App() {
                   setSelectedPatientId(patient.id);
                   setActiveTab('admission');
                 }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setContextMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    patientId: patient.id
+                  });
+                }}
                 className={`w-full text-left p-3 border-b border-gray-200 hover:bg-gray-100 transition-colors ${
                   selectedPatientId === patient.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
                 }`}
@@ -793,6 +1075,52 @@ export default function App() {
           {renderContent()}
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div 
+          className="fixed z-50 bg-white border-2 border-black shadow-lg py-1 w-48"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button 
+            className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm"
+            onClick={() => {
+              setSelectedPatientId(contextMenu.patientId);
+              setActiveTab('admission');
+            }}
+          >
+            S (Subjective) 추가
+          </button>
+          <button 
+            className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm"
+            onClick={() => {
+              setSelectedPatientId(contextMenu.patientId);
+              setActiveTab('admission');
+            }}
+          >
+            O (Objective) 추가
+          </button>
+          <button 
+            className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm"
+            onClick={() => {
+              setSelectedPatientId(contextMenu.patientId);
+              setActiveTab('admission');
+            }}
+          >
+            A (Assessment) 추가
+          </button>
+          <button 
+            className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm"
+            onClick={() => {
+              setSelectedPatientId(contextMenu.patientId);
+              setActiveTab('admission');
+            }}
+          >
+            P (Plan) 추가
+          </button>
+        </div>
+      )}
 
       {/* 저장 성공 알림 토스트 제거됨 */}
     </div>
