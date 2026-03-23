@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Save, 
   X, 
@@ -80,7 +80,7 @@ interface Patient {
   prescriptionNotes: Record<string, string>;
 }
 
-const PRESCRIPTION_SUB_TABS = ['검사', '영상 검사', '약물 지시', '처치/시술', '진료 지시', '컨설트', '기타'];
+const PRESCRIPTION_SUB_TABS = ['검사 처방', '영상 검사', '약물 지시', '처치/시술', '진료 지시', '컨설트', '기타'];
 
 const INITIAL_FORM_DATA: Patient = {
   id: '',
@@ -204,6 +204,7 @@ export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, patientId: string } | null>(null);
+  const lastSyncedIdRef = useRef<string | null>(null);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,15 +269,18 @@ export default function App() {
     }
   }, [selectedPatientId]);
 
-  // Sync formData when selectedPatientId changes
+  // Sync formData when selectedPatientId changes or when patients are first loaded for the selected ID
   useEffect(() => {
     if (selectedPatientId) {
       const p = patients.find(p => p.id === selectedPatientId);
-      if (p) {
+      // Only sync from patients if the ID has changed or if we haven't synced this ID yet
+      if (p && lastSyncedIdRef.current !== selectedPatientId) {
         setFormData({ ...p });
+        lastSyncedIdRef.current = selectedPatientId;
       }
     } else {
       setFormData(INITIAL_FORM_DATA);
+      lastSyncedIdRef.current = null;
     }
   }, [selectedPatientId, patients]);
 
@@ -319,19 +323,19 @@ export default function App() {
         imagingPhotos: JSON.stringify(formData.imagingPhotos || []),
         soapNote: appendTimestamp(formData.soapNote),
         soapBlocks: JSON.stringify(formData.soapBlocks),
-        exam: formData.exam, // Removed timestamp
-        outpatientExam: formData.outpatientExam, // Removed timestamp
-        outpatientNote: formData.outpatientNote, // Removed timestamp
-        erLabNote: formData.erLabNote, // Removed timestamp
-        imagingNote: formData.imagingNote, // Removed timestamp
+        exam: appendTimestamp(formData.exam),
+        outpatientExam: appendTimestamp(formData.outpatientExam),
+        outpatientNote: appendTimestamp(formData.outpatientNote),
+        erLabNote: appendTimestamp(formData.erLabNote),
+        imagingNote: appendTimestamp(formData.imagingNote),
         prescriptionNotes: newPrescriptionNotes
       };
       
       await setDoc(doc(db, "patients", id), patientData);
       
-      // Update local state
-      setFormData(prev => ({ 
-        ...prev, 
+      // Update local state and prevent immediate overwrite from useEffect
+      const updatedFormData = { 
+        ...formData, 
         soapNote: patientData.soapNote,
         exam: patientData.exam,
         outpatientExam: patientData.outpatientExam,
@@ -339,10 +343,12 @@ export default function App() {
         erLabNote: patientData.erLabNote,
         imagingNote: patientData.imagingNote,
         prescriptionNotes: patientData.prescriptionNotes
-      }));
-
+      };
+      setFormData(updatedFormData);
+      
       if (!selectedPatientId) {
         setSelectedPatientId(id);
+        lastSyncedIdRef.current = id;
       }
     } catch (e: any) {
       console.error("Save error:", e);
