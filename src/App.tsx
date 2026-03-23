@@ -177,6 +177,33 @@ const InputField = ({ label, value, onChange, readOnly = false }: { label: strin
   </div>
 );
 
+const AutoHeightTextarea = ({ value, onChange, placeholder, className, minHeight = '64px' }: any) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '0px';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = Math.max(scrollHeight, parseInt(minHeight)) + 'px';
+    }
+  };
+
+  useEffect(() => {
+    adjustHeight();
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className={`${className} overflow-hidden resize-none`}
+      style={{ minHeight }}
+    />
+  );
+};
+
 const EditableSummary = ({ label, value, onChange }: { label: string, value: string, onChange: (val: string) => void }) => (
   <div className="flex items-center gap-1">
     <span>{label}:</span>
@@ -469,17 +496,19 @@ export default function App() {
         return (
           <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
             <div className="flex-1 flex flex-col gap-4">
+              {/* 입원일 분리 */}
+              <div className="border-2 border-black p-2 bg-gray-100 flex items-center gap-4 shrink-0">
+                <span className="font-bold">입원일</span>
+                <input 
+                  type="text" 
+                  value={formData.admissionDate}
+                  onChange={(e) => updateField('admissionDate', e.target.value)}
+                  className="border-2 border-black px-2 py-1 text-sm focus:outline-none w-40"
+                  placeholder="YYYY-MM-DD"
+                />
+              </div>
+
               <div className="border-2 border-black flex flex-col h-[60%] overflow-y-auto">
-                <div className="border-b-2 border-black text-center font-bold py-1 flex flex-col items-center shrink-0 bg-gray-50">
-                  <span>입원일</span>
-                  <input 
-                    type="text" 
-                    value={formData.admissionDate}
-                    onChange={(e) => updateField('admissionDate', e.target.value)}
-                    className="border border-gray-400 px-2 py-0.5 text-sm focus:outline-none w-40 mt-1"
-                    placeholder="YYYY-MM-DD"
-                  />
-                </div>
                 <div className="bg-[#999] text-white px-4 py-1 font-bold shrink-0">SOAP</div>
                 <div className="p-2 flex-1 flex flex-col gap-4 min-h-full">
                   {formData.soapBlocks.map((block, idx) => (
@@ -513,10 +542,11 @@ export default function App() {
                                 {row.label}
                               </td>
                               <td className="p-0">
-                                <textarea 
+                                <AutoHeightTextarea 
                                   value={block[row.id as keyof SoapBlock]}
-                                  onChange={(e) => updateSoapBlock(idx, row.id as keyof SoapBlock, e.target.value)}
-                                  className="w-full h-16 p-2 resize-none focus:outline-none block"
+                                  onChange={(e: any) => updateSoapBlock(idx, row.id as keyof SoapBlock, e.target.value)}
+                                  className="w-full p-2 focus:outline-none block"
+                                  minHeight={row.id === 'p' ? '160px' : '64px'}
                                 />
                               </td>
                             </tr>
@@ -525,20 +555,22 @@ export default function App() {
                       </table>
                     </div>
                   ))}
-                  <textarea 
+                  <AutoHeightTextarea 
                     value={formData.soapNote}
-                    onChange={(e) => updateField('soapNote', e.target.value)}
+                    onChange={(e: any) => updateField('soapNote', e.target.value)}
                     placeholder="여기에 자유롭게 기록하세요..."
-                    className="w-full flex-1 p-2 resize-none focus:outline-none block" 
+                    className="w-full p-2 focus:outline-none block" 
+                    minHeight="100px"
                   />
                 </div>
               </div>
               <div className="border-2 border-black flex flex-col h-[40%] overflow-y-auto">
                 <div className="bg-[#999] text-white px-4 py-1 font-bold shrink-0">EXAM</div>
-                <textarea 
+                <AutoHeightTextarea 
                   value={formData.exam}
-                  onChange={(e) => updateField('exam', e.target.value)}
-                  className="w-full flex-1 p-2 resize-none focus:outline-none block min-h-[80px]" 
+                  onChange={(e: any) => updateField('exam', e.target.value)}
+                  className="w-full p-2 focus:outline-none block" 
+                  minHeight="100px"
                 />
               </div>
             </div>
@@ -747,11 +779,12 @@ export default function App() {
                   ))}
                 </div>
                 <div className="flex-1 border-2 border-black p-4">
-                  <textarea 
+                  <AutoHeightTextarea 
                     value={formData.prescriptionNotes[prescriptionSubTab] || ''}
-                    onChange={(e) => updatePrescriptionNote(prescriptionSubTab, e.target.value)}
-                    className="w-full h-full resize-none focus:outline-none" 
+                    onChange={(e: any) => updatePrescriptionNote(prescriptionSubTab, e.target.value)}
+                    className="w-full focus:outline-none" 
                     placeholder={`${prescriptionSubTab} 내용을 입력하세요...`} 
+                    minHeight="300px"
                   />
                 </div>
               </div>
@@ -763,20 +796,22 @@ export default function App() {
                   <div className="flex-1 border-r-2 border-black flex flex-col">
                     <div className="bg-[#1a3a5a] text-white font-bold p-1">전체 검사</div>
                     <div className="flex-1 p-2">
-                      <textarea 
+                      <AutoHeightTextarea 
                         value={formData.outpatientExam}
-                        onChange={(e) => updateField('outpatientExam', e.target.value)}
-                        className="w-full h-full resize-none focus:outline-none" 
+                        onChange={(e: any) => updateField('outpatientExam', e.target.value)}
+                        className="w-full focus:outline-none" 
+                        minHeight="200px"
                       />
                     </div>
                   </div>
                   <div className="flex-1 flex flex-col">
                     <div className="bg-[#1a3a5a] text-white font-bold p-1">외래노트</div>
                     <div className="flex-1 p-2">
-                      <textarea 
+                      <AutoHeightTextarea 
                         value={formData.outpatientNote}
-                        onChange={(e) => updateField('outpatientNote', e.target.value)}
-                        className="w-full h-full resize-none focus:outline-none" 
+                        onChange={(e: any) => updateField('outpatientNote', e.target.value)}
+                        className="w-full focus:outline-none" 
+                        minHeight="200px"
                       />
                     </div>
                   </div>
@@ -896,10 +931,11 @@ export default function App() {
                                 {row.label}
                               </td>
                               <td className="p-0">
-                                <textarea 
+                                <AutoHeightTextarea 
                                   value={block[row.id as keyof SoapBlock]}
-                                  onChange={(e) => updateSoapBlock(idx, row.id as keyof SoapBlock, e.target.value)}
-                                  className="w-full h-16 p-2 resize-none focus:outline-none block"
+                                  onChange={(e: any) => updateSoapBlock(idx, row.id as keyof SoapBlock, e.target.value)}
+                                  className="w-full p-2 focus:outline-none block"
+                                  minHeight={row.id === 'p' ? '160px' : '64px'}
                                 />
                               </td>
                             </tr>
@@ -908,20 +944,22 @@ export default function App() {
                       </table>
                     </div>
                   ))}
-                  <textarea 
+                  <AutoHeightTextarea 
                     value={formData.soapNote}
-                    onChange={(e) => updateField('soapNote', e.target.value)}
+                    onChange={(e: any) => updateField('soapNote', e.target.value)}
                     placeholder="여기에 자유롭게 기록하세요..."
-                    className="w-full flex-1 p-2 resize-none focus:outline-none block" 
+                    className="w-full p-2 focus:outline-none block" 
+                    minHeight="100px"
                   />
                 </div>
               </div>
               <div className="border-2 border-black flex flex-col min-h-[40%]">
                 <div className="bg-[#999] text-white font-bold p-2 text-lg shrink-0">EXAM</div>
-                <textarea 
+                <AutoHeightTextarea 
                   value={formData.exam}
-                  onChange={(e) => updateField('exam', e.target.value)}
-                  className="w-full flex-1 p-2 resize-none focus:outline-none block min-h-[80px]" 
+                  onChange={(e: any) => updateField('exam', e.target.value)}
+                  className="w-full p-2 focus:outline-none block" 
+                  minHeight="100px"
                 />
               </div>
             </div>
