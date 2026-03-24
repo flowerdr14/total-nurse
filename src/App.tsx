@@ -17,7 +17,8 @@ import {
   Plus,
   Settings,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  Edit
 } from 'lucide-react';
 import { db } from './firebase';
 import { 
@@ -1144,20 +1145,6 @@ export default function App() {
         className="flex items-center justify-between px-4 py-2 border-b-2 border-gray-400 shrink-0"
       >
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1 text-xs mr-2">
-            {isOnline ? (
-              <><Cloud size={14} className="text-emerald-500" /> <span className="text-emerald-600 font-bold">실시간 클라우드 연결됨</span></>
-            ) : (
-              <div className="flex flex-col items-start">
-                <div className="flex items-center gap-1">
-                  <CloudOff size={14} className="text-red-500" /> 
-                  <span className="text-red-600 font-bold">연결 오류: 파이어베이스 설정을 확인하세요.</span>
-                </div>
-                <span className="text-[10px] text-gray-500 ml-5">Netlify 도메인이 Firebase 승인 도메인에 등록되었는지 확인이 필요합니다.</span>
-              </div>
-            )}
-          </div>
-          <HeaderButton icon={Plus} label="새 환자" onClick={handleNewPatient} color="text-emerald-600" />
           <HeaderButton 
             icon={Save} 
             label={isSaving ? "저장 중..." : "저장"} 
@@ -1176,11 +1163,7 @@ export default function App() {
               </div>
             )}
           </div>
-          <HeaderButton icon={X} label="종료" color="text-red-600" onClick={() => {
-            setSelectedPatientId(null);
-            setFormData(INITIAL_FORM_DATA);
-            setActiveTab('none');
-          }} />
+          <HeaderButton icon={Trash2} label="삭제" color="text-red-600" onClick={handleDelete} />
         </div>
         <div className="flex items-center gap-2">
           <TabButton label="입원기록" active={activeTab === 'admission'} onClick={() => setActiveTab('admission')} theme={currentTheme} />
@@ -1190,34 +1173,11 @@ export default function App() {
           <TabButton label="응급실 차트" active={activeTab === 'er'} onClick={() => setActiveTab('er')} theme={currentTheme} />
         </div>
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <div 
-              onClick={(e) => { e.stopPropagation(); setShowUserMenu(!showUserMenu); }}
-              className="flex items-center gap-2 bg-white border-2 border-black px-3 py-1 shadow-[2px_2px_0_0_rgba(0,0,0,1)] cursor-pointer hover:bg-gray-50"
-            >
-              <span className="font-bold text-sm">
-                {ACCOUNTS[loginId]?.name || loginId} ({loginId})
-              </span>
-              <ChevronDown size={14} />
-            </div>
-            {showUserMenu && (
-              <div className="absolute top-full right-0 mt-1 bg-white border-2 border-black shadow-lg z-50 w-40 py-1">
-                <button 
-                  onClick={() => { setShowSettings(true); setShowUserMenu(false); }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm flex items-center gap-2"
-                >
-                  <Settings size={14} /> 환경설정
-                </button>
-                <button 
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm flex items-center gap-2 text-red-500"
-                >
-                  <LogOut size={14} /> 로그아웃
-                </button>
-              </div>
-            )}
-          </div>
-          <HeaderButton icon={Trash2} label="삭제" color="text-red-600" onClick={handleDelete} />
+          <HeaderButton icon={X} label="종료" color="text-red-600" onClick={() => {
+            setSelectedPatientId(null);
+            setFormData(INITIAL_FORM_DATA);
+            setActiveTab('none');
+          }} />
         </div>
       </div>
 
@@ -1271,22 +1231,68 @@ export default function App() {
               <div className="p-4 text-center text-gray-500 text-sm">환자가 없습니다.</div>
             )}
           </div>
-          <div className="p-2 border-t-2 border-black bg-gray-100">
-            <button 
-              onClick={() => {
-                setSelectedPatientId(null);
-                setFormData(INITIAL_FORM_DATA);
-                setActiveTab('admission');
-              }}
-              className="w-full py-2 bg-gray-400 text-white font-bold rounded hover:bg-gray-500"
-            >
-              + 새 환자 추가
-            </button>
-          </div>
         </div>
 
         <div className="flex-1 flex flex-col bg-[#D0D0D0] overflow-hidden">
           {renderContent()}
+        </div>
+      </div>
+
+      {/* Footer Bar */}
+      <div className="bg-[#BDBDBD] border-t border-[#808080] p-1 flex items-center shrink-0 h-12">
+        <div className="flex items-center gap-1 ml-1">
+          <button 
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
+          >
+            <Settings size={16} /> 환경설정
+          </button>
+          <button 
+            onClick={handleSave}
+            className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
+          >
+            <Save size={16} /> 저장
+          </button>
+          <button 
+            className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
+          >
+            <Edit size={16} /> 수정
+          </button>
+        </div>
+        
+        <div className="flex items-center border border-[#707070] bg-white ml-3 h-[34px]">
+          <input 
+            type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="환자 검색..."
+            className="px-2 py-0.5 text-[13px] focus:outline-none w-44 h-full"
+          />
+          <button className="flex items-center gap-1 bg-[#E0E0E0] border-l border-[#707070] px-3 py-0.5 text-[13px] font-bold hover:bg-[#F0F0F0] h-full">
+            <Search size={16} /> 환자조회
+          </button>
+        </div>
+
+        <button 
+          onClick={handleDelete}
+          className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0] ml-3"
+        >
+          <Trash2 size={16} /> 삭제
+        </button>
+
+        {/* Right Logo Section */}
+        <div className="ml-auto mr-4 flex items-center gap-2">
+          <div className="bg-white p-0.5 border border-[#707070] rounded-sm flex items-center justify-center">
+            <img 
+              src="/total_nursing_icon.png" 
+              alt="TOTAL 간호" 
+              className="w-7 h-7 object-contain"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <div className="flex items-center leading-none">
+            <span className="text-[14px] font-black text-[#333]">TOTAL 간호</span>
+          </div>
         </div>
       </div>
 
@@ -1314,6 +1320,21 @@ export default function App() {
                     title={theme.name}
                   />
                 ))}
+              </div>
+            </div>
+
+            <div className="mb-6 pt-4 border-t-2 border-black">
+              <p className="font-bold mb-1 text-xs text-gray-500">사용자 정보</p>
+              <div className="flex items-center justify-between">
+                <p className="font-black text-base">
+                  {ACCOUNTS[loginId]?.name || loginId} ({loginId})
+                </p>
+                <button 
+                  onClick={handleLogout}
+                  className="flex items-center gap-1 text-red-500 font-bold text-xs hover:underline"
+                >
+                  <LogOut size={12} /> 로그아웃
+                </button>
               </div>
             </div>
             <button 
