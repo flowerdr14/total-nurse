@@ -191,6 +191,7 @@ const InputField = ({ label, value, onChange, readOnly = false }: { label: strin
       value={value || ''} 
       onChange={(e) => onChange?.(e.target.value)}
       readOnly={readOnly}
+      spellCheck="false"
       className="flex-1 border-2 border-black px-2 py-0.5 text-sm focus:outline-none"
     />
   </div>
@@ -216,6 +217,7 @@ const AutoHeightTextarea = ({ value, onChange, placeholder, className, minHeight
       value={value}
       onChange={onChange}
       placeholder={placeholder}
+      spellCheck="false"
       className={`${className} overflow-hidden resize-none`}
       style={{ minHeight }}
     />
@@ -229,6 +231,7 @@ const EditableSummary = ({ label, value, onChange }: { label: string, value: str
       type="text" 
       value={value} 
       onChange={(e) => onChange(e.target.value)}
+      spellCheck="false"
       className="border-b border-black focus:outline-none bg-transparent px-1 min-w-[50px]"
     />
   </div>
@@ -597,6 +600,7 @@ export default function App() {
                   type="text" 
                   value={formData.admissionDate}
                   onChange={(e) => updateField('admissionDate', e.target.value)}
+                  spellCheck="false"
                   className="border-2 border-black px-2 py-1 text-sm focus:outline-none w-40"
                   placeholder="YYYY-MM-DD"
                 />
@@ -781,6 +785,7 @@ export default function App() {
                                 type="text" 
                                 value={cell} 
                                 onChange={(e) => updateLabCell(i, j, e.target.value)}
+                                spellCheck="false"
                                 className="w-full h-full bg-transparent px-1 text-xs focus:outline-none"
                               />
                             </td>
@@ -809,6 +814,7 @@ export default function App() {
                                 type="text" 
                                 value={cell} 
                                 onChange={(e) => updateRegimenCell(i, j, e.target.value)}
+                                spellCheck="false"
                                 className="w-full h-full bg-transparent px-1 focus:outline-none"
                               />
                             </td>
@@ -832,6 +838,7 @@ export default function App() {
                       value={formData.imagingNote}
                       onChange={(e) => updateField('imagingNote', e.target.value)}
                       placeholder="영상검사 결과 및 판독 내용을 입력하세요..."
+                      spellCheck="false"
                       className="w-full h-24 p-2 border border-gray-300 focus:outline-none resize-none"
                     />
                   </div>
@@ -922,6 +929,7 @@ export default function App() {
                         type="text"
                         value={vs}
                         onChange={(e) => updateOutpatientVS(i, e.target.value)}
+                        spellCheck="false"
                         className="border-b border-black h-10 px-2 focus:outline-none text-sm"
                         placeholder={`V/S ${i+1}`}
                       />
@@ -975,6 +983,7 @@ export default function App() {
                   type="text" 
                   value={formData.erVS} 
                   onChange={(e) => updateField('erVS', e.target.value)}
+                  spellCheck="false"
                   className="border-b border-black h-12 px-2 focus:outline-none"
                 />
                 <div className="bg-[#5a9a9a] text-white font-bold p-2 text-center">Mode of arrival</div>
@@ -982,6 +991,7 @@ export default function App() {
                   type="text" 
                   value={formData.erMode} 
                   onChange={(e) => updateField('erMode', e.target.value)}
+                  spellCheck="false"
                   className="border-b border-black h-12 px-2 focus:outline-none"
                 />
                 <div className="bg-[#5a9a9a] text-white font-bold p-2 text-center">ED arrival time</div>
@@ -989,6 +999,7 @@ export default function App() {
                   type="text" 
                   value={formData.erTime} 
                   onChange={(e) => updateField('erTime', e.target.value)}
+                  spellCheck="false"
                   className="h-12 px-2 focus:outline-none"
                 />
               </div>
@@ -1071,6 +1082,7 @@ export default function App() {
                 <textarea 
                   value={formData.erLabNote}
                   onChange={(e) => updateField('erLabNote', e.target.value)}
+                  spellCheck="false"
                   className="w-full h-full resize-none focus:outline-none" 
                 />
               </div>
@@ -1102,6 +1114,7 @@ export default function App() {
                   type="text" 
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
+                  spellCheck="false"
                   className="w-full border-2 border-black p-2 focus:outline-none"
                   placeholder=""
                 />
@@ -1112,6 +1125,7 @@ export default function App() {
                   type="password" 
                   value={loginPw}
                   onChange={(e) => setLoginPw(e.target.value)}
+                  spellCheck="false"
                   className="w-full border-2 border-black p-2 focus:outline-none"
                   placeholder=""
                 />
@@ -1200,6 +1214,7 @@ export default function App() {
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                spellCheck="false"
                 className="w-full border-2 border-black pl-8 pr-2 py-1 text-sm focus:outline-none"
                 placeholder="환자 검색..."
               />
@@ -1269,6 +1284,7 @@ export default function App() {
             type="text" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            spellCheck="false"
             placeholder="환자 검색..."
             className="px-2 py-0.5 text-[13px] focus:outline-none w-44 h-full"
           />
