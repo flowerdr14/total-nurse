@@ -4,7 +4,7 @@
   "start_url": "/",
   "display": "standalone",
   "background_color": "#D0D0D0",
-  "theme_color": "#FF99FF",
+  "theme_color": "#D0D0D0",
   "icons": [
     {
       "src": "/total_nursing_icon.png",

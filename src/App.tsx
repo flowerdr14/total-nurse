@@ -9,6 +9,7 @@ import {
   X, 
   Trash2, 
   Search, 
+  FileText,
   Cloud,
   CloudOff,
   Copy,
@@ -997,10 +998,7 @@ export default function App() {
     return (
       <div className="h-screen flex items-center justify-center bg-[#D0D0D0] font-sans">
         <div className="w-96 bg-white border-4 border-black p-8 shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
-          <div className="flex items-center gap-2 mb-6 border-b-4 border-black pb-2">
-            <img src="/total_nursing_icon.png" alt="Logo" className="w-10 h-10" referrerPolicy="no-referrer" />
-            <div className="text-2xl font-black">HAE-SOL EMR LOGIN</div>
-          </div>
+          <div className="text-2xl font-black mb-6 border-b-4 border-black pb-2">TOTAL 간호 LOGIN</div>
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div>
               <label className="block font-bold mb-1">ID</label>
@@ -1038,7 +1036,6 @@ export default function App() {
     <div className="flex flex-col h-screen min-w-[1200px] bg-[#D0D0D0] font-sans overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-[#D0D0D0] border-b-2 border-gray-400 shrink-0">
         <div className="flex items-center gap-4">
-          <img src="/total_nursing_icon.png" alt="Logo" className="w-8 h-8" referrerPolicy="no-referrer" />
           <div className="flex items-center gap-1 text-xs mr-2">
             {isOnline ? (
               <><Cloud size={14} className="text-emerald-500" /> <span className="text-emerald-600 font-bold">실시간 클라우드 연결됨</span></>
@@ -1085,7 +1082,7 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         <div className="w-64 bg-white border-r-2 border-black flex flex-col">
           <div className="bg-[#FF99FF] text-white p-2 flex items-center gap-2 font-bold border-b-2 border-black">
-            <img src="/total_nursing_icon.png" alt="Logo" className="w-6 h-6" referrerPolicy="no-referrer" />
+            <FileText size={20} />
             <span>환자리스트</span>
           </div>
           <div className="p-2 border-b-2 border-black">
@@ -1276,10 +1273,7 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
 
   return (
     <div className="text-black font-sans p-4">
-      <div className="flex justify-between items-start mb-4">
-        <img src="/total_nursing_icon.png" alt="Logo" className="w-16 h-16" referrerPolicy="no-referrer" />
-        <div className="flex-1 text-center text-3xl font-black underline underline-offset-8 pr-16">{title}</div>
-      </div>
+      <div className="text-center text-3xl font-black mb-8 underline underline-offset-8">{title}</div>
       
       <div className="flex justify-between items-end mb-2">
         <div className="font-bold text-lg">{type === 'admission' ? '경과기록지' : '환자기본정보'}</div>
