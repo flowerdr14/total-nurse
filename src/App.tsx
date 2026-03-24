@@ -605,23 +605,7 @@ export default function App() {
                 <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">SOAP</div>
                 <div className="p-2 flex flex-col gap-4">
                   {formData.soapBlocks.map((block, idx) => (
-                    <div key={idx} className="border-2 border-black relative bg-white shadow-sm shrink-0">
-                      <div className="absolute -top-2 -right-2 flex gap-1 z-10">
-                        <button 
-                          onClick={() => duplicateSoapBlock(idx)}
-                          className="bg-blue-500 text-white rounded-full p-1 hover:bg-blue-600 shadow-md"
-                          title="복제"
-                        >
-                          <Copy size={14} />
-                        </button>
-                        <button 
-                          onClick={() => removeSoapBlock(idx)}
-                          className="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-md"
-                          title="삭제"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
+                    <div key={idx} className="border-2 border-black bg-white shadow-sm shrink-0">
                       <table className="w-full border-collapse">
                         <tbody>
                           {[
@@ -646,6 +630,14 @@ export default function App() {
                           ))}
                         </tbody>
                       </table>
+                      <div className="p-2 flex justify-end">
+                        <button 
+                          onClick={() => removeSoapBlock(idx)}
+                          className="bg-gray-400 text-white px-4 py-1 rounded-lg font-bold hover:bg-gray-500 transition-colors text-sm"
+                        >
+                          삭제
+                        </button>
+                      </div>
                     </div>
                   ))}
                   <AutoHeightTextarea 
@@ -995,23 +987,7 @@ export default function App() {
                 <div className="bg-[#999] text-white font-bold p-2 text-lg sticky top-0 z-10">SOAP</div>
                 <div className="p-2 flex flex-col gap-4">
                   {formData.soapBlocks.map((block, idx) => (
-                    <div key={idx} className="border-2 border-black relative bg-white shadow-sm shrink-0">
-                      <div className="absolute -top-2 -right-2 flex gap-1 z-10">
-                        <button 
-                          onClick={() => duplicateSoapBlock(idx)}
-                          className="bg-blue-500 text-white rounded-full p-1 hover:bg-blue-600 shadow-md"
-                          title="복제"
-                        >
-                          <Copy size={14} />
-                        </button>
-                        <button 
-                          onClick={() => removeSoapBlock(idx)}
-                          className="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-md"
-                          title="삭제"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
+                    <div key={idx} className="border-2 border-black bg-white shadow-sm shrink-0">
                       <table className="w-full border-collapse">
                         <tbody>
                           {[
@@ -1036,6 +1012,14 @@ export default function App() {
                           ))}
                         </tbody>
                       </table>
+                      <div className="p-2 flex justify-end">
+                        <button 
+                          onClick={() => removeSoapBlock(idx)}
+                          className="bg-gray-400 text-white px-4 py-1 rounded-lg font-bold hover:bg-gray-500 transition-colors text-sm"
+                        >
+                          삭제
+                        </button>
+                      </div>
                     </div>
                   ))}
                   <AutoHeightTextarea 
