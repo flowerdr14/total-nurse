@@ -734,8 +734,7 @@ export default function App() {
                     onClick={addSoapBlock}
                     className="py-3 bg-gray-300 border-2 border-black font-bold text-lg hover:bg-gray-400 flex flex-col items-center"
                   >
-                    <span>S, O, A, P 블록 추가</span>
-                    <span className="text-[10px] font-normal">(표 형태 블록 생성)</span>
+                    <span>SOAP 추가</span>
                   </button>
                 </div>
               </div>
@@ -965,8 +964,7 @@ export default function App() {
                       onClick={addSoapBlock}
                       className="py-3 bg-gray-300 border-2 border-black font-bold text-lg hover:bg-gray-400 flex flex-col items-center"
                     >
-                      <span>S, O, A, P 블록 추가</span>
-                      <span className="text-[10px] font-normal">(표 형태 블록 생성)</span>
+                      <span>SOAP 추가</span>
                     </button>
                   </div>
                 </div>
