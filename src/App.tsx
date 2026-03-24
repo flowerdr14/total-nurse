@@ -1284,10 +1284,9 @@ export default function App() {
         <div className="ml-auto mr-4 flex items-center gap-2">
           <div className="bg-white p-0.5 border border-[#707070] rounded-sm flex items-center justify-center">
             <img 
-              src="/total_nursing_icon.png" 
+              src="total_nursing_icon.png" 
               alt="TOTAL 간호" 
               className="w-7 h-7 object-contain"
-              referrerPolicy="no-referrer"
             />
           </div>
           <div className="flex items-center leading-none">
