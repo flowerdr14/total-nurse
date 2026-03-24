@@ -13,7 +13,8 @@ import {
   Cloud,
   CloudOff,
   Copy,
-  Printer
+  Printer,
+  Plus
 } from 'lucide-react';
 import { db } from './firebase';
 import { 
@@ -142,10 +143,11 @@ const ACCOUNTS: Record<string, { pw: string, name: string }> = {
 
 // --- Components ---
 
-const HeaderButton = ({ icon: Icon, label, onClick, color = "text-black" }: { icon?: any, label: string, onClick?: () => void, color?: string }) => (
+const HeaderButton = ({ icon: Icon, label, onClick, color = "text-black", disabled = false }: { icon?: any, label: string, onClick?: () => void, color?: string, disabled?: boolean }) => (
   <button 
     onClick={onClick}
-    className={`flex items-center gap-1 px-3 py-1 hover:bg-gray-200 transition-colors ${color} font-bold text-lg`}
+    disabled={disabled}
+    className={`flex items-center gap-1 px-3 py-1 hover:bg-gray-200 transition-colors ${color} font-bold text-lg ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
   >
     {Icon && <Icon size={24} strokeWidth={3} />}
     <span>{label}</span>
@@ -230,6 +232,7 @@ export default function App() {
   const [formData, setFormData] = useState<Patient>(INITIAL_FORM_DATA);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, patientId: string } | null>(null);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
   const [printType, setPrintType] = useState<TabType | null>(null);
@@ -258,9 +261,9 @@ export default function App() {
           labRows: typeof data.labRows === 'string' ? JSON.parse(data.labRows) : data.labRows,
           regimenRows: typeof data.regimenRows === 'string' ? JSON.parse(data.regimenRows) : data.regimenRows,
           imagingPhotos: typeof data.imagingPhotos === 'string' ? JSON.parse(data.imagingPhotos) : (data.imagingPhotos || []),
-          soapNote: data.soapNote || data.soap || '',
+          soapNote: data.soapNote ?? data.soap ?? '',
           soapBlocks: typeof data.soapBlocks === 'string' ? JSON.parse(data.soapBlocks) : (data.soapBlocks || []),
-          exam: data.exam || '',
+          exam: data.exam ?? '',
         } as Patient);
       });
       setPatients(patientsData);
@@ -300,6 +303,8 @@ export default function App() {
 
   // Sync formData when selectedPatientId changes or when patients are first loaded for the selected ID
   useEffect(() => {
+    if (isSaving) return; // Don't sync while saving to prevent race conditions
+
     if (selectedPatientId) {
       const p = patients.find(p => p.id === selectedPatientId);
       // Only sync from patients if the ID has changed or if we haven't synced this ID yet
@@ -308,10 +313,13 @@ export default function App() {
         lastSyncedIdRef.current = selectedPatientId;
       }
     } else {
-      setFormData(INITIAL_FORM_DATA);
-      lastSyncedIdRef.current = null;
+      // Only reset if we were previously on a patient
+      if (lastSyncedIdRef.current !== null) {
+        setFormData(INITIAL_FORM_DATA);
+        lastSyncedIdRef.current = null;
+      }
     }
-  }, [selectedPatientId, patients]);
+  }, [selectedPatientId, patients, isSaving]);
 
   const filteredPatients = useMemo(() => 
     patients.filter(p => 
@@ -321,11 +329,13 @@ export default function App() {
   );
 
   const handleSave = async () => {
+    if (isSaving) return;
     if (!formData.name && !formData.chartNo) {
       return;
     }
 
     try {
+      setIsSaving(true);
       const id = selectedPatientId || Date.now().toString();
       
       // Append timestamp to record fields in Korean time
@@ -335,7 +345,8 @@ export default function App() {
       
       const appendTimestamp = (text: string) => {
         if (!text) return "";
-        const cleaned = text.replace(/\n\[저장됨: .*\]/g, "").trim();
+        // Match timestamp at start of string or after a newline
+        const cleaned = text.replace(/(?:\n|^)\[저장됨: .*\]/g, "").trim();
         return cleaned ? cleaned + timestamp : "";
       };
 
@@ -360,28 +371,40 @@ export default function App() {
         prescriptionNotes: newPrescriptionNotes
       };
       
-      await setDoc(doc(db, "patients", id), patientData);
-      
-      // Update local state and prevent immediate overwrite from useEffect
-      const updatedFormData = { 
-        ...formData, 
+      // Update local state immediately to prevent sync issues and provide instant feedback
+      const updatedFormData = {
+        ...formData,
+        id,
         soapNote: patientData.soapNote,
         exam: patientData.exam,
         outpatientExam: patientData.outpatientExam,
         outpatientNote: patientData.outpatientNote,
         erLabNote: patientData.erLabNote,
         imagingNote: patientData.imagingNote,
-        prescriptionNotes: patientData.prescriptionNotes
+        prescriptionNotes: newPrescriptionNotes,
+        soapBlocks: [...formData.soapBlocks] // Ensure fresh copy
       };
-      setFormData(updatedFormData);
       
-      if (!selectedPatientId) {
-        setSelectedPatientId(id);
-        lastSyncedIdRef.current = id;
-      }
+      setFormData(updatedFormData);
+      setSelectedPatientId(id);
+      lastSyncedIdRef.current = id;
+      localStorage.setItem('lastSelectedId', id);
+
+      await setDoc(doc(db, "patients", id), patientData);
+      
+      alert("저장되었습니다.");
     } catch (e: any) {
       console.error("Save error:", e);
+      alert("저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const handleNewPatient = () => {
+    setFormData(INITIAL_FORM_DATA);
+    setSelectedPatientId(null);
+    lastSyncedIdRef.current = null;
   };
 
   const handleDelete = async () => {
@@ -1049,7 +1072,14 @@ export default function App() {
               </div>
             )}
           </div>
-          <HeaderButton icon={Save} label="저장" onClick={handleSave} color="text-blue-600" />
+          <HeaderButton icon={Plus} label="새 환자" onClick={handleNewPatient} color="text-emerald-600" />
+          <HeaderButton 
+            icon={Save} 
+            label={isSaving ? "저장 중..." : "저장"} 
+            onClick={handleSave} 
+            color={isSaving ? "text-gray-400" : "text-blue-600"} 
+            disabled={isSaving}
+          />
           <div className="relative">
             <HeaderButton icon={Printer} label="출력" onClick={() => setShowPrintMenu(!showPrintMenu)} color="text-emerald-600" />
             {showPrintMenu && (
