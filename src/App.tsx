@@ -67,7 +67,6 @@ interface Patient {
   dobDay: string;
   height: string;
   weight: string;
-  photoUrl?: string;
   // Additional fields for records
   admissionDate: string;
   soapNote: string;
@@ -108,7 +107,6 @@ const INITIAL_FORM_DATA: Patient = {
   dobDay: '01',
   height: '',
   weight: '',
-  photoUrl: '',
   admissionDate: '',
   soapNote: '',
   soapBlocks: [],
@@ -677,50 +675,6 @@ export default function App() {
             </div>
             <div className="w-80 border-2 border-black p-4 flex flex-col gap-2 shrink-0 overflow-y-auto">
               <div className="bg-[#999] text-white px-3 py-1 font-bold text-lg mb-2">환자기본정보</div>
-              
-              {/* Patient Photo Section */}
-              <div className="flex flex-col items-center mb-4 gap-2">
-                <div className="w-32 h-40 border-2 border-black bg-gray-100 flex items-center justify-center overflow-hidden relative group">
-                  {formData.photoUrl ? (
-                    <img 
-                      src={formData.photoUrl} 
-                      alt="Patient" 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center text-gray-400">
-                      <Plus size={32} />
-                      <span className="text-xs font-bold">사진 없음</span>
-                    </div>
-                  )}
-                  <label className="absolute inset-0 bg-black/40 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity text-xs font-bold">
-                    사진 변경
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            updateField('photoUrl', reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
-                  </label>
-                  {formData.photoUrl && (
-                    <button 
-                      onClick={() => updateField('photoUrl', '')}
-                      className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-              </div>
 
               <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} />
               <InputField label="병실" value={formData.room} onChange={(v) => updateField('room', v)} />
@@ -1274,17 +1228,8 @@ export default function App() {
                   selectedPatientId === patient.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-10 border border-black bg-gray-100 flex-shrink-0 overflow-hidden">
-                    {patient.photoUrl ? (
-                      <img src={patient.photoUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-400">NO IMG</div>
-                    )}
-                  </div>
-                  <div className="font-bold text-sm">
-                    {patient.name} / {patient.chartNo} / {patient.gender === 'M' ? '남' : '여'} / {patient.dept}
-                  </div>
+                <div className="font-bold text-sm">
+                  {patient.name} / {patient.chartNo} / {patient.gender === 'M' ? '남' : '여'} / {patient.dept}
                 </div>
               </button>
             ))}
