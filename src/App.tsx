@@ -14,7 +14,10 @@ import {
   CloudOff,
   Copy,
   Printer,
-  Plus
+  Plus,
+  Settings,
+  LogOut,
+  ChevronDown
 } from 'lucide-react';
 import { db } from './firebase';
 import { 
@@ -141,6 +144,14 @@ const ACCOUNTS: Record<string, { pw: string, name: string }> = {
   'sheepone': { pw: 'haesol123', name: '양재원' },
 };
 
+const THEME_COLORS = [
+  { name: 'Pink', color: '#FF99FF', shadow: '#CC77CC', inactive: '#FFCCFF', bg: '#D0D0D0' },
+  { name: 'Cyan', color: '#00D1D1', shadow: '#00A8A8', inactive: '#B2EFEF', bg: '#B2EFEF' },
+  { name: 'Blue', color: '#4A86B9', shadow: '#3A6A93', inactive: '#C9D9E7', bg: '#C9D9E7' },
+  { name: 'Green', color: '#2D8A57', shadow: '#236D45', inactive: '#C1DBCB', bg: '#C1DBCB' },
+  { name: 'Gray', color: '#999999', shadow: '#666666', inactive: '#D0D0D0', bg: '#D0D0D0' },
+];
+
 // --- Components ---
 
 const HeaderButton = ({ icon: Icon, label, onClick, color = "text-black", disabled = false }: { icon?: any, label: string, onClick?: () => void, color?: string, disabled?: boolean }) => (
@@ -154,13 +165,17 @@ const HeaderButton = ({ icon: Icon, label, onClick, color = "text-black", disabl
   </button>
 );
 
-const TabButton = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
+const TabButton = ({ label, active, onClick, theme }: { label: string, active: boolean, onClick: () => void, theme: typeof THEME_COLORS[0] }) => (
   <button 
     onClick={onClick}
+    style={{ 
+      backgroundColor: active ? theme.color : theme.inactive,
+      boxShadow: active ? `0 4px 0 0 ${theme.shadow}` : undefined
+    }}
     className={`px-6 py-2 rounded-lg font-bold text-lg transition-all ${
       active 
-        ? 'bg-[#FF99FF] text-white shadow-[0_4px_0_0_#CC77CC]' 
-        : 'bg-[#FFCCFF] text-[#666] hover:bg-[#FFBBFF]'
+        ? 'text-white' 
+        : 'text-[#666] hover:opacity-80'
     }`}
   >
     {label}
@@ -224,6 +239,10 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginId, setLoginId] = useState('');
   const [loginPw, setLoginPw] = useState('');
+  const [autoLogin, setAutoLogin] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState(THEME_COLORS[0]);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('none');
   const [prescriptionSubTab, setPrescriptionSubTab] = useState<string>(PRESCRIPTION_SUB_TABS[0]);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -243,10 +262,47 @@ export default function App() {
     const user = ACCOUNTS[loginId];
     if (user && user.pw === loginPw) {
       setIsLoggedIn(true);
+      if (autoLogin) {
+        localStorage.setItem('autoLoginUser', JSON.stringify({ id: loginId, pw: loginPw }));
+      } else {
+        localStorage.removeItem('autoLoginUser');
+      }
     } else {
       alert('아이디 또는 비밀번호가 틀렸습니다.');
     }
   };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setLoginId('');
+    setLoginPw('');
+    setShowUserMenu(false);
+    localStorage.removeItem('autoLoginUser');
+  };
+
+  // Auto-login check
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('themeName');
+    if (savedTheme) {
+      const theme = THEME_COLORS.find(t => t.name === savedTheme);
+      if (theme) setCurrentTheme(theme);
+    }
+
+    const savedUser = localStorage.getItem('autoLoginUser');
+    if (savedUser) {
+      try {
+        const { id, pw } = JSON.parse(savedUser);
+        const user = ACCOUNTS[id];
+        if (user && user.pw === pw) {
+          setLoginId(id);
+          setLoginPw(pw);
+          setIsLoggedIn(true);
+        }
+      } catch (e) {
+        console.error("Auto-login error:", e);
+      }
+    }
+  }, []);
 
   // Load data from Firestore (Real-time)
   useEffect(() => {
@@ -287,7 +343,10 @@ export default function App() {
 
   // Close context menu on click anywhere
   useEffect(() => {
-    const handleClick = () => setContextMenu(null);
+    const handleClick = () => {
+      setContextMenu(null);
+      setShowUserMenu(false);
+    };
     window.addEventListener('click', handleClick);
     return () => window.removeEventListener('click', handleClick);
   }, []);
@@ -1017,47 +1076,67 @@ export default function App() {
     }
   };
 
-  if (!isLoggedIn) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-[#D0D0D0] font-sans">
-        <div className="w-96 bg-white border-4 border-black p-8 shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
-          <div className="text-2xl font-black mb-6 border-b-4 border-black pb-2">TOTAL 간호 LOGIN</div>
-          <form onSubmit={handleLogin} className="flex flex-col gap-4">
-            <div>
-              <label className="block font-bold mb-1">ID</label>
-              <input 
-                type="text" 
-                value={loginId}
-                onChange={(e) => setLoginId(e.target.value)}
-                className="w-full border-2 border-black p-2 focus:outline-none"
-                placeholder=""
-              />
-            </div>
-            <div>
-              <label className="block font-bold mb-1">PASSWORD</label>
-              <input 
-                type="password" 
-                value={loginPw}
-                onChange={(e) => setLoginPw(e.target.value)}
-                className="w-full border-2 border-black p-2 focus:outline-none"
-                placeholder=""
-              />
-            </div>
-            <button 
-              type="submit"
-              className="mt-4 bg-blue-500 text-white font-black py-3 border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all"
-            >
-              LOGIN
-            </button>
-          </form>
+    if (!isLoggedIn) {
+      return (
+        <div 
+          style={{ backgroundColor: currentTheme.bg }}
+          className="h-screen flex items-center justify-center font-sans"
+        >
+          <div className="w-96 bg-white border-4 border-black p-8 shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
+            <div className="text-2xl font-black mb-6 border-b-4 border-black pb-2">TOTAL 간호 LOGIN</div>
+            <form onSubmit={handleLogin} className="flex flex-col gap-4">
+              <div>
+                <label className="block font-bold mb-1">ID</label>
+                <input 
+                  type="text" 
+                  value={loginId}
+                  onChange={(e) => setLoginId(e.target.value)}
+                  className="w-full border-2 border-black p-2 focus:outline-none"
+                  placeholder=""
+                />
+              </div>
+              <div>
+                <label className="block font-bold mb-1">PASSWORD</label>
+                <input 
+                  type="password" 
+                  value={loginPw}
+                  onChange={(e) => setLoginPw(e.target.value)}
+                  className="w-full border-2 border-black p-2 focus:outline-none"
+                  placeholder=""
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="autoLogin"
+                  checked={autoLogin}
+                  onChange={(e) => setAutoLogin(e.target.checked)}
+                  className="w-4 h-4 border-2 border-black"
+                />
+                <label htmlFor="autoLogin" className="font-bold text-sm cursor-pointer">자동 로그인</label>
+              </div>
+              <button 
+                type="submit"
+                style={{ backgroundColor: currentTheme.color }}
+                className="mt-4 text-white font-black py-3 border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all"
+              >
+                LOGIN
+              </button>
+            </form>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
   return (
-    <div className="flex flex-col h-screen min-w-[1200px] bg-[#D0D0D0] font-sans overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 bg-[#D0D0D0] border-b-2 border-gray-400 shrink-0">
+    <div 
+      style={{ backgroundColor: currentTheme.bg }}
+      className="flex flex-col h-screen min-w-[1200px] font-sans overflow-hidden"
+    >
+      <div 
+        style={{ backgroundColor: currentTheme.bg }}
+        className="flex items-center justify-between px-4 py-2 border-b-2 border-gray-400 shrink-0"
+      >
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1 text-xs mr-2">
             {isOnline ? (
@@ -1098,20 +1177,50 @@ export default function App() {
           }} />
         </div>
         <div className="flex items-center gap-2">
-          <TabButton label="입원기록" active={activeTab === 'admission'} onClick={() => setActiveTab('admission')} />
-          <TabButton label="검사결과" active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} />
-          <TabButton label="처방기록" active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} />
-          <TabButton label="외래기록" active={activeTab === 'outpatient'} onClick={() => setActiveTab('outpatient')} />
-          <TabButton label="응급실 차트" active={activeTab === 'er'} onClick={() => setActiveTab('er')} />
+          <TabButton label="입원기록" active={activeTab === 'admission'} onClick={() => setActiveTab('admission')} theme={currentTheme} />
+          <TabButton label="검사결과" active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} theme={currentTheme} />
+          <TabButton label="처방기록" active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} theme={currentTheme} />
+          <TabButton label="외래기록" active={activeTab === 'outpatient'} onClick={() => setActiveTab('outpatient')} theme={currentTheme} />
+          <TabButton label="응급실 차트" active={activeTab === 'er'} onClick={() => setActiveTab('er')} theme={currentTheme} />
         </div>
-        <div>
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <div 
+              onClick={(e) => { e.stopPropagation(); setShowUserMenu(!showUserMenu); }}
+              className="flex items-center gap-2 bg-white border-2 border-black px-3 py-1 shadow-[2px_2px_0_0_rgba(0,0,0,1)] cursor-pointer hover:bg-gray-50"
+            >
+              <span className="font-bold text-sm">
+                {ACCOUNTS[loginId]?.name || loginId} ({loginId})
+              </span>
+              <ChevronDown size={14} />
+            </div>
+            {showUserMenu && (
+              <div className="absolute top-full right-0 mt-1 bg-white border-2 border-black shadow-lg z-50 w-40 py-1">
+                <button 
+                  onClick={() => { setShowSettings(true); setShowUserMenu(false); }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm flex items-center gap-2"
+                >
+                  <Settings size={14} /> 환경설정
+                </button>
+                <button 
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm flex items-center gap-2 text-red-500"
+                >
+                  <LogOut size={14} /> 로그아웃
+                </button>
+              </div>
+            )}
+          </div>
           <HeaderButton icon={Trash2} label="삭제" color="text-red-600" onClick={handleDelete} />
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
         <div className="w-64 bg-white border-r-2 border-black flex flex-col">
-          <div className="bg-[#FF99FF] text-white p-2 flex items-center gap-2 font-bold border-b-2 border-black">
+          <div 
+            style={{ backgroundColor: currentTheme.color }}
+            className="text-white p-2 flex items-center gap-2 font-bold border-b-2 border-black"
+          >
             <FileText size={20} />
             <span>환자리스트</span>
           </div>
@@ -1176,6 +1285,41 @@ export default function App() {
       </div>
 
       {/* Context Menu */}
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+          <div className="bg-white border-4 border-black p-6 w-80 shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
+            <div className="flex justify-between items-center mb-4 border-b-4 border-black pb-2">
+              <h2 className="text-xl font-black">환경설정</h2>
+              <button onClick={() => setShowSettings(false)} className="hover:bg-gray-100 p-1 rounded"><X size={24} /></button>
+            </div>
+            <div className="mb-6">
+              <p className="font-bold mb-3">테마 컬러</p>
+              <div className="flex gap-4">
+                {THEME_COLORS.map((theme) => (
+                  <button
+                    key={theme.name}
+                    onClick={() => {
+                      setCurrentTheme(theme);
+                      localStorage.setItem('themeName', theme.name);
+                    }}
+                    className={`w-12 h-12 rounded-lg border-2 border-black transition-transform ${currentTheme.name === theme.name ? 'scale-110 ring-2 ring-black ring-offset-2' : 'hover:scale-105'}`}
+                    style={{ backgroundColor: theme.color }}
+                    title={theme.name}
+                  />
+                ))}
+              </div>
+            </div>
+            <button 
+              onClick={() => setShowSettings(false)}
+              className="w-full bg-blue-500 text-white font-black py-2 border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
+
       {contextMenu && (
         <div 
           className="fixed z-50 bg-white border-2 border-black shadow-lg py-1 w-48"
