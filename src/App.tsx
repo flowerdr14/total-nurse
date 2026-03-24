@@ -12,7 +12,8 @@ import {
   FileText,
   Cloud,
   CloudOff,
-  Copy
+  Copy,
+  Printer
 } from 'lucide-react';
 import { db } from './firebase';
 import { 
@@ -182,9 +183,8 @@ const AutoHeightTextarea = ({ value, onChange, placeholder, className, minHeight
 
   const adjustHeight = () => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = '0px';
-      const scrollHeight = textareaRef.current.scrollHeight;
-      textareaRef.current.style.height = Math.max(scrollHeight, parseInt(minHeight)) + 'px';
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, parseInt(minHeight))}px`;
     }
   };
 
@@ -231,6 +231,8 @@ export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, patientId: string } | null>(null);
+  const [showPrintMenu, setShowPrintMenu] = useState(false);
+  const [printType, setPrintType] = useState<TabType | null>(null);
   const lastSyncedIdRef = useRef<string | null>(null);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -455,6 +457,15 @@ export default function App() {
     });
   };
 
+  const handlePrint = (type: TabType) => {
+    setPrintType(type);
+    setShowPrintMenu(false);
+    setTimeout(() => {
+      window.print();
+      setPrintType(null);
+    }, 500);
+  };
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -495,7 +506,7 @@ export default function App() {
       case 'admission':
         return (
           <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
-            <div className="flex-1 flex flex-col gap-4">
+            <div className="flex-1 flex flex-col gap-4 overflow-hidden">
               {/* 입원일 분리 */}
               <div className="border-2 border-black p-2 bg-gray-100 flex items-center gap-4 shrink-0">
                 <span className="font-bold">입원일</span>
@@ -508,9 +519,9 @@ export default function App() {
                 />
               </div>
 
-              <div className="border-2 border-black flex flex-col h-[60%] overflow-y-auto">
-                <div className="bg-[#999] text-white px-4 py-1 font-bold shrink-0">SOAP</div>
-                <div className="p-2 flex-1 flex flex-col gap-4 min-h-full">
+              <div className="border-2 border-black flex flex-col flex-[3] min-h-0 overflow-y-auto bg-white">
+                <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">SOAP</div>
+                <div className="p-2 flex flex-col gap-4">
                   {formData.soapBlocks.map((block, idx) => (
                     <div key={idx} className="border-2 border-black relative bg-white shadow-sm shrink-0">
                       <div className="absolute -top-2 -right-2 flex gap-1 z-10">
@@ -546,7 +557,7 @@ export default function App() {
                                   value={block[row.id as keyof SoapBlock]}
                                   onChange={(e: any) => updateSoapBlock(idx, row.id as keyof SoapBlock, e.target.value)}
                                   className="w-full p-2 focus:outline-none block"
-                                  minHeight={row.id === 'p' ? '160px' : '64px'}
+                                  minHeight="64px"
                                 />
                               </td>
                             </tr>
@@ -560,21 +571,23 @@ export default function App() {
                     onChange={(e: any) => updateField('soapNote', e.target.value)}
                     placeholder="여기에 자유롭게 기록하세요..."
                     className="w-full p-2 focus:outline-none block" 
-                    minHeight="100px"
+                    minHeight="200px"
                   />
                 </div>
               </div>
-              <div className="border-2 border-black flex flex-col h-[40%] overflow-y-auto">
-                <div className="bg-[#999] text-white px-4 py-1 font-bold shrink-0">EXAM</div>
-                <AutoHeightTextarea 
-                  value={formData.exam}
-                  onChange={(e: any) => updateField('exam', e.target.value)}
-                  className="w-full p-2 focus:outline-none block" 
-                  minHeight="100px"
-                />
+              <div className="border-2 border-black flex flex-col flex-[2] min-h-0 overflow-y-auto bg-white">
+                <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">EXAM</div>
+                <div className="p-2 flex flex-col">
+                  <AutoHeightTextarea 
+                    value={formData.exam}
+                    onChange={(e: any) => updateField('exam', e.target.value)}
+                    className="w-full p-2 focus:outline-none block" 
+                    minHeight="200px"
+                  />
+                </div>
               </div>
             </div>
-            <div className="w-80 border-2 border-black p-4 flex flex-col gap-2">
+            <div className="w-80 border-2 border-black p-4 flex flex-col gap-2 shrink-0 overflow-y-auto">
               <div className="bg-[#999] text-white px-3 py-1 font-bold text-lg mb-2">환자기본정보</div>
               <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} />
               <InputField label="병실" value={formData.room} onChange={(v) => updateField('room', v)} />
@@ -784,7 +797,7 @@ export default function App() {
                     onChange={(e: any) => updatePrescriptionNote(prescriptionSubTab, e.target.value)}
                     className="w-full focus:outline-none" 
                     placeholder={`${prescriptionSubTab} 내용을 입력하세요...`} 
-                    minHeight="300px"
+                    minHeight="500px"
                   />
                 </div>
               </div>
@@ -800,7 +813,7 @@ export default function App() {
                         value={formData.outpatientExam}
                         onChange={(e: any) => updateField('outpatientExam', e.target.value)}
                         className="w-full focus:outline-none" 
-                        minHeight="200px"
+                        minHeight="400px"
                       />
                     </div>
                   </div>
@@ -811,7 +824,7 @@ export default function App() {
                         value={formData.outpatientNote}
                         onChange={(e: any) => updateField('outpatientNote', e.target.value)}
                         className="w-full focus:outline-none" 
-                        minHeight="200px"
+                        minHeight="400px"
                       />
                     </div>
                   </div>
@@ -837,7 +850,7 @@ export default function App() {
       case 'er':
         return (
           <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
-            <div className="w-80 flex flex-col gap-4">
+            <div className="w-80 flex flex-col gap-4 shrink-0 overflow-y-auto pr-2">
               <div className="border-2 border-black flex flex-col">
                 <div className="bg-[#5a9a9a] text-white font-bold p-2 text-lg">환자기본정보</div>
                 <div className="p-4 flex flex-col gap-2">
@@ -871,7 +884,7 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              <div className="border-2 border-black flex-1 flex flex-col">
+              <div className="border-2 border-black flex flex-col shrink-0">
                 <div className="bg-[#5a9a9a] text-white font-bold p-2 text-center">V/S</div>
                 <input 
                   type="text" 
@@ -893,13 +906,12 @@ export default function App() {
                   onChange={(e) => updateField('erTime', e.target.value)}
                   className="h-12 px-2 focus:outline-none"
                 />
-                <div className="flex-1 bg-gray-50"></div>
               </div>
             </div>
-            <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
-              <div className="border-2 border-black flex flex-col min-h-[60%]">
-                <div className="bg-[#999] text-white font-bold p-2 text-lg shrink-0">SOAP</div>
-                <div className="p-2 flex-1 flex flex-col gap-4 min-h-full">
+            <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+              <div className="border-2 border-black flex flex-col flex-[3] min-h-0 overflow-y-auto bg-white">
+                <div className="bg-[#999] text-white font-bold p-2 text-lg sticky top-0 z-10">SOAP</div>
+                <div className="p-2 flex flex-col gap-4">
                   {formData.soapBlocks.map((block, idx) => (
                     <div key={idx} className="border-2 border-black relative bg-white shadow-sm shrink-0">
                       <div className="absolute -top-2 -right-2 flex gap-1 z-10">
@@ -935,7 +947,7 @@ export default function App() {
                                   value={block[row.id as keyof SoapBlock]}
                                   onChange={(e: any) => updateSoapBlock(idx, row.id as keyof SoapBlock, e.target.value)}
                                   className="w-full p-2 focus:outline-none block"
-                                  minHeight={row.id === 'p' ? '160px' : '64px'}
+                                  minHeight="64px"
                                 />
                               </td>
                             </tr>
@@ -949,21 +961,23 @@ export default function App() {
                     onChange={(e: any) => updateField('soapNote', e.target.value)}
                     placeholder="여기에 자유롭게 기록하세요..."
                     className="w-full p-2 focus:outline-none block" 
-                    minHeight="100px"
+                    minHeight="200px"
                   />
                 </div>
               </div>
-              <div className="border-2 border-black flex flex-col min-h-[40%]">
-                <div className="bg-[#999] text-white font-bold p-2 text-lg shrink-0">EXAM</div>
-                <AutoHeightTextarea 
-                  value={formData.exam}
-                  onChange={(e: any) => updateField('exam', e.target.value)}
-                  className="w-full p-2 focus:outline-none block" 
-                  minHeight="100px"
-                />
+              <div className="border-2 border-black flex flex-col flex-[2] min-h-0 overflow-y-auto bg-white">
+                <div className="bg-[#999] text-white font-bold p-2 text-lg sticky top-0 z-10">EXAM</div>
+                <div className="p-2 flex flex-col">
+                  <AutoHeightTextarea 
+                    value={formData.exam}
+                    onChange={(e: any) => updateField('exam', e.target.value)}
+                    className="w-full p-2 focus:outline-none block" 
+                    minHeight="200px"
+                  />
+                </div>
               </div>
             </div>
-            <div className="w-40 border-2 border-black flex flex-col">
+            <div className="w-40 border-2 border-black flex flex-col shrink-0">
               <div className="bg-[#5a9a9a] text-white font-bold p-2 text-center">LAB NOTE</div>
               <div className="flex-1 p-2">
                 <textarea 
@@ -1036,6 +1050,17 @@ export default function App() {
             )}
           </div>
           <HeaderButton icon={Save} label="저장" onClick={handleSave} color="text-blue-600" />
+          <div className="relative">
+            <HeaderButton icon={Printer} label="출력" onClick={() => setShowPrintMenu(!showPrintMenu)} color="text-emerald-600" />
+            {showPrintMenu && (
+              <div className="absolute top-10 left-0 bg-white border-2 border-black shadow-lg z-50 w-48 py-1">
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('admission')}>입원기록지 출력</button>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('lab')}>검사결과지 출력</button>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('prescription')}>처방기록지 출력</button>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('outpatient')}>외래기록지 출력</button>
+              </div>
+            )}
+          </div>
           <HeaderButton icon={X} label="종료" color="text-red-600" onClick={() => {
             setSelectedPatientId(null);
             setFormData(INITIAL_FORM_DATA);
@@ -1115,7 +1140,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col bg-[#D0D0D0]">
+        <div className="flex-1 flex flex-col bg-[#D0D0D0] overflow-hidden">
           {renderContent()}
         </div>
       </div>
@@ -1167,6 +1192,203 @@ export default function App() {
       )}
 
       {/* 저장 성공 알림 토스트 제거됨 */}
+      
+      {/* Print Layout */}
+      {printType && (
+        <div id="print-area" className="fixed inset-0 bg-white z-[9999] p-8 overflow-y-auto print:block hidden">
+          <PrintForm patient={formData} type={printType} />
+        </div>
+      )}
     </div>
   );
 }
+
+const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+
+  const title = type === 'admission' ? '입원기록지' : 
+                type === 'lab' ? '검사결과지' : 
+                type === 'prescription' ? '처방기록지' : 
+                type === 'outpatient' ? '외래기록지' : '';
+
+  const renderPatientInfoTable = () => (
+    <div className="flex border-2 border-black mb-4">
+      <div className="w-1/2 border-r-2 border-black">
+        <table className="w-full border-collapse">
+          <tbody>
+            {[
+              ['차트번호', patient.chartNo],
+              ['병실', patient.room],
+              ['전문의', patient.doctor],
+              ['성명', patient.name],
+              ['나이', patient.age],
+              ['거주지', patient.address],
+              ['Dx', patient.dx],
+              ['C.C', patient.cc],
+              ['On Set', patient.onset],
+              ['혈액형', patient.bloodType],
+              ['진료과', patient.dept],
+              ['생년월일', `${patient.dobYear}-${patient.dobMonth}-${patient.dobDay}`],
+              ['성별', patient.gender === 'M' ? '남' : '여'],
+            ].map(([label, value]) => (
+              <tr key={label} className="border-b border-black last:border-0">
+                <td className="w-24 p-1 border-r border-black bg-gray-100 text-[10px] font-bold">{label}</td>
+                <td className="p-1 text-[10px]">{value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="w-1/2 flex flex-col">
+        <div className="flex-1 grid grid-cols-2 border-b border-black">
+          <div className="border-r border-black p-2 flex flex-col">
+            <div className="font-bold text-[10px] border-b border-black mb-1 text-center">SUBJECTIVE</div>
+            <div className="text-[10px] whitespace-pre-wrap flex-1">{patient.soapBlocks[0]?.s || ''}</div>
+          </div>
+          <div className="p-2 flex flex-col">
+            <div className="font-bold text-[10px] border-b border-black mb-1 text-center">OBJECTIVE</div>
+            <div className="text-[10px] whitespace-pre-wrap flex-1">{patient.soapBlocks[0]?.o || ''}</div>
+          </div>
+        </div>
+        <div className="flex-1 grid grid-cols-2 border-b border-black">
+          <div className="border-r border-black p-2 flex flex-col">
+            <div className="font-bold text-[10px] border-b border-black mb-1 text-center">ASSESSMENT</div>
+            <div className="text-[10px] whitespace-pre-wrap flex-1">{patient.soapBlocks[0]?.a || ''}</div>
+          </div>
+          <div className="p-2 flex flex-col">
+            <div className="font-bold text-[10px] border-b border-black mb-1 text-center">PLAN</div>
+            <div className="text-[10px] whitespace-pre-wrap flex-1">{patient.soapBlocks[0]?.p || ''}</div>
+          </div>
+        </div>
+        <div className="p-2 flex flex-col flex-1">
+          <div className="font-bold text-[10px] border-b border-black mb-1 text-center">EXAM</div>
+          <div className="text-[10px] whitespace-pre-wrap flex-1">{patient.exam}</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="text-black font-sans p-4">
+      <div className="text-center text-3xl font-black mb-8 underline underline-offset-8">{title}</div>
+      
+      <div className="flex justify-between items-end mb-2">
+        <div className="font-bold text-lg">{type === 'admission' ? '경과기록지' : '환자기본정보'}</div>
+        <div className="text-sm font-bold">작성일: ( {year} )년 ( {month} )월 ( {day} )일</div>
+      </div>
+
+      {renderPatientInfoTable()}
+
+      {type === 'admission' && (
+        <div className="mt-8">
+          <div className="font-bold text-lg mb-2">Progress Note</div>
+          <div className="border-2 border-black min-h-[500px] flex">
+            <div className="w-1/2 border-r-2 border-black p-4">
+              <div className="font-bold text-center border-b-2 border-black mb-4 pb-1">SOAP</div>
+              <div className="text-sm whitespace-pre-wrap">
+                {patient.soapBlocks.map((b, i) => (
+                  <div key={i} className="mb-4 border-b border-gray-300 pb-2 last:border-0">
+                    <div className="font-bold text-xs text-gray-500">Block {i+1}</div>
+                    <div>S: {b.s}</div>
+                    <div>O: {b.o}</div>
+                    <div>A: {b.a}</div>
+                    <div>P: {b.p}</div>
+                  </div>
+                ))}
+                <div className="mt-4 pt-4 border-t-2 border-black italic">{patient.soapNote}</div>
+              </div>
+            </div>
+            <div className="w-1/2 p-4">
+              <div className="font-bold text-center border-b-2 border-black mb-4 pb-1">EXAM</div>
+              <div className="text-sm whitespace-pre-wrap">{patient.exam}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {type === 'lab' && (
+        <div className="mt-8">
+          <div className="font-bold text-lg mb-2">검사결과</div>
+          <table className="w-full border-collapse border-2 border-black">
+            <thead>
+              <tr className="bg-gray-100">
+                {['검사명/검사일시', 'CBC', 'UA', '감염', 'LFT', 'PFT', 'TUMOR', 'ELECT ROLYTES', 'CRP', 'ESR', '특수혈액'].map(h => (
+                  <th key={h} className="border border-black p-1 text-[8px]">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {patient.labRows.map((row, i) => (
+                <tr key={i}>
+                  {row.slice(0, 11).map((cell, j) => (
+                    <td key={j} className="border border-black p-1 text-[8px] h-6 text-center">{cell}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {type === 'prescription' && (
+        <div className="mt-8">
+          <div className="font-bold text-lg mb-2">처방기록</div>
+          <table className="w-full border-collapse border-2 border-black">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-black p-1 text-[10px] w-24">처방일자/처방명</th>
+                {PRESCRIPTION_SUB_TABS.map(t => (
+                  <th key={t} className="border border-black p-1 text-[10px]">{t}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="border border-black p-1 text-[10px] h-12"></td>
+                  {PRESCRIPTION_SUB_TABS.map(t => (
+                    <td key={t} className="border border-black p-1 text-[10px] h-12">
+                      {i === 0 ? patient.prescriptionNotes[t] : ''}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-4 text-[10px] italic">*위 처방기록 기록 시 처방명은 담당자와 함께 기재할 것. 예) [작성자: R1 OOO]</div>
+        </div>
+      )}
+
+      {type === 'outpatient' && (
+        <div className="mt-8">
+          <div className="font-bold text-lg mb-2">외래기록</div>
+          <table className="w-full border-collapse border-2 border-black">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-black p-1 text-[10px] w-24">외래날짜</th>
+                <th className="border border-black p-1 text-[10px] w-24">담당교수</th>
+                <th className="border border-black p-1 text-[10px] w-24">담당과</th>
+                <th className="border border-black p-1 text-[10px]">외래메모</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 15 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="border border-black p-1 text-[10px] h-8 text-center">. . .</td>
+                  <td className="border border-black p-1 text-[10px] h-8 text-center">{i === 0 ? patient.doctor : ''}</td>
+                  <td className="border border-black p-1 text-[10px] h-8 text-center">{i === 0 ? patient.dept : ''}</td>
+                  <td className="border border-black p-1 text-[10px] h-8">
+                    {i === 0 ? patient.outpatientNote : ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
