@@ -614,7 +614,7 @@ export default function App() {
                             { id: 'a', label: 'Assessment' },
                             { id: 'p', label: 'Plan' }
                           ].map((row) => (
-                            <tr key={row.id} className="border-b border-black last:border-0">
+                            <tr key={row.id} className="border-b border-black">
                               <td className="w-32 bg-[#C0C0C0] border-r-2 border-black p-2 text-center font-bold text-gray-700">
                                 {row.label}
                               </td>
@@ -628,16 +628,27 @@ export default function App() {
                               </td>
                             </tr>
                           ))}
+                          <tr>
+                            <td className="w-32 bg-[#C0C0C0] border-r-2 border-black p-2 text-center font-bold text-gray-700">
+                              관리
+                            </td>
+                            <td className="p-2 flex justify-end gap-2">
+                              <button 
+                                onClick={() => duplicateSoapBlock(idx)}
+                                className="bg-gray-400 text-white px-4 py-1 rounded-lg font-bold hover:bg-gray-500 transition-colors text-sm"
+                              >
+                                복제
+                              </button>
+                              <button 
+                                onClick={() => removeSoapBlock(idx)}
+                                className="bg-gray-400 text-white px-4 py-1 rounded-lg font-bold hover:bg-gray-500 transition-colors text-sm"
+                              >
+                                삭제
+                              </button>
+                            </td>
+                          </tr>
                         </tbody>
                       </table>
-                      <div className="p-2 flex justify-end">
-                        <button 
-                          onClick={() => removeSoapBlock(idx)}
-                          className="bg-gray-400 text-white px-4 py-1 rounded-lg font-bold hover:bg-gray-500 transition-colors text-sm"
-                        >
-                          삭제
-                        </button>
-                      </div>
                     </div>
                   ))}
                   <AutoHeightTextarea 
@@ -810,7 +821,7 @@ export default function App() {
                 <div className="border-2 border-black mb-4">
                   <div className="border-b-2 border-black p-1 font-bold text-xl flex justify-between items-center">
                     <span>영상검사 (Imaging Test)</span>
-                    <label className="bg-blue-500 text-white px-3 py-1 rounded cursor-pointer hover:bg-blue-600 font-bold text-sm">
+                    <label className="bg-gray-400 text-white px-3 py-1 rounded cursor-pointer hover:bg-gray-500 font-bold text-sm">
                       사진 업로드
                       <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
                     </label>
@@ -996,7 +1007,7 @@ export default function App() {
                             { id: 'a', label: 'Assessment' },
                             { id: 'p', label: 'Plan' }
                           ].map((row) => (
-                            <tr key={row.id} className="border-b border-black last:border-0">
+                            <tr key={row.id} className="border-b border-black">
                               <td className="w-32 bg-[#C0C0C0] border-r-2 border-black p-2 text-center font-bold text-gray-700">
                                 {row.label}
                               </td>
@@ -1010,16 +1021,27 @@ export default function App() {
                               </td>
                             </tr>
                           ))}
+                          <tr>
+                            <td className="w-32 bg-[#C0C0C0] border-r-2 border-black p-2 text-center font-bold text-gray-700">
+                              관리
+                            </td>
+                            <td className="p-2 flex justify-end gap-2">
+                              <button 
+                                onClick={() => duplicateSoapBlock(idx)}
+                                className="bg-gray-400 text-white px-4 py-1 rounded-lg font-bold hover:bg-gray-500 transition-colors text-sm"
+                              >
+                                복제
+                              </button>
+                              <button 
+                                onClick={() => removeSoapBlock(idx)}
+                                className="bg-gray-400 text-white px-4 py-1 rounded-lg font-bold hover:bg-gray-500 transition-colors text-sm"
+                              >
+                                삭제
+                              </button>
+                            </td>
+                          </tr>
                         </tbody>
                       </table>
-                      <div className="p-2 flex justify-end">
-                        <button 
-                          onClick={() => removeSoapBlock(idx)}
-                          className="bg-gray-400 text-white px-4 py-1 rounded-lg font-bold hover:bg-gray-500 transition-colors text-sm"
-                        >
-                          삭제
-                        </button>
-                      </div>
                     </div>
                   ))}
                   <AutoHeightTextarea 
@@ -1256,7 +1278,7 @@ export default function App() {
                 setFormData(INITIAL_FORM_DATA);
                 setActiveTab('admission');
               }}
-              className="w-full py-2 bg-blue-500 text-white font-bold rounded hover:bg-blue-600"
+              className="w-full py-2 bg-gray-400 text-white font-bold rounded hover:bg-gray-500"
             >
               + 새 환자 추가
             </button>
