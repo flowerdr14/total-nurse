@@ -1229,7 +1229,7 @@ export default function App() {
                 }`}
               >
                 <div className="font-bold text-sm">
-                  {patient.name} / {patient.chartNo} / {patient.gender === 'M' ? '남' : '여'} / {patient.dept}
+                  {patient.name} / {patient.chartNo} / {patient.gender} / {patient.dept}
                 </div>
               </button>
             ))}
