@@ -83,6 +83,8 @@ interface Patient {
   erLabNote: string;
   imagingNote: string;
   imagingPhotos: string[];
+  diagnosticNote: string;
+  diagnosticPhotos: string[];
   prescriptionNotes: Record<string, string>;
 }
 
@@ -122,6 +124,8 @@ const INITIAL_FORM_DATA: Patient = {
   erLabNote: '',
   imagingNote: '',
   imagingPhotos: [],
+  diagnosticNote: '',
+  diagnosticPhotos: [],
   prescriptionNotes: PRESCRIPTION_SUB_TABS.reduce((acc, tab) => ({ ...acc, [tab]: '' }), {}),
 };
 
@@ -326,6 +330,7 @@ export default function App() {
           labRows: typeof data.labRows === 'string' ? JSON.parse(data.labRows) : data.labRows,
           regimenRows: typeof data.regimenRows === 'string' ? JSON.parse(data.regimenRows) : data.regimenRows,
           imagingPhotos: typeof data.imagingPhotos === 'string' ? JSON.parse(data.imagingPhotos) : (data.imagingPhotos || []),
+          diagnosticPhotos: typeof data.diagnosticPhotos === 'string' ? JSON.parse(data.diagnosticPhotos) : (data.diagnosticPhotos || []),
           soapNote: data.soapNote ?? data.soap ?? '',
           soapBlocks: typeof data.soapBlocks === 'string' ? JSON.parse(data.soapBlocks) : (data.soapBlocks || []),
           exam: data.exam ?? '',
@@ -451,6 +456,7 @@ export default function App() {
         labRows: JSON.stringify(formData.labRows),
         regimenRows: JSON.stringify(formData.regimenRows),
         imagingPhotos: JSON.stringify(formData.imagingPhotos || []),
+        diagnosticPhotos: JSON.stringify(formData.diagnosticPhotos || []),
         soapNote: appendTimestamp(formData.soapNote),
         soapBlocks: JSON.stringify(formData.soapBlocks),
         exam: appendTimestamp(formData.exam),
@@ -458,6 +464,7 @@ export default function App() {
         outpatientNote: appendTimestamp(formData.outpatientNote),
         erLabNote: appendTimestamp(formData.erLabNote),
         imagingNote: appendTimestamp(formData.imagingNote),
+        diagnosticNote: appendTimestamp(formData.diagnosticNote),
         prescriptionNotes: newPrescriptionNotes
       };
       
@@ -471,6 +478,7 @@ export default function App() {
         outpatientNote: patientData.outpatientNote,
         erLabNote: patientData.erLabNote,
         imagingNote: patientData.imagingNote,
+        diagnosticNote: patientData.diagnosticNote,
         prescriptionNotes: newPrescriptionNotes,
         soapBlocks: [...formData.soapBlocks] // Ensure fresh copy
       };
@@ -601,6 +609,30 @@ export default function App() {
     const newPhotos = [...(formData.imagingPhotos || [])];
     newPhotos.splice(index, 1);
     updateField('imagingPhotos', newPhotos);
+  };
+
+  const handleDiagnosticPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 500 * 1024) {
+      alert('파일 크기가 너무 큽니다. 500KB 이하의 이미지를 사용해주세요.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      const newPhotos = [...(formData.diagnosticPhotos || []), base64String];
+      updateField('diagnosticPhotos', newPhotos);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeDiagnosticPhoto = (index: number) => {
+    const newPhotos = [...(formData.diagnosticPhotos || [])];
+    newPhotos.splice(index, 1);
+    updateField('diagnosticPhotos', newPhotos);
   };
 
   const renderContent = () => {
@@ -888,6 +920,47 @@ export default function App() {
                         </div>
                       ))}
                       {(formData.imagingPhotos || []).length === 0 && (
+                        <div className="text-sm text-gray-400 py-4">등록된 사진이 없습니다.</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="border-2 border-black mb-4">
+                  <div className="border-b-2 border-black p-1 font-bold text-xl flex justify-between items-center">
+                    <span>진단검사 (Diagnostic Test)</span>
+                    <label className="bg-gray-400 text-white px-3 py-1 rounded cursor-pointer hover:bg-gray-500 font-bold text-sm">
+                      사진 업로드
+                      <input type="file" accept="image/*" onChange={handleDiagnosticPhotoUpload} className="hidden" />
+                    </label>
+                  </div>
+                  <div className="p-2">
+                    <textarea 
+                      value={formData.diagnosticNote}
+                      onChange={(e) => updateField('diagnosticNote', e.target.value)}
+                      placeholder="진단검사 결과 및 부가 설명을 입력하세요..."
+                      spellCheck="false"
+                      className="w-full h-24 p-2 border border-gray-300 focus:outline-none resize-none"
+                    />
+                  </div>
+                  <div className="p-2 border-t border-gray-300">
+                    <div className="flex flex-wrap gap-4">
+                      {(formData.diagnosticPhotos || []).map((photo, idx) => (
+                        <div key={idx} className="relative group">
+                          <img 
+                            src={photo} 
+                            alt={`Diagnostic ${idx}`} 
+                            className="w-32 h-32 object-cover border-2 border-black rounded shadow-sm cursor-zoom-in"
+                            onClick={() => window.open(photo)}
+                          />
+                          <button 
+                            onClick={() => removeDiagnosticPhoto(idx)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                      {(formData.diagnosticPhotos || []).length === 0 && (
                         <div className="text-sm text-gray-400 py-4">등록된 사진이 없습니다.</div>
                       )}
                     </div>
