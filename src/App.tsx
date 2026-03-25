@@ -633,7 +633,7 @@ export default function App() {
                 />
               </div>
 
-              <div className="border-2 border-black flex flex-col flex-[3] min-h-0 overflow-y-auto bg-white">
+              <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
                 <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">SOAP</div>
                 <div className="p-2 flex flex-col gap-4">
                   {formData.soapBlocks.map((block, idx) => (
@@ -692,7 +692,7 @@ export default function App() {
                   />
                 </div>
               </div>
-              <div className="border-2 border-black flex flex-col flex-[2] min-h-0 overflow-y-auto bg-white">
+              <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
                 <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">EXAM</div>
                 <div className="p-2 flex flex-col">
                   <AutoHeightTextarea 
@@ -1032,7 +1032,7 @@ export default function App() {
               </div>
             </div>
             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-              <div className="border-2 border-black flex flex-col flex-[3] min-h-0 overflow-y-auto bg-white">
+              <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
                 <div className="bg-[#999] text-white font-bold p-2 text-lg sticky top-0 z-10">SOAP</div>
                 <div className="p-2 flex flex-col gap-4">
                   {formData.soapBlocks.map((block, idx) => (
@@ -1091,7 +1091,7 @@ export default function App() {
                   />
                 </div>
               </div>
-              <div className="border-2 border-black flex flex-col flex-[2] min-h-0 overflow-y-auto bg-white">
+              <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
                 <div className="bg-[#999] text-white font-bold p-2 text-lg sticky top-0 z-10">EXAM</div>
                 <div className="p-2 flex flex-col">
                   <AutoHeightTextarea 
