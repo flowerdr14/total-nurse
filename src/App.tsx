@@ -155,32 +155,37 @@ const THEME_COLORS = [
 
 // --- Components ---
 
-const HeaderButton = ({ icon: Icon, label, onClick, color = "text-black", disabled = false }: { icon?: any, label: string, onClick?: () => void, color?: string, disabled?: boolean }) => (
+const HeaderButton = ({ icon: Icon, label, onClick, color = "text-black", disabled = false, bgColor, borderColor = "border-gray-400" }: { icon?: any, label: string, onClick?: () => void, color?: string, disabled?: boolean, bgColor?: string, borderColor?: string }) => (
   <button 
     onClick={onClick}
     disabled={disabled}
-    className={`flex items-center gap-1 px-3 py-1 hover:bg-gray-200 transition-colors ${color} font-bold text-lg ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    className={`flex items-center gap-1 px-3 py-1 hover:opacity-80 transition-opacity ${color} font-bold text-base border ${borderColor} rounded shadow-sm ${bgColor || 'bg-transparent'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
   >
-    {Icon && <Icon size={24} strokeWidth={3} />}
+    {Icon && <Icon size={18} strokeWidth={2.5} />}
     <span>{label}</span>
   </button>
 );
 
-const TabButton = ({ label, active, onClick, theme }: { label: string, active: boolean, onClick: () => void, theme: typeof THEME_COLORS[0] }) => (
-  <button 
-    onClick={onClick}
-    style={{ 
-      backgroundColor: active ? theme.color : theme.inactive,
-      boxShadow: active ? `0 4px 0 0 ${theme.shadow}` : undefined
-    }}
-    className={`px-6 py-2 rounded-lg font-bold text-lg transition-all ${
-      active 
-        ? 'text-white' 
-        : 'text-[#666] hover:opacity-80'
-    }`}
-  >
-    {label}
-  </button>
+const TabButton = ({ label, count, active, onClick, theme }: { label: string, count: number, active: boolean, onClick: () => void, theme: any }) => (
+  <div className="relative flex flex-col items-center">
+    <button 
+      onClick={onClick}
+      className={`px-4 py-1.5 rounded-md font-bold text-base border transition-all ${
+        active 
+          ? 'text-white border-gray-600 shadow-inner' 
+          : 'bg-[#E0E0E0] border-gray-400 text-gray-700 hover:bg-gray-200'
+      }`}
+      style={{ backgroundColor: active ? theme.color : undefined }}
+    >
+      {label} ({count})
+    </button>
+    {active && (
+      <div 
+        className="absolute -bottom-1.5 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] z-10" 
+        style={{ borderTopColor: theme.color }}
+      ></div>
+    )}
+  </div>
 );
 
 const InputField = ({ label, value, onChange, readOnly = false }: { label: string, value?: string | number, onChange?: (val: string) => void, readOnly?: boolean }) => (
@@ -383,6 +388,28 @@ export default function App() {
       }
     }
   }, [selectedPatientId, patients, isSaving]);
+
+  const tabCounts = useMemo(() => {
+    if (selectedPatientId) {
+      const p = patients.find(p => p.id === selectedPatientId);
+      if (!p) return { er: 0, admission: 0, lab: 0, outpatient: 0, prescription: 0 };
+      return {
+        er: p.erVS || p.erMode || p.erTime ? 1 : 0,
+        admission: p.soapBlocks.length > 0 ? 1 : 0,
+        lab: p.labRows.some(r => r.some(c => c !== '')) ? 1 : 0,
+        outpatient: p.outpatientNote || p.outpatientExam ? 1 : 0,
+        prescription: Object.values(p.prescriptionNotes).some(v => v !== '') ? 1 : 0
+      };
+    } else {
+      return patients.reduce((acc, p) => ({
+        er: acc.er + (p.erVS || p.erMode || p.erTime ? 1 : 0),
+        admission: acc.admission + (p.soapBlocks.length > 0 ? 1 : 0),
+        lab: acc.lab + (p.labRows.some(r => r.some(c => c !== '')) ? 1 : 0),
+        outpatient: acc.outpatient + (p.outpatientNote || p.outpatientExam ? 1 : 0),
+        prescription: acc.prescription + (Object.values(p.prescriptionNotes).some(v => v !== '') ? 1 : 0)
+      }), { er: 0, admission: 0, lab: 0, outpatient: 0, prescription: 0 });
+    }
+  }, [selectedPatientId, patients]);
 
   const filteredPatients = useMemo(() => 
     patients.filter(p => 
@@ -677,7 +704,7 @@ export default function App() {
                 </div>
               </div>
             </div>
-            <div className="w-80 border-2 border-black p-4 flex flex-col gap-2 shrink-0 overflow-y-auto">
+            <div className="w-[450px] border-2 border-black p-4 flex flex-col gap-2 shrink-0 overflow-y-auto">
               <div className="bg-[#999] text-white px-3 py-1 font-bold text-lg mb-2">환자기본정보</div>
 
               <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} />
@@ -1162,18 +1189,36 @@ export default function App() {
         style={{ backgroundColor: currentTheme.bg }}
         className="flex items-center justify-between px-4 py-2 border-b-2 border-gray-400 shrink-0"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <HeaderButton 
             icon={Save} 
             label={isSaving ? "저장 중..." : "저장"} 
             onClick={handleSave} 
-            color={isSaving ? "text-gray-400" : "text-blue-600"} 
+            color={isSaving ? "text-gray-400" : "text-black"} 
+            borderColor="border-transparent"
             disabled={isSaving}
           />
+          <HeaderButton icon={Trash2} label="삭제" color="text-black" borderColor="border-transparent" onClick={handleDelete} />
+          <HeaderButton icon={X} label="종료" color="text-black" borderColor="border-transparent" onClick={() => {
+            setSelectedPatientId(null);
+            setFormData(INITIAL_FORM_DATA);
+            setActiveTab('none');
+          }} />
+        </div>
+
+        <div className="flex items-center gap-1">
+          <TabButton label="응급기록" count={tabCounts.er} active={activeTab === 'er'} onClick={() => setActiveTab('er')} theme={currentTheme} />
+          <TabButton label="입원경과" count={tabCounts.admission} active={activeTab === 'admission'} onClick={() => setActiveTab('admission')} theme={currentTheme} />
+          <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} theme={currentTheme} />
+          <TabButton label="외래기록" count={tabCounts.outpatient} active={activeTab === 'outpatient'} onClick={() => setActiveTab('outpatient')} theme={currentTheme} />
+          <TabButton label="처방" count={tabCounts.prescription} active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} theme={currentTheme} />
+        </div>
+
+        <div className="flex items-center gap-2">
           <div className="relative">
-            <HeaderButton icon={Printer} label="출력" onClick={() => setShowPrintMenu(!showPrintMenu)} color="text-emerald-600" />
+            <HeaderButton icon={Printer} label="출력" onClick={() => setShowPrintMenu(!showPrintMenu)} color="text-black" bgColor="bg-gray-200" />
             {showPrintMenu && (
-              <div className="absolute top-10 left-0 bg-white border-2 border-black shadow-lg z-50 w-48 py-1">
+              <div className="absolute top-10 right-0 bg-white border-2 border-black shadow-lg z-50 w-48 py-1">
                 <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('admission')}>입원기록지 출력</button>
                 <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('lab')}>검사결과지 출력</button>
                 <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('prescription')}>처방기록지 출력</button>
@@ -1181,21 +1226,26 @@ export default function App() {
               </div>
             )}
           </div>
-          <HeaderButton icon={Trash2} label="삭제" color="text-red-600" onClick={handleDelete} />
-        </div>
-        <div className="flex items-center gap-2">
-          <TabButton label="입원기록" active={activeTab === 'admission'} onClick={() => setActiveTab('admission')} theme={currentTheme} />
-          <TabButton label="검사결과" active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} theme={currentTheme} />
-          <TabButton label="처방기록" active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} theme={currentTheme} />
-          <TabButton label="외래기록" active={activeTab === 'outpatient'} onClick={() => setActiveTab('outpatient')} theme={currentTheme} />
-          <TabButton label="응급실 차트" active={activeTab === 'er'} onClick={() => setActiveTab('er')} theme={currentTheme} />
-        </div>
-        <div className="flex items-center gap-4">
-          <HeaderButton icon={X} label="종료" color="text-red-600" onClick={() => {
-            setSelectedPatientId(null);
-            setFormData(INITIAL_FORM_DATA);
-            setActiveTab('none');
-          }} />
+          <HeaderButton 
+            label="서식저장" 
+            color="text-white" 
+            bgColor="bg-gradient-to-b from-[#FF4081] to-[#C2185B]" 
+            borderColor="border-pink-700" 
+            onClick={() => window.open('https://drive.google.com/drive/folders/1r_cmIh0FC640nmOZLu0L3WjCvzNF-QWp?usp=drive_link', '_blank')} 
+          />
+          <HeaderButton 
+            label="제증명" 
+            color="text-black" 
+            bgColor="bg-gray-200" 
+            onClick={() => window.open('https://www.medcerti.co.kr/medcerti_portal/index.jsp', '_blank')} 
+          />
+          <HeaderButton 
+            label="임시저장" 
+            color="text-white" 
+            bgColor="bg-[#FF4081]" 
+            borderColor="border-pink-600" 
+            onClick={() => {}} 
+          />
         </div>
       </div>
 
