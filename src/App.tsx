@@ -148,7 +148,7 @@ const ACCOUNTS: Record<string, { pw: string, name: string }> = {
 const THEME_COLORS = [
   { name: 'Pink', color: '#FF99FF', shadow: '#CC77CC', inactive: '#FFCCFF', bg: '#D0D0D0' },
   { name: 'Cyan', color: '#00D1D1', shadow: '#00A8A8', inactive: '#B2EFEF', bg: '#B2EFEF' },
-  { name: 'Blue', color: '#4A86B9', shadow: '#3A6A93', inactive: '#C9D9E7', bg: '#C9D9E7' },
+  { name: 'Navy', color: '#000080', shadow: '#000066', inactive: '#B0B0C0', bg: '#B0B0C0' },
   { name: 'Green', color: '#2D8A57', shadow: '#236D45', inactive: '#C1DBCB', bg: '#C1DBCB' },
   { name: 'Gray', color: '#999999', shadow: '#666666', inactive: '#D0D0D0', bg: '#D0D0D0' },
 ];
@@ -249,7 +249,7 @@ export default function App() {
   const [loginId, setLoginId] = useState('');
   const [loginPw, setLoginPw] = useState('');
   const [autoLogin, setAutoLogin] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState(THEME_COLORS[0]);
+  const [currentTheme, setCurrentTheme] = useState(THEME_COLORS[2]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('none');
@@ -621,14 +621,14 @@ export default function App() {
           <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
               {/* 입원일 분리 */}
-              <div className="border-2 border-black p-2 bg-gray-100 flex items-center gap-4 shrink-0">
+              <div className="border-2 border-black py-1 px-2 bg-gray-100 flex items-center gap-4 shrink-0">
                 <span className="font-bold">입원일</span>
                 <input 
                   type="text" 
                   value={formData.admissionDate}
                   onChange={(e) => updateField('admissionDate', e.target.value)}
                   spellCheck="false"
-                  className="border-2 border-black px-2 py-1 text-sm focus:outline-none w-40"
+                  className="border-2 border-black px-2 py-1 text-sm focus:outline-none w-32"
                   placeholder="YYYY-MM-DD"
                 />
               </div>
@@ -704,7 +704,7 @@ export default function App() {
                 </div>
               </div>
             </div>
-            <div className="w-[450px] border-2 border-black p-4 flex flex-col gap-2 shrink-0 overflow-y-auto">
+            <div className="w-[400px] border-2 border-black p-4 flex flex-col gap-2 shrink-0 overflow-y-auto">
               <div className="bg-[#999] text-white px-3 py-1 font-bold text-lg mb-2">환자기본정보</div>
 
               <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} />
@@ -805,7 +805,7 @@ export default function App() {
                     </thead>
                     <tbody>
                       {formData.labRows.map((row, i) => (
-                        <tr key={i} className={`border-b border-black ${i % 3 === 0 ? 'bg-blue-50' : i % 3 === 1 ? 'bg-green-50' : 'bg-yellow-50'}`}>
+                        <tr key={i} className={`border-b border-black ${i % 3 === 0 ? 'bg-slate-100' : i % 3 === 1 ? 'bg-green-50' : 'bg-yellow-50'}`}>
                           {row.map((cell, j) => (
                             <td key={j} className="border-r-2 border-black p-0 h-8">
                               <input 
@@ -836,7 +836,7 @@ export default function App() {
                       {formData.regimenRows.map((row, i) => (
                         <tr key={i} className="border-b border-black h-8">
                           {row.map((cell, j) => (
-                            <td key={j} className={`border-r-2 border-black p-0 ${j === 1 ? 'bg-blue-50' : j === 2 ? 'bg-yellow-50' : j === 3 ? 'bg-green-50' : ''}`}>
+                            <td key={j} className={`border-r-2 border-black p-0 ${j === 1 ? 'bg-slate-100' : j === 2 ? 'bg-yellow-50' : j === 3 ? 'bg-green-50' : ''}`}>
                               <input 
                                 type="text" 
                                 value={cell} 
@@ -904,7 +904,7 @@ export default function App() {
                       key={t} 
                       onClick={() => setPrescriptionSubTab(t)}
                       className={`px-4 py-1 border-r-2 border-black font-bold transition-colors ${
-                        prescriptionSubTab === t ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'
+                        prescriptionSubTab === t ? 'bg-[#000080] text-white' : 'hover:bg-gray-100'
                       }`}
                     >
                       {t}
@@ -1288,7 +1288,7 @@ export default function App() {
                   });
                 }}
                 className={`w-full text-left p-3 border-b border-gray-200 hover:bg-gray-100 transition-colors ${
-                  selectedPatientId === patient.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                  selectedPatientId === patient.id ? 'bg-slate-100 border-l-4 border-[#000080]' : ''
                 }`}
               >
                 <div className="font-bold text-sm">
@@ -1408,7 +1408,7 @@ export default function App() {
             </div>
             <button 
               onClick={() => setShowSettings(false)}
-              className="w-full bg-blue-500 text-white font-black py-2 border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all"
+              className="w-full bg-[#000080] text-white font-black py-2 border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all"
             >
               닫기
             </button>
