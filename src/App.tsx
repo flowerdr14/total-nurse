@@ -81,6 +81,9 @@ interface Patient {
   erMode: string;
   erTime: string;
   erLabNote: string;
+  erSoapNote: string;
+  erSoapBlocks: SoapBlock[];
+  erExam: string;
   imagingNote: string;
   imagingPhotos: string[];
   diagnosticNote: string;
@@ -88,7 +91,7 @@ interface Patient {
   prescriptionNotes: Record<string, string>;
 }
 
-const PRESCRIPTION_SUB_TABS = ['검사 처방', '영상 검사', '약물 지시', '처치/시술', '진료 지시', '컨설트', '기타'];
+const PRESCRIPTION_SUB_TABS = ['검사 처방', '영상 검사', '약물 지시', '처치/시술', '진료 지시', '컨설트', '항암 처방', '기타'];
 
 const INITIAL_FORM_DATA: Patient = {
   id: '',
@@ -122,6 +125,9 @@ const INITIAL_FORM_DATA: Patient = {
   erMode: '',
   erTime: '',
   erLabNote: '',
+  erSoapNote: '',
+  erSoapBlocks: [],
+  erExam: '',
   imagingNote: '',
   imagingPhotos: [],
   diagnosticNote: '',
@@ -174,7 +180,7 @@ const TabButton = ({ label, count, active, onClick, theme }: { label: string, co
   <div className="relative flex flex-col items-center">
     <button 
       onClick={onClick}
-      className={`px-4 py-1.5 rounded-md font-bold text-base border transition-all ${
+      className={`px-4 py-1.5 rounded-md font-bold text-base border transition-all min-w-[120px] ${
         active 
           ? 'text-white border-gray-600 shadow-inner' 
           : 'bg-[#E0E0E0] border-gray-400 text-gray-700 hover:bg-gray-200'
@@ -267,6 +273,7 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, patientId: string } | null>(null);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
   const [printType, setPrintType] = useState<TabType | null>(null);
   const lastSyncedIdRef = useRef<string | null>(null);
 
@@ -334,6 +341,9 @@ export default function App() {
           soapNote: data.soapNote ?? data.soap ?? '',
           soapBlocks: typeof data.soapBlocks === 'string' ? JSON.parse(data.soapBlocks) : (data.soapBlocks || []),
           exam: data.exam ?? '',
+          erSoapNote: data.erSoapNote ?? '',
+          erSoapBlocks: typeof data.erSoapBlocks === 'string' ? JSON.parse(data.erSoapBlocks) : (data.erSoapBlocks || []),
+          erExam: data.erExam ?? '',
         } as Patient);
       });
       setPatients(patientsData);
@@ -399,16 +409,16 @@ export default function App() {
       const p = patients.find(p => p.id === selectedPatientId);
       if (!p) return { er: 0, admission: 0, lab: 0, outpatient: 0, prescription: 0 };
       return {
-        er: p.erVS || p.erMode || p.erTime ? 1 : 0,
-        admission: p.soapBlocks.length > 0 ? 1 : 0,
+        er: p.erVS || p.erMode || p.erTime || p.erSoapBlocks.length > 0 || p.erSoapNote || p.erExam ? 1 : 0,
+        admission: p.soapBlocks.length > 0 || p.soapNote || p.exam ? 1 : 0,
         lab: p.labRows.some(r => r.some(c => c !== '')) ? 1 : 0,
         outpatient: p.outpatientNote || p.outpatientExam ? 1 : 0,
         prescription: Object.values(p.prescriptionNotes).some(v => v !== '') ? 1 : 0
       };
     } else {
       return patients.reduce((acc, p) => ({
-        er: acc.er + (p.erVS || p.erMode || p.erTime ? 1 : 0),
-        admission: acc.admission + (p.soapBlocks.length > 0 ? 1 : 0),
+        er: acc.er + (p.erVS || p.erMode || p.erTime || p.erSoapBlocks.length > 0 || p.erSoapNote || p.erExam ? 1 : 0),
+        admission: acc.admission + (p.soapBlocks.length > 0 || p.soapNote || p.exam ? 1 : 0),
         lab: acc.lab + (p.labRows.some(r => r.some(c => c !== '')) ? 1 : 0),
         outpatient: acc.outpatient + (p.outpatientNote || p.outpatientExam ? 1 : 0),
         prescription: acc.prescription + (Object.values(p.prescriptionNotes).some(v => v !== '') ? 1 : 0)
@@ -463,6 +473,9 @@ export default function App() {
         outpatientExam: appendTimestamp(formData.outpatientExam),
         outpatientNote: appendTimestamp(formData.outpatientNote),
         erLabNote: appendTimestamp(formData.erLabNote),
+        erSoapNote: appendTimestamp(formData.erSoapNote),
+        erSoapBlocks: JSON.stringify(formData.erSoapBlocks),
+        erExam: appendTimestamp(formData.erExam),
         imagingNote: appendTimestamp(formData.imagingNote),
         diagnosticNote: appendTimestamp(formData.diagnosticNote),
         prescriptionNotes: newPrescriptionNotes
@@ -477,6 +490,8 @@ export default function App() {
         outpatientExam: patientData.outpatientExam,
         outpatientNote: patientData.outpatientNote,
         erLabNote: patientData.erLabNote,
+        erSoapNote: patientData.erSoapNote,
+        erExam: patientData.erExam,
         imagingNote: patientData.imagingNote,
         diagnosticNote: patientData.diagnosticNote,
         prescriptionNotes: newPrescriptionNotes,
@@ -536,6 +551,11 @@ export default function App() {
     updateField('regimenRows', newRows);
   };
 
+  const addRegimenRow = () => {
+    const newRows = [...formData.regimenRows, ['', '', '', '']];
+    updateField('regimenRows', newRows);
+  };
+
   const updateOutpatientVS = (index: number, value: string) => {
     const newVS = [...formData.outpatientVS];
     newVS[index] = value;
@@ -548,33 +568,37 @@ export default function App() {
   };
 
   const addSoapBlock = () => {
+    const field = activeTab === 'er' ? 'erSoapBlocks' : 'soapBlocks';
     setFormData(prev => ({
       ...prev,
-      soapBlocks: [...prev.soapBlocks, { s: '', o: '', a: '', p: '' }]
+      [field]: [...(prev[field] as SoapBlock[]), { s: '', o: '', a: '', p: '' }]
     }));
   };
 
   const updateSoapBlock = (index: number, field: keyof SoapBlock, value: string) => {
+    const blockField = activeTab === 'er' ? 'erSoapBlocks' : 'soapBlocks';
     setFormData(prev => {
-      const newBlocks = [...prev.soapBlocks];
+      const newBlocks = [...(prev[blockField] as SoapBlock[])];
       newBlocks[index] = { ...newBlocks[index], [field]: value };
-      return { ...prev, soapBlocks: newBlocks };
+      return { ...prev, [blockField]: newBlocks };
     });
   };
 
   const removeSoapBlock = (index: number) => {
+    const blockField = activeTab === 'er' ? 'erSoapBlocks' : 'soapBlocks';
     setFormData(prev => {
-      const newBlocks = [...prev.soapBlocks];
+      const newBlocks = [...(prev[blockField] as SoapBlock[])];
       newBlocks.splice(index, 1);
-      return { ...prev, soapBlocks: newBlocks };
+      return { ...prev, [blockField]: newBlocks };
     });
   };
 
   const duplicateSoapBlock = (index: number) => {
+    const blockField = activeTab === 'er' ? 'erSoapBlocks' : 'soapBlocks';
     setFormData(prev => {
-      const newBlocks = [...prev.soapBlocks];
+      const newBlocks = [...(prev[blockField] as SoapBlock[])];
       newBlocks.splice(index + 1, 0, { ...newBlocks[index] });
-      return { ...prev, soapBlocks: newBlocks };
+      return { ...prev, [blockField]: newBlocks };
     });
   };
 
@@ -859,7 +883,7 @@ export default function App() {
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="bg-gray-400 border-b-2 border-black">
-                        {['Cycle', 'Day', 'Drug', 'Does'].map(h => (
+                        {['Cycle', 'Day', 'Drug', 'Dose'].map(h => (
                           <th key={h} className="border-r-2 border-black p-1 w-1/4">{h}</th>
                         ))}
                       </tr>
@@ -980,21 +1004,111 @@ export default function App() {
                       key={t} 
                       onClick={() => setPrescriptionSubTab(t)}
                       className={`px-4 py-1 border-r-2 border-black font-bold transition-colors ${
-                        prescriptionSubTab === t ? 'bg-[#000080] text-white' : 'hover:bg-gray-100'
+                        prescriptionSubTab === t ? 'text-white' : 'hover:bg-gray-100'
                       }`}
+                      style={{ backgroundColor: prescriptionSubTab === t ? currentTheme.color : undefined }}
                     >
                       {t}
                     </button>
                   ))}
                 </div>
-                <div className="flex-1 border-2 border-black p-4">
-                  <AutoHeightTextarea 
-                    value={formData.prescriptionNotes[prescriptionSubTab] || ''}
-                    onChange={(e: any) => updatePrescriptionNote(prescriptionSubTab, e.target.value)}
-                    className="w-full focus:outline-none" 
-                    placeholder={`${prescriptionSubTab} 내용을 입력하세요...`} 
-                    minHeight="500px"
-                  />
+                <div className="flex-1 border-2 border-black p-4 overflow-y-auto">
+                  {prescriptionSubTab === '항암 처방' ? (
+                    <div className="flex flex-col h-full">
+                      <div className="flex items-center gap-6 mb-4 bg-gray-50 p-3 border-2 border-black">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold">Height:</span>
+                          <input 
+                            type="text" 
+                            value={formData.height} 
+                            onChange={(e) => updateField('height', e.target.value)}
+                            className="w-20 border-b-2 border-black bg-transparent px-1 focus:outline-none text-center font-bold"
+                            placeholder="cm"
+                          />
+                          <span className="text-sm">cm</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold">Weight:</span>
+                          <input 
+                            type="text" 
+                            value={formData.weight} 
+                            onChange={(e) => updateField('weight', e.target.value)}
+                            className="w-20 border-b-2 border-black bg-transparent px-1 focus:outline-none text-center font-bold"
+                            placeholder="kg"
+                          />
+                          <span className="text-sm">kg</span>
+                        </div>
+                        <div className="flex items-center gap-2 ml-4">
+                          <span className="font-bold text-[#000080]">BSA:</span>
+                          <div className="bg-white border-2 border-black px-4 py-1 font-black text-xl text-[#000080] min-w-[80px] text-center">
+                            {(() => {
+                              const h = parseFloat(formData.height);
+                              const w = parseFloat(formData.weight);
+                              if (isNaN(h) || isNaN(w) || h <= 0 || w <= 0) return '0.00';
+                              return Math.sqrt((h * w) / 3600).toFixed(2);
+                            })()}
+                          </div>
+                          <span className="font-bold text-sm">m²</span>
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <table className="w-full border-collapse border-2 border-black">
+                          <thead>
+                            <tr className="bg-gray-300 border-b-2 border-black">
+                              {['Cycle', 'Day', 'Drug', 'Dose'].map(h => (
+                                <th key={h} className="border-r-2 border-black p-2 w-1/4 text-center font-bold">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {formData.regimenRows.map((row, i) => (
+                              <tr key={i} className="border-b border-black h-10">
+                                {row.map((cell, j) => (
+                                  <td key={j} className={`border-r-2 border-black p-0 ${j === 1 ? 'bg-slate-100' : j === 2 ? 'bg-yellow-50' : j === 3 ? 'bg-green-50' : ''}`}>
+                                    <input 
+                                      type="text" 
+                                      value={cell} 
+                                      onChange={(e) => updateRegimenCell(i, j, e.target.value)}
+                                      spellCheck="false"
+                                      className="w-full h-full bg-transparent px-2 focus:outline-none font-medium"
+                                    />
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex justify-end gap-2 mt-4">
+                        <button 
+                          onClick={() => setShowCalculator(true)}
+                          className="bg-[#00A86B] text-white px-6 py-2 rounded font-bold hover:opacity-90 transition-opacity border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                        >
+                          계산기
+                        </button>
+                        <button 
+                          onClick={addRegimenRow}
+                          className="bg-[#00A86B] text-white px-6 py-2 rounded font-bold hover:opacity-90 transition-opacity border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                        >
+                          추가
+                        </button>
+                        <button 
+                          onClick={handleSave}
+                          className="bg-[#00A86B] text-white px-6 py-2 rounded font-bold hover:opacity-90 transition-opacity border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                        >
+                          저장
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <AutoHeightTextarea 
+                      value={formData.prescriptionNotes[prescriptionSubTab] || ''}
+                      onChange={(e: any) => updatePrescriptionNote(prescriptionSubTab, e.target.value)}
+                      className="w-full focus:outline-none" 
+                      placeholder={`${prescriptionSubTab} 내용을 입력하세요...`} 
+                      minHeight="500px"
+                    />
+                  )}
                 </div>
               </div>
             )}
@@ -1111,7 +1225,7 @@ export default function App() {
               <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
                 <div className="bg-[#999] text-white font-bold p-2 text-lg sticky top-0 z-10">SOAP</div>
                 <div className="p-2 flex flex-col gap-4">
-                  {formData.soapBlocks.map((block, idx) => (
+                  {formData.erSoapBlocks.map((block, idx) => (
                     <div key={idx} className="border-2 border-black bg-white shadow-sm shrink-0">
                       <table className="w-full border-collapse">
                         <tbody>
@@ -1159,8 +1273,8 @@ export default function App() {
                     </div>
                   ))}
                   <AutoHeightTextarea 
-                    value={formData.soapNote}
-                    onChange={(e: any) => updateField('soapNote', e.target.value)}
+                    value={formData.erSoapNote}
+                    onChange={(e: any) => updateField('erSoapNote', e.target.value)}
                     placeholder="여기에 자유롭게 기록하세요..."
                     className="w-full p-2 focus:outline-none block" 
                     minHeight="200px"
@@ -1171,8 +1285,8 @@ export default function App() {
                 <div className="bg-[#999] text-white font-bold p-2 text-lg sticky top-0 z-10">EXAM</div>
                 <div className="p-2 flex flex-col">
                   <AutoHeightTextarea 
-                    value={formData.exam}
-                    onChange={(e: any) => updateField('exam', e.target.value)}
+                    value={formData.erExam}
+                    onChange={(e: any) => updateField('erExam', e.target.value)}
                     className="w-full p-2 focus:outline-none block" 
                     minHeight="200px"
                   />
@@ -1545,9 +1659,117 @@ export default function App() {
           <PrintForm patient={formData} type={printType} />
         </div>
       )}
+
+      {showCalculator && (
+        <Calculator onClose={() => setShowCalculator(false)} />
+      )}
     </div>
   );
 }
+
+const Calculator = ({ onClose }: { onClose: () => void }) => {
+  const [display, setDisplay] = useState('0');
+  const [prevValue, setPrevValue] = useState<number | null>(null);
+  const [operator, setOperator] = useState<string | null>(null);
+  const [waitingForOperand, setWaitingForOperand] = useState(false);
+
+  const inputDigit = (digit: string) => {
+    if (waitingForOperand) {
+      setDisplay(digit);
+      setWaitingForOperand(false);
+    } else {
+      setDisplay(display === '0' ? digit : display + digit);
+    }
+  };
+
+  const inputDot = () => {
+    if (waitingForOperand) {
+      setDisplay('0.');
+      setWaitingForOperand(false);
+    } else if (display.indexOf('.') === -1) {
+      setDisplay(display + '.');
+    }
+  };
+
+  const clear = () => {
+    setDisplay('0');
+    setPrevValue(null);
+    setOperator(null);
+    setWaitingForOperand(false);
+  };
+
+  const performOperation = (nextOperator: string) => {
+    const inputValue = parseFloat(display);
+
+    if (prevValue === null) {
+      setPrevValue(inputValue);
+    } else if (operator) {
+      const currentValue = prevValue || 0;
+      let newValue = currentValue;
+
+      switch (operator) {
+        case '+': newValue = currentValue + inputValue; break;
+        case '-': newValue = currentValue - inputValue; break;
+        case '*': newValue = currentValue * inputValue; break;
+        case '/': newValue = currentValue / inputValue; break;
+      }
+
+      setDisplay(String(newValue));
+      setPrevValue(newValue);
+    }
+
+    setWaitingForOperand(true);
+    setOperator(nextOperator);
+  };
+
+  const handleEqual = () => {
+    const inputValue = parseFloat(display);
+    if (operator && prevValue !== null) {
+      let newValue = prevValue;
+      switch (operator) {
+        case '+': newValue = prevValue + inputValue; break;
+        case '-': newValue = prevValue - inputValue; break;
+        case '*': newValue = prevValue * inputValue; break;
+        case '/': newValue = prevValue / inputValue; break;
+      }
+      setDisplay(String(newValue));
+      setPrevValue(null);
+      setOperator(null);
+      setWaitingForOperand(true);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="bg-[#F0F0F0] border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-72 p-4 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center border-b-2 border-black pb-2">
+          <span className="font-bold text-xl">계산기</span>
+          <button onClick={onClose} className="hover:text-red-500"><X size={24} /></button>
+        </div>
+        <div className="bg-white border-2 border-black p-3 text-right text-3xl font-mono mb-2 h-16 flex items-center justify-end overflow-hidden">
+          {display}
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          <button onClick={clear} className="col-span-2 bg-red-100 border-2 border-black p-3 font-bold hover:bg-red-200">AC</button>
+          <button onClick={() => performOperation('/')} className="bg-orange-100 border-2 border-black p-3 font-bold hover:bg-orange-200">÷</button>
+          <button onClick={() => performOperation('*')} className="bg-orange-100 border-2 border-black p-3 font-bold hover:bg-orange-200">×</button>
+          
+          {[7, 8, 9].map(n => <button key={n} onClick={() => inputDigit(String(n))} className="bg-white border-2 border-black p-3 font-bold hover:bg-gray-100">{n}</button>)}
+          <button onClick={() => performOperation('-')} className="bg-orange-100 border-2 border-black p-3 font-bold hover:bg-orange-200">-</button>
+          
+          {[4, 5, 6].map(n => <button key={n} onClick={() => inputDigit(String(n))} className="bg-white border-2 border-black p-3 font-bold hover:bg-gray-100">{n}</button>)}
+          <button onClick={() => performOperation('+')} className="bg-orange-100 border-2 border-black p-3 font-bold hover:bg-orange-200">+</button>
+          
+          {[1, 2, 3].map(n => <button key={n} onClick={() => inputDigit(String(n))} className="bg-white border-2 border-black p-3 font-bold hover:bg-gray-100">{n}</button>)}
+          <button onClick={handleEqual} className="row-span-2 bg-blue-500 text-white border-2 border-black p-3 font-bold hover:bg-blue-600">=</button>
+          
+          <button onClick={() => inputDigit('0')} className="col-span-2 bg-white border-2 border-black p-3 font-bold hover:bg-gray-100">0</button>
+          <button onClick={inputDot} className="bg-white border-2 border-black p-3 font-bold hover:bg-gray-100">.</button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
   const now = new Date();
