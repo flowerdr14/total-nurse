@@ -235,7 +235,7 @@ const HeaderButton = ({ icon: Icon, label, onClick, color = "text-black", disabl
     disabled={disabled}
     className={`flex items-center gap-1 px-2.5 py-1 hover:opacity-80 transition-opacity ${color} font-bold text-[13px] border ${borderColor} rounded shadow-sm ${bgColor || 'bg-transparent'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
   >
-    {Icon && <Icon size={16} strokeWidth={2.5} />}
+    {Icon && <Icon size={15} strokeWidth={2.5} />}
     <span>{label}</span>
   </button>
 );
@@ -244,18 +244,18 @@ const TabButton = ({ label, count, active, onClick, theme }: { label: string, co
   <div className="relative flex flex-col items-center">
     <button 
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-md font-bold text-[14px] border transition-all min-w-[100px] ${
+      className={`px-3 py-2 rounded-md font-bold text-[14px] border transition-all min-w-[100px] ${
         active 
           ? 'text-white border-gray-600 shadow-inner' 
           : 'bg-[#E0E0E0] border-gray-400 text-gray-700 hover:bg-gray-200'
       }`}
       style={{ backgroundColor: active ? theme.color : undefined }}
     >
-      {label} ({count})
+      {label}({count})
     </button>
     {active && (
       <div 
-        className="absolute -bottom-1.5 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] z-10" 
+        className="absolute -bottom-1 w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[5px] z-10" 
         style={{ borderTopColor: theme.color }}
       ></div>
     )}
@@ -1551,7 +1551,7 @@ export default function App() {
     >
       <div 
         style={{ backgroundColor: currentTheme.bg }}
-        className="flex items-center justify-between px-4 py-2 border-b-2 border-gray-400 shrink-0"
+        className="flex items-center justify-between px-4 py-2.5 border-b-2 border-gray-400 shrink-0"
       >
         <div className="flex items-center gap-2">
           <HeaderButton 
