@@ -1610,12 +1610,12 @@ export default function App() {
           </button>
           <button 
             onClick={() => {
-              setActiveTopMenu('로그아웃');
-              handleLogout();
+              setActiveTopMenu('동의서');
+              window.open('https://www.medcerti.co.kr/medcerti_portal/index.jsp', '_blank');
             }}
-            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '로그아웃' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '동의서' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
-            로그아웃
+            동의서
           </button>
           <button 
             onClick={() => {
@@ -1706,7 +1706,7 @@ export default function App() {
         <div className="w-64 bg-white border-r-2 border-black flex flex-col">
           <div 
             style={{ backgroundColor: currentTheme.color }}
-            className="text-white p-2 flex items-center gap-2 font-bold border-b-2 border-black"
+            className="text-white p-2 flex items-center justify-center gap-2 font-bold border-b-2 border-black h-12 text-xl"
           >
             <FileText size={20} />
             <span>환자리스트</span>
