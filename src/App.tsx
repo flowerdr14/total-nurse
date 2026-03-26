@@ -39,7 +39,7 @@ declare global {
   }
 }
 
-type TabType = 'admission' | 'lab' | 'prescription' | 'outpatient' | 'er' | 'none';
+type TabType = 'admission' | 'surgery' | 'consult' | 'discharge' | 'lab' | 'other_record' | 'other_hospital' | 'prescription' | 'er' | 'none';
 
 interface SoapBlock {
   s: string;
@@ -74,9 +74,6 @@ interface Patient {
   exam: string;
   labRows: string[][];
   regimenRows: string[][];
-  outpatientVS: string[];
-  outpatientExam: string;
-  outpatientNote: string;
   erVS: string;
   erMode: string;
   erTime: string;
@@ -89,6 +86,41 @@ interface Patient {
   diagnosticNote: string;
   diagnosticPhotos: string[];
   prescriptionNotes: Record<string, string>;
+  surgeryNote: string;
+  surgeryAttending: string;
+  surgeryAnesthesia: string;
+  surgeryAssistant: string;
+  surgeryName: string;
+  surgeryVital: string;
+  surgeryLabNote: string;
+  surgeryType: string;
+  surgerySoap: string;
+  surgeryExam: string;
+  consultNote: string;
+  consultDept: string;
+  consultProfessor: string;
+  consultReason: string;
+  consultSoap: string;
+  consultExam: string;
+  consultOtherNote: string;
+  dischargeNote: string;
+  dischargeReason: string;
+  dischargeDiagnosis: string;
+  dischargeExam: string;
+  dischargeProgress: string;
+  dischargeSurgeryStatus: string;
+  dischargeStatus: string;
+  dischargePlan: string;
+  otherRecordNote: string;
+  otherGuardian: string;
+  otherReason: string;
+  otherSpecial: string;
+  otherExtraNote: string;
+  otherHospitalNote: string;
+  surgerySoapBlocks: SoapBlock[];
+  consultSoapBlocks: SoapBlock[];
+  dischargeSoapBlocks: SoapBlock[];
+  otherRecordSoapBlocks: SoapBlock[];
 }
 
 const PRESCRIPTION_SUB_TABS = ['검사 처방', '영상 검사', '약물 지시', '처치/시술', '진료 지시', '컨설트', '항암 처방', '기타'];
@@ -118,9 +150,6 @@ const INITIAL_FORM_DATA: Patient = {
   exam: '',
   labRows: Array(10).fill(0).map(() => Array(12).fill('')),
   regimenRows: Array(4).fill(0).map(() => Array(4).fill('')),
-  outpatientVS: ['', '', '', ''],
-  outpatientExam: '',
-  outpatientNote: '',
   erVS: '',
   erMode: '',
   erTime: '',
@@ -133,6 +162,41 @@ const INITIAL_FORM_DATA: Patient = {
   diagnosticNote: '',
   diagnosticPhotos: [],
   prescriptionNotes: PRESCRIPTION_SUB_TABS.reduce((acc, tab) => ({ ...acc, [tab]: '' }), {}),
+  surgeryNote: '',
+  surgeryAttending: '',
+  surgeryAnesthesia: '',
+  surgeryAssistant: '',
+  surgeryName: '',
+  surgeryVital: '',
+  surgeryLabNote: '',
+  surgeryType: '',
+  surgerySoap: '',
+  surgeryExam: '',
+  consultNote: '',
+  consultDept: '',
+  consultProfessor: '',
+  consultReason: '',
+  consultSoap: '',
+  consultExam: '',
+  consultOtherNote: '',
+  dischargeNote: '',
+  dischargeReason: '',
+  dischargeDiagnosis: '',
+  dischargeExam: '',
+  dischargeProgress: '',
+  dischargeSurgeryStatus: '',
+  dischargeStatus: '',
+  dischargePlan: '',
+  otherRecordNote: '',
+  otherGuardian: '',
+  otherReason: '',
+  otherSpecial: '',
+  otherExtraNote: '',
+  otherHospitalNote: '',
+  surgerySoapBlocks: [],
+  consultSoapBlocks: [],
+  dischargeSoapBlocks: [],
+  otherRecordSoapBlocks: [],
 };
 
 const ACCOUNTS: Record<string, { pw: string, name: string }> = {
@@ -169,9 +233,9 @@ const HeaderButton = ({ icon: Icon, label, onClick, color = "text-black", disabl
   <button 
     onClick={onClick}
     disabled={disabled}
-    className={`flex items-center gap-1 px-3 py-1 hover:opacity-80 transition-opacity ${color} font-bold text-base border ${borderColor} rounded shadow-sm ${bgColor || 'bg-transparent'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    className={`flex items-center gap-1 px-2.5 py-1 hover:opacity-80 transition-opacity ${color} font-bold text-[13px] border ${borderColor} rounded shadow-sm ${bgColor || 'bg-transparent'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
   >
-    {Icon && <Icon size={18} strokeWidth={2.5} />}
+    {Icon && <Icon size={16} strokeWidth={2.5} />}
     <span>{label}</span>
   </button>
 );
@@ -180,7 +244,7 @@ const TabButton = ({ label, count, active, onClick, theme }: { label: string, co
   <div className="relative flex flex-col items-center">
     <button 
       onClick={onClick}
-      className={`px-4 py-1.5 rounded-md font-bold text-base border transition-all min-w-[120px] ${
+      className={`px-3 py-1.5 rounded-md font-bold text-[14px] border transition-all min-w-[100px] ${
         active 
           ? 'text-white border-gray-600 shadow-inner' 
           : 'bg-[#E0E0E0] border-gray-400 text-gray-700 hover:bg-gray-200'
@@ -344,6 +408,10 @@ export default function App() {
           erSoapNote: data.erSoapNote ?? '',
           erSoapBlocks: typeof data.erSoapBlocks === 'string' ? JSON.parse(data.erSoapBlocks) : (data.erSoapBlocks || []),
           erExam: data.erExam ?? '',
+          surgerySoapBlocks: typeof data.surgerySoapBlocks === 'string' ? JSON.parse(data.surgerySoapBlocks) : (data.surgerySoapBlocks || []),
+          consultSoapBlocks: typeof data.consultSoapBlocks === 'string' ? JSON.parse(data.consultSoapBlocks) : (data.consultSoapBlocks || []),
+          dischargeSoapBlocks: typeof data.dischargeSoapBlocks === 'string' ? JSON.parse(data.dischargeSoapBlocks) : (data.dischargeSoapBlocks || []),
+          otherRecordSoapBlocks: typeof data.otherRecordSoapBlocks === 'string' ? JSON.parse(data.otherRecordSoapBlocks) : (data.otherRecordSoapBlocks || []),
         } as Patient);
       });
       setPatients(patientsData);
@@ -407,22 +475,30 @@ export default function App() {
   const tabCounts = useMemo(() => {
     if (selectedPatientId) {
       const p = patients.find(p => p.id === selectedPatientId);
-      if (!p) return { er: 0, admission: 0, lab: 0, outpatient: 0, prescription: 0 };
+      if (!p) return { er: 0, admission: 0, surgery: 0, consult: 0, discharge: 0, lab: 0, other_record: 0, other_hospital: 0, prescription: 0 };
       return {
         er: p.erVS || p.erMode || p.erTime || p.erSoapBlocks.length > 0 || p.erSoapNote || p.erExam ? 1 : 0,
         admission: p.soapBlocks.length > 0 || p.soapNote || p.exam ? 1 : 0,
+        surgery: p.surgeryNote || p.surgeryAttending || p.surgeryName || p.surgerySoapBlocks.length > 0 ? 1 : 0,
+        consult: p.consultNote || p.consultReason || p.consultSoapBlocks.length > 0 ? 1 : 0,
+        discharge: p.dischargeNote || p.dischargeReason || p.dischargeSoapBlocks.length > 0 ? 1 : 0,
         lab: p.labRows.some(r => r.some(c => c !== '')) ? 1 : 0,
-        outpatient: p.outpatientNote || p.outpatientExam ? 1 : 0,
+        other_record: p.otherRecordNote || p.otherReason || p.otherRecordSoapBlocks.length > 0 ? 1 : 0,
+        other_hospital: p.otherHospitalNote ? 1 : 0,
         prescription: Object.values(p.prescriptionNotes).some(v => v !== '') ? 1 : 0
       };
     } else {
       return patients.reduce((acc, p) => ({
         er: acc.er + (p.erVS || p.erMode || p.erTime || p.erSoapBlocks.length > 0 || p.erSoapNote || p.erExam ? 1 : 0),
         admission: acc.admission + (p.soapBlocks.length > 0 || p.soapNote || p.exam ? 1 : 0),
+        surgery: acc.surgery + (p.surgeryNote || p.surgeryAttending || p.surgeryName || p.surgerySoapBlocks.length > 0 ? 1 : 0),
+        consult: acc.consult + (p.consultNote || p.consultReason || p.consultSoapBlocks.length > 0 ? 1 : 0),
+        discharge: acc.discharge + (p.dischargeNote || p.dischargeReason || p.dischargeSoapBlocks.length > 0 ? 1 : 0),
         lab: acc.lab + (p.labRows.some(r => r.some(c => c !== '')) ? 1 : 0),
-        outpatient: acc.outpatient + (p.outpatientNote || p.outpatientExam ? 1 : 0),
+        other_record: acc.other_record + (p.otherRecordNote || p.otherReason || p.otherRecordSoapBlocks.length > 0 ? 1 : 0),
+        other_hospital: acc.other_hospital + (p.otherHospitalNote ? 1 : 0),
         prescription: acc.prescription + (Object.values(p.prescriptionNotes).some(v => v !== '') ? 1 : 0)
-      }), { er: 0, admission: 0, lab: 0, outpatient: 0, prescription: 0 });
+      }), { er: 0, admission: 0, surgery: 0, consult: 0, discharge: 0, lab: 0, other_record: 0, other_hospital: 0, prescription: 0 });
     }
   }, [selectedPatientId, patients]);
 
@@ -470,15 +546,17 @@ export default function App() {
         soapNote: appendTimestamp(formData.soapNote),
         soapBlocks: JSON.stringify(formData.soapBlocks),
         exam: appendTimestamp(formData.exam),
-        outpatientExam: appendTimestamp(formData.outpatientExam),
-        outpatientNote: appendTimestamp(formData.outpatientNote),
         erLabNote: appendTimestamp(formData.erLabNote),
         erSoapNote: appendTimestamp(formData.erSoapNote),
         erSoapBlocks: JSON.stringify(formData.erSoapBlocks),
         erExam: appendTimestamp(formData.erExam),
         imagingNote: appendTimestamp(formData.imagingNote),
         diagnosticNote: appendTimestamp(formData.diagnosticNote),
-        prescriptionNotes: newPrescriptionNotes
+        prescriptionNotes: newPrescriptionNotes,
+        surgerySoapBlocks: JSON.stringify(formData.surgerySoapBlocks),
+        consultSoapBlocks: JSON.stringify(formData.consultSoapBlocks),
+        dischargeSoapBlocks: JSON.stringify(formData.dischargeSoapBlocks),
+        otherRecordSoapBlocks: JSON.stringify(formData.otherRecordSoapBlocks)
       };
       
       // Update local state immediately to prevent sync issues and provide instant feedback
@@ -487,15 +565,17 @@ export default function App() {
         id,
         soapNote: patientData.soapNote,
         exam: patientData.exam,
-        outpatientExam: patientData.outpatientExam,
-        outpatientNote: patientData.outpatientNote,
         erLabNote: patientData.erLabNote,
         erSoapNote: patientData.erSoapNote,
         erExam: patientData.erExam,
         imagingNote: patientData.imagingNote,
         diagnosticNote: patientData.diagnosticNote,
         prescriptionNotes: newPrescriptionNotes,
-        soapBlocks: [...formData.soapBlocks] // Ensure fresh copy
+        soapBlocks: [...formData.soapBlocks], // Ensure fresh copy
+        surgerySoapBlocks: [...formData.surgerySoapBlocks],
+        consultSoapBlocks: [...formData.consultSoapBlocks],
+        dischargeSoapBlocks: [...formData.dischargeSoapBlocks],
+        otherRecordSoapBlocks: [...formData.otherRecordSoapBlocks]
       };
       
       setFormData(updatedFormData);
@@ -556,19 +636,19 @@ export default function App() {
     updateField('regimenRows', newRows);
   };
 
-  const updateOutpatientVS = (index: number, value: string) => {
-    const newVS = [...formData.outpatientVS];
-    newVS[index] = value;
-    updateField('outpatientVS', newVS);
-  };
-
   const updatePrescriptionNote = (tab: string, value: string) => {
     const newNotes = { ...formData.prescriptionNotes, [tab]: value };
     updateField('prescriptionNotes', newNotes);
   };
 
   const addSoapBlock = () => {
-    const field = activeTab === 'er' ? 'erSoapBlocks' : 'soapBlocks';
+    const field = 
+      activeTab === 'er' ? 'erSoapBlocks' : 
+      activeTab === 'surgery' ? 'surgerySoapBlocks' :
+      activeTab === 'consult' ? 'consultSoapBlocks' :
+      activeTab === 'discharge' ? 'dischargeSoapBlocks' :
+      activeTab === 'other_record' ? 'otherRecordSoapBlocks' :
+      'soapBlocks';
     setFormData(prev => ({
       ...prev,
       [field]: [...(prev[field] as SoapBlock[]), { s: '', o: '', a: '', p: '' }]
@@ -576,7 +656,13 @@ export default function App() {
   };
 
   const updateSoapBlock = (index: number, field: keyof SoapBlock, value: string) => {
-    const blockField = activeTab === 'er' ? 'erSoapBlocks' : 'soapBlocks';
+    const blockField = 
+      activeTab === 'er' ? 'erSoapBlocks' : 
+      activeTab === 'surgery' ? 'surgerySoapBlocks' :
+      activeTab === 'consult' ? 'consultSoapBlocks' :
+      activeTab === 'discharge' ? 'dischargeSoapBlocks' :
+      activeTab === 'other_record' ? 'otherRecordSoapBlocks' :
+      'soapBlocks';
     setFormData(prev => {
       const newBlocks = [...(prev[blockField] as SoapBlock[])];
       newBlocks[index] = { ...newBlocks[index], [field]: value };
@@ -585,7 +671,13 @@ export default function App() {
   };
 
   const removeSoapBlock = (index: number) => {
-    const blockField = activeTab === 'er' ? 'erSoapBlocks' : 'soapBlocks';
+    const blockField = 
+      activeTab === 'er' ? 'erSoapBlocks' : 
+      activeTab === 'surgery' ? 'surgerySoapBlocks' :
+      activeTab === 'consult' ? 'consultSoapBlocks' :
+      activeTab === 'discharge' ? 'dischargeSoapBlocks' :
+      activeTab === 'other_record' ? 'otherRecordSoapBlocks' :
+      'soapBlocks';
     setFormData(prev => {
       const newBlocks = [...(prev[blockField] as SoapBlock[])];
       newBlocks.splice(index, 1);
@@ -594,7 +686,13 @@ export default function App() {
   };
 
   const duplicateSoapBlock = (index: number) => {
-    const blockField = activeTab === 'er' ? 'erSoapBlocks' : 'soapBlocks';
+    const blockField = 
+      activeTab === 'er' ? 'erSoapBlocks' : 
+      activeTab === 'surgery' ? 'surgerySoapBlocks' :
+      activeTab === 'consult' ? 'consultSoapBlocks' :
+      activeTab === 'discharge' ? 'dischargeSoapBlocks' :
+      activeTab === 'other_record' ? 'otherRecordSoapBlocks' :
+      'soapBlocks';
     setFormData(prev => {
       const newBlocks = [...(prev[blockField] as SoapBlock[])];
       newBlocks.splice(index + 1, 0, { ...newBlocks[index] });
@@ -669,26 +767,166 @@ export default function App() {
 
     switch (activeTab) {
       case 'admission':
+      case 'surgery':
+      case 'consult':
+      case 'discharge':
+      case 'other_record':
+      case 'other_hospital':
+        const isAdmission = activeTab === 'admission';
+        const isSurgery = activeTab === 'surgery';
+        const isConsult = activeTab === 'consult';
+        const isDischarge = activeTab === 'discharge';
+        const isOtherRecord = activeTab === 'other_record';
+        const isOtherHospital = activeTab === 'other_hospital';
+
+        const noteField = 
+          isSurgery ? 'surgeryNote' :
+          isConsult ? 'consultNote' :
+          isDischarge ? 'dischargeNote' :
+          isOtherRecord ? 'otherRecordNote' :
+          isOtherHospital ? 'otherHospitalNote' :
+          'soapNote';
+
+        const currentSoapBlocks = 
+          isSurgery ? formData.surgerySoapBlocks :
+          isConsult ? formData.consultSoapBlocks :
+          isDischarge ? formData.dischargeSoapBlocks :
+          isOtherRecord ? formData.otherRecordSoapBlocks :
+          isAdmission ? formData.soapBlocks :
+          [];
+
         return (
           <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-              {/* 입원일 분리 */}
-              <div className="border-2 border-black py-1 px-2 bg-gray-100 flex items-center gap-4 shrink-0">
-                <span className="font-bold">입원일</span>
-                <input 
-                  type="text" 
-                  value={formData.admissionDate}
-                  onChange={(e) => updateField('admissionDate', e.target.value)}
-                  spellCheck="false"
-                  className="border-2 border-black px-2 py-1 text-sm focus:outline-none w-32"
-                  placeholder="YYYY-MM-DD"
-                />
-              </div>
+              {isAdmission && (
+                <div className="border-2 border-black py-1 px-2 bg-gray-100 flex items-center gap-4 shrink-0">
+                  <span className="font-bold">입원일</span>
+                  <input 
+                    type="text" 
+                    value={formData.admissionDate}
+                    onChange={(e) => updateField('admissionDate', e.target.value)}
+                    spellCheck="false"
+                    className="border-2 border-black px-2 py-1 text-sm focus:outline-none w-32"
+                    placeholder="YYYY-MM-DD"
+                  />
+                </div>
+              )}
+
+              {isSurgery && (
+                <div className="border-2 border-black p-2 bg-gray-100 grid grid-cols-2 gap-x-4 gap-y-2 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="w-20 font-bold text-sm">수술명</span>
+                    <input type="text" value={formData.surgeryName} onChange={(e) => updateField('surgeryName', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-20 font-bold text-sm">집도의</span>
+                    <input type="text" value={formData.surgeryAttending} onChange={(e) => updateField('surgeryAttending', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-20 font-bold text-sm">마취방법</span>
+                    <input type="text" value={formData.surgeryAnesthesia} onChange={(e) => updateField('surgeryAnesthesia', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-20 font-bold text-sm">어시스트</span>
+                    <input type="text" value={formData.surgeryAssistant} onChange={(e) => updateField('surgeryAssistant', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-20 font-bold text-sm">수술구분</span>
+                    <input type="text" value={formData.surgeryType} onChange={(e) => updateField('surgeryType', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-20 font-bold text-sm">V/S</span>
+                    <input type="text" value={formData.surgeryVital} onChange={(e) => updateField('surgeryVital', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2 col-span-2">
+                    <span className="w-20 font-bold text-sm">Lab Note</span>
+                    <input type="text" value={formData.surgeryLabNote} onChange={(e) => updateField('surgeryLabNote', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                </div>
+              )}
+
+              {isConsult && (
+                <div className="border-2 border-black p-2 bg-gray-100 grid grid-cols-2 gap-x-4 gap-y-2 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="w-20 font-bold text-sm">협진과</span>
+                    <input type="text" value={formData.consultDept} onChange={(e) => updateField('consultDept', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-20 font-bold text-sm">협진교수</span>
+                    <input type="text" value={formData.consultProfessor} onChange={(e) => updateField('consultProfessor', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2 col-span-2">
+                    <span className="w-20 font-bold text-sm">의뢰사유</span>
+                    <input type="text" value={formData.consultReason} onChange={(e) => updateField('consultReason', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2 col-span-2">
+                    <span className="w-20 font-bold text-sm">기타사항</span>
+                    <input type="text" value={formData.consultOtherNote} onChange={(e) => updateField('consultOtherNote', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                </div>
+              )}
+
+              {isDischarge && (
+                <div className="border-2 border-black p-2 bg-gray-100 grid grid-cols-2 gap-x-4 gap-y-2 shrink-0">
+                  <div className="flex items-center gap-2 col-span-2">
+                    <span className="w-20 font-bold text-sm">퇴원사유</span>
+                    <input type="text" value={formData.dischargeReason} onChange={(e) => updateField('dischargeReason', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2 col-span-2">
+                    <span className="w-20 font-bold text-sm">최종진단</span>
+                    <input type="text" value={formData.dischargeDiagnosis} onChange={(e) => updateField('dischargeDiagnosis', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-20 font-bold text-sm">수술여부</span>
+                    <input type="text" value={formData.dischargeSurgeryStatus} onChange={(e) => updateField('dischargeSurgeryStatus', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-20 font-bold text-sm">퇴원상태</span>
+                    <input type="text" value={formData.dischargeStatus} onChange={(e) => updateField('dischargeStatus', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2 col-span-2">
+                    <span className="w-20 font-bold text-sm">경과요약</span>
+                    <input type="text" value={formData.dischargeProgress} onChange={(e) => updateField('dischargeProgress', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2 col-span-2">
+                    <span className="w-20 font-bold text-sm">향후계획</span>
+                    <input type="text" value={formData.dischargePlan} onChange={(e) => updateField('dischargePlan', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                </div>
+              )}
+
+              {isOtherRecord && (
+                <div className="border-2 border-black p-2 bg-gray-100 grid grid-cols-2 gap-x-4 gap-y-2 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="w-20 font-bold text-sm">보호자</span>
+                    <input type="text" value={formData.otherGuardian} onChange={(e) => updateField('otherGuardian', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-20 font-bold text-sm">작성사유</span>
+                    <input type="text" value={formData.otherReason} onChange={(e) => updateField('otherReason', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2 col-span-2">
+                    <span className="w-20 font-bold text-sm">특이사항</span>
+                    <input type="text" value={formData.otherSpecial} onChange={(e) => updateField('otherSpecial', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2 col-span-2">
+                    <span className="w-20 font-bold text-sm">추가기록</span>
+                    <input type="text" value={formData.otherExtraNote} onChange={(e) => updateField('otherExtraNote', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  </div>
+                </div>
+              )}
 
               <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
-                <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">SOAP</div>
+                <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">
+                  {activeTab === 'surgery' ? '수술처치' :
+                   activeTab === 'consult' ? '협진기록' :
+                   activeTab === 'discharge' ? '퇴원요약' :
+                   activeTab === 'other_record' ? '기타기록' :
+                   activeTab === 'other_hospital' ? '타병원기록' :
+                   'SOAP'}
+                </div>
                 <div className="p-2 flex flex-col gap-4">
-                  {formData.soapBlocks.map((block, idx) => (
+                  {currentSoapBlocks.map((block, idx) => (
                     <div key={idx} className="border-2 border-black bg-white shadow-sm shrink-0">
                       <table className="w-full border-collapse">
                         <tbody>
@@ -736,25 +974,38 @@ export default function App() {
                     </div>
                   ))}
                   <AutoHeightTextarea 
-                    value={formData.soapNote}
-                    onChange={(e: any) => updateField('soapNote', e.target.value)}
+                    value={(formData as any)[noteField]}
+                    onChange={(e: any) => updateField(noteField, e.target.value)}
                     placeholder="여기에 자유롭게 기록하세요..."
                     className="w-full p-2 focus:outline-none block" 
-                    minHeight="200px"
+                    minHeight="400px"
                   />
                 </div>
               </div>
-              <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
-                <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">EXAM</div>
-                <div className="p-2 flex flex-col">
-                  <AutoHeightTextarea 
-                    value={formData.exam}
-                    onChange={(e: any) => updateField('exam', e.target.value)}
-                    className="w-full p-2 focus:outline-none block" 
-                    minHeight="200px"
-                  />
+              {(isAdmission || isSurgery || isConsult || isDischarge || isOtherRecord) && (
+                <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
+                  <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">EXAM</div>
+                  <div className="p-2 flex flex-col">
+                    <AutoHeightTextarea 
+                      value={
+                        isSurgery ? formData.surgeryExam :
+                        isConsult ? formData.consultExam :
+                        isDischarge ? formData.dischargeExam :
+                        formData.exam
+                      }
+                      onChange={(e: any) => updateField(
+                        isSurgery ? 'surgeryExam' :
+                        isConsult ? 'consultExam' :
+                        isDischarge ? 'dischargeExam' :
+                        'exam', 
+                        e.target.value
+                      )}
+                      className="w-full p-2 focus:outline-none block" 
+                      minHeight="200px"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             <div className="w-[400px] border-2 border-black p-4 flex flex-col gap-2 shrink-0 overflow-y-auto">
               <div className="bg-[#999] text-white px-3 py-1 font-bold text-lg mb-2">환자기본정보</div>
@@ -810,26 +1061,26 @@ export default function App() {
                 </label>
               </div>
 
-              <div className="mt-4 border-t-2 border-black pt-4">
-                <div className="bg-gray-700 text-white px-3 py-1 font-bold text-sm mb-2">경과기록</div>
-                <div className="flex flex-col gap-2">
-                  <button 
-                    onClick={addSoapBlock}
-                    className="py-3 bg-gray-300 border-2 border-black font-bold text-lg hover:bg-gray-400 flex flex-col items-center"
-                  >
-                    <span>SOAP 추가</span>
-                  </button>
+              {(isAdmission || isSurgery || isConsult || isDischarge || isOtherRecord) && (
+                <div className="mt-4 border-t-2 border-black pt-4">
+                  <div className="bg-gray-700 text-white px-3 py-1 font-bold text-sm mb-2">경과기록</div>
+                  <div className="flex flex-col gap-2">
+                    <button 
+                      onClick={addSoapBlock}
+                      className="py-3 bg-gray-300 border-2 border-black font-bold text-lg hover:bg-gray-400 flex flex-col items-center"
+                    >
+                      <span>SOAP 추가</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         );
       case 'lab':
       case 'prescription':
-      case 'outpatient':
         const isLab = activeTab === 'lab';
         const isPrescription = activeTab === 'prescription';
-        const isOutpatient = activeTab === 'outpatient';
 
         return (
           <div className="flex-1 flex flex-col p-4 bg-white overflow-auto">
@@ -1079,50 +1330,6 @@ export default function App() {
                 </div>
               </div>
             )}
-
-            {isOutpatient && (
-              <div className="flex flex-col flex-1">
-                <div className="flex-1 flex border-2 border-black mt-4">
-                  <div className="flex-1 border-r-2 border-black flex flex-col">
-                    <div className="bg-[#1a3a5a] text-white font-bold p-1">전체 검사</div>
-                    <div className="flex-1 p-2">
-                      <AutoHeightTextarea 
-                        value={formData.outpatientExam}
-                        onChange={(e: any) => updateField('outpatientExam', e.target.value)}
-                        className="w-full focus:outline-none" 
-                        minHeight="400px"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex-1 flex flex-col">
-                    <div className="bg-[#1a3a5a] text-white font-bold p-1">외래노트</div>
-                    <div className="flex-1 p-2">
-                      <AutoHeightTextarea 
-                        value={formData.outpatientNote}
-                        onChange={(e: any) => updateField('outpatientNote', e.target.value)}
-                        className="w-full focus:outline-none" 
-                        minHeight="400px"
-                      />
-                    </div>
-                  </div>
-                  <div className="w-32 border-l-2 border-black flex flex-col">
-                    <div className="bg-[#1a3a5a] text-white font-bold p-1 text-center">V/S</div>
-                    {formData.outpatientVS.map((vs, i) => (
-                      <input 
-                        key={i}
-                        type="text"
-                        value={vs}
-                        onChange={(e) => updateOutpatientVS(i, e.target.value)}
-                        spellCheck="false"
-                        className="border-b border-black h-10 px-2 focus:outline-none text-sm"
-                        placeholder={`V/S ${i+1}`}
-                      />
-                    ))}
-                    <div className="flex-1"></div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         );
       case 'er':
@@ -1366,8 +1573,12 @@ export default function App() {
         <div className="flex items-center gap-1">
           <TabButton label="응급기록" count={tabCounts.er} active={activeTab === 'er'} onClick={() => setActiveTab('er')} theme={currentTheme} />
           <TabButton label="입원경과" count={tabCounts.admission} active={activeTab === 'admission'} onClick={() => setActiveTab('admission')} theme={currentTheme} />
+          <TabButton label="수술처치" count={tabCounts.surgery} active={activeTab === 'surgery'} onClick={() => setActiveTab('surgery')} theme={currentTheme} />
+          <TabButton label="협진기록" count={tabCounts.consult} active={activeTab === 'consult'} onClick={() => setActiveTab('consult')} theme={currentTheme} />
+          <TabButton label="퇴원요약" count={tabCounts.discharge} active={activeTab === 'discharge'} onClick={() => setActiveTab('discharge')} theme={currentTheme} />
           <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} theme={currentTheme} />
-          <TabButton label="외래기록" count={tabCounts.outpatient} active={activeTab === 'outpatient'} onClick={() => setActiveTab('outpatient')} theme={currentTheme} />
+          <TabButton label="기타기록" count={tabCounts.other_record} active={activeTab === 'other_record'} onClick={() => setActiveTab('other_record')} theme={currentTheme} />
+          <TabButton label="타병원기록" count={tabCounts.other_hospital} active={activeTab === 'other_hospital'} onClick={() => setActiveTab('other_hospital')} theme={currentTheme} />
           <TabButton label="처방" count={tabCounts.prescription} active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} theme={currentTheme} />
         </div>
 
@@ -1375,11 +1586,16 @@ export default function App() {
           <div className="relative">
             <HeaderButton icon={Printer} label="출력" onClick={() => setShowPrintMenu(!showPrintMenu)} color="text-black" bgColor="bg-gray-200" />
             {showPrintMenu && (
-              <div className="absolute top-10 right-0 bg-white border-2 border-black shadow-lg z-50 w-48 py-1">
+              <div className="absolute top-10 right-0 bg-white border-2 border-black shadow-lg z-50 w-48 py-1 max-h-[400px] overflow-y-auto">
                 <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('admission')}>입원기록지 출력</button>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('er')}>응급기록지 출력</button>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('surgery')}>수술처치기록지 출력</button>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('consult')}>협진의뢰기록지 출력</button>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('discharge')}>퇴원요약지 출력</button>
                 <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('lab')}>검사결과지 출력</button>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('other_record')}>기타기록지 출력</button>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('other_hospital')}>타병원기록지 출력</button>
                 <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('prescription')}>처방기록지 출력</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('outpatient')}>외래기록지 출력</button>
               </div>
             )}
           </div>
@@ -1745,9 +1961,38 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
   const day = now.getDate();
 
   const title = type === 'admission' ? '입원기록지' : 
+                type === 'er' ? '응급기록지' :
+                type === 'surgery' ? '수술처치기록지' :
+                type === 'consult' ? '협진의뢰기록지' :
+                type === 'discharge' ? '퇴원요약지' :
+                type === 'other_record' ? '기타기록지' :
+                type === 'other_hospital' ? '타병원기록지' :
                 type === 'lab' ? '검사결과지' : 
-                type === 'prescription' ? '처방기록지' : 
-                type === 'outpatient' ? '외래기록지' : '';
+                type === 'prescription' ? '처방기록지' : '';
+
+  const currentSoapBlocks = 
+    type === 'surgery' ? patient.surgerySoapBlocks :
+    type === 'consult' ? patient.consultSoapBlocks :
+    type === 'discharge' ? patient.dischargeSoapBlocks :
+    type === 'other_record' ? patient.otherRecordSoapBlocks :
+    type === 'admission' ? patient.soapBlocks :
+    type === 'er' ? patient.erSoapBlocks :
+    [];
+
+  const currentNote = 
+    type === 'surgery' ? patient.surgeryNote :
+    type === 'consult' ? patient.consultNote :
+    type === 'discharge' ? patient.dischargeNote :
+    type === 'other_record' ? patient.otherRecordNote :
+    type === 'other_hospital' ? patient.otherHospitalNote :
+    type === 'admission' ? patient.soapNote :
+    '';
+
+  const currentExam = 
+    type === 'surgery' ? patient.surgeryExam :
+    type === 'consult' ? patient.consultExam :
+    type === 'discharge' ? patient.dischargeExam :
+    patient.exam;
 
   const renderPatientInfoTable = () => (
     <div className="flex border-2 border-black mb-4">
@@ -1781,26 +2026,26 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
         <div className="flex-1 grid grid-cols-2 border-b border-black">
           <div className="border-r border-black p-2 flex flex-col">
             <div className="font-bold text-[10px] border-b border-black mb-1 text-center">SUBJECTIVE</div>
-            <div className="text-[10px] whitespace-pre-wrap flex-1">{patient.soapBlocks[0]?.s || ''}</div>
+            <div className="text-[10px] whitespace-pre-wrap flex-1">{currentSoapBlocks[0]?.s || ''}</div>
           </div>
           <div className="p-2 flex flex-col">
             <div className="font-bold text-[10px] border-b border-black mb-1 text-center">OBJECTIVE</div>
-            <div className="text-[10px] whitespace-pre-wrap flex-1">{patient.soapBlocks[0]?.o || ''}</div>
+            <div className="text-[10px] whitespace-pre-wrap flex-1">{currentSoapBlocks[0]?.o || ''}</div>
           </div>
         </div>
         <div className="flex-1 grid grid-cols-2 border-b border-black">
           <div className="border-r border-black p-2 flex flex-col">
             <div className="font-bold text-[10px] border-b border-black mb-1 text-center">ASSESSMENT</div>
-            <div className="text-[10px] whitespace-pre-wrap flex-1">{patient.soapBlocks[0]?.a || ''}</div>
+            <div className="text-[10px] whitespace-pre-wrap flex-1">{currentSoapBlocks[0]?.a || ''}</div>
           </div>
           <div className="p-2 flex flex-col">
             <div className="font-bold text-[10px] border-b border-black mb-1 text-center">PLAN</div>
-            <div className="text-[10px] whitespace-pre-wrap flex-1">{patient.soapBlocks[0]?.p || ''}</div>
+            <div className="text-[10px] whitespace-pre-wrap flex-1">{currentSoapBlocks[0]?.p || ''}</div>
           </div>
         </div>
         <div className="p-2 flex flex-col flex-1">
           <div className="font-bold text-[10px] border-b border-black mb-1 text-center">EXAM</div>
-          <div className="text-[10px] whitespace-pre-wrap flex-1">{patient.exam}</div>
+          <div className="text-[10px] whitespace-pre-wrap flex-1">{currentExam}</div>
         </div>
       </div>
     </div>
@@ -1811,20 +2056,20 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
       <div className="text-center text-3xl font-black mb-8 underline underline-offset-8">{title}</div>
       
       <div className="flex justify-between items-end mb-2">
-        <div className="font-bold text-lg">{type === 'admission' ? '경과기록지' : '환자기본정보'}</div>
+        <div className="font-bold text-lg">{(type === 'admission' || type === 'er' || type === 'surgery' || type === 'consult' || type === 'discharge' || type === 'other_record' || type === 'other_hospital') ? '경과기록지' : '환자기본정보'}</div>
         <div className="text-sm font-bold">작성일: ( {year} )년 ( {month} )월 ( {day} )일</div>
       </div>
 
       {renderPatientInfoTable()}
 
-      {type === 'admission' && (
+      {(type === 'admission' || type === 'er' || type === 'surgery' || type === 'consult' || type === 'discharge' || type === 'other_record' || type === 'other_hospital') && (
         <div className="mt-8">
           <div className="font-bold text-lg mb-2">Progress Note</div>
           <div className="border-2 border-black min-h-[500px] flex">
             <div className="w-1/2 border-r-2 border-black p-4">
               <div className="font-bold text-center border-b-2 border-black mb-4 pb-1">SOAP</div>
               <div className="text-sm whitespace-pre-wrap">
-                {patient.soapBlocks.map((b, i) => (
+                {currentSoapBlocks.map((b, i) => (
                   <div key={i} className="mb-4 border-b border-gray-300 pb-2 last:border-0">
                     <div className="font-bold text-xs text-gray-500">Block {i+1}</div>
                     <div>S: {b.s}</div>
@@ -1833,12 +2078,12 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
                     <div>P: {b.p}</div>
                   </div>
                 ))}
-                <div className="mt-4 pt-4 border-t-2 border-black italic">{patient.soapNote}</div>
+                <div className="mt-4 pt-4 border-t-2 border-black italic">{currentNote}</div>
               </div>
             </div>
             <div className="w-1/2 p-4">
               <div className="font-bold text-center border-b-2 border-black mb-4 pb-1">EXAM</div>
-              <div className="text-sm whitespace-pre-wrap">{patient.exam}</div>
+              <div className="text-sm whitespace-pre-wrap">{currentExam}</div>
             </div>
           </div>
         </div>
@@ -1894,34 +2139,6 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
             </tbody>
           </table>
           <div className="mt-4 text-[10px] italic">*위 처방기록 기록 시 처방명은 담당자와 함께 기재할 것. 예) [작성자: R1 OOO]</div>
-        </div>
-      )}
-
-      {type === 'outpatient' && (
-        <div className="mt-8">
-          <div className="font-bold text-lg mb-2">외래기록</div>
-          <table className="w-full border-collapse border-2 border-black">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-black p-1 text-[10px] w-24">외래날짜</th>
-                <th className="border border-black p-1 text-[10px] w-24">담당교수</th>
-                <th className="border border-black p-1 text-[10px] w-24">담당과</th>
-                <th className="border border-black p-1 text-[10px]">외래메모</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: 15 }).map((_, i) => (
-                <tr key={i}>
-                  <td className="border border-black p-1 text-[10px] h-8 text-center">. . .</td>
-                  <td className="border border-black p-1 text-[10px] h-8 text-center">{i === 0 ? patient.doctor : ''}</td>
-                  <td className="border border-black p-1 text-[10px] h-8 text-center">{i === 0 ? patient.dept : ''}</td>
-                  <td className="border border-black p-1 text-[10px] h-8">
-                    {i === 0 ? patient.outpatientNote : ''}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
     </div>
