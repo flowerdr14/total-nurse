@@ -319,6 +319,7 @@ const EditableSummary = ({ label, value, onChange }: { label: string, value: str
 // --- Main App ---
 
 export default function App() {
+  const [activeTopMenu, setActiveTopMenu] = useState<string>('E.M.R');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginId, setLoginId] = useState('');
   const [loginPw, setLoginPw] = useState('');
@@ -1549,40 +1550,118 @@ export default function App() {
       style={{ backgroundColor: currentTheme.bg }}
       className="flex flex-col h-screen min-w-[1200px] font-sans overflow-hidden"
     >
-      <div 
-        style={{ backgroundColor: currentTheme.bg }}
-        className="flex items-center justify-between px-4 py-2.5 border-b-2 border-gray-400 shrink-0"
-      >
-        <div className="flex items-center gap-2">
-          <HeaderButton 
-            icon={Save} 
-            label={isSaving ? "저장 중..." : "저장"} 
-            onClick={handleSave} 
-            color={isSaving ? "text-gray-400" : "text-black"} 
-            borderColor="border-transparent"
-            disabled={isSaving}
-          />
-          <HeaderButton icon={Trash2} label="삭제" color="text-black" borderColor="border-transparent" onClick={handleDelete} />
-          <HeaderButton icon={X} label="종료" color="text-black" borderColor="border-transparent" onClick={() => {
-            setSelectedPatientId(null);
-            setFormData(INITIAL_FORM_DATA);
-            setActiveTab('none');
-          }} />
+      <div className="flex flex-col border-b-2 border-gray-400 shrink-0" style={{ backgroundColor: currentTheme.bg }}>
+        {/* New Top Row */}
+        <div className="flex items-center justify-start gap-2 px-4 py-1.5 border-b border-gray-300 bg-[#f0f0f0]">
+          <button 
+            onClick={() => {
+              setActiveTopMenu('웹사이트');
+              window.open('https://total-emr.vercel.app/', '_blank');
+            }}
+            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '웹사이트' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+          >
+            웹사이트
+          </button>
+          <button 
+            onClick={() => {
+              setActiveTopMenu('양식');
+              window.open('https://total-emr.vercel.app/', '_blank');
+            }}
+            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '양식' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+          >
+            양식
+          </button>
+          <button 
+            onClick={() => {
+              setActiveTopMenu('드라이브');
+              window.open('https://drive.google.com/drive/folders/1glFfxZVQzXt4XeUdLagr32rjpvrYf01e?usp=sharing', '_blank');
+            }}
+            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '드라이브' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+          >
+            드라이브
+          </button>
+          <button 
+            onClick={() => {
+              setActiveTopMenu('제증명 관리');
+              window.open('https://www.medcerti.co.kr/medcerti_portal/index.jsp', '_blank');
+            }}
+            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '제증명 관리' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+          >
+            제증명 관리
+          </button>
+          <button 
+            onClick={() => {
+              setActiveTopMenu('E.M.R');
+              if (selectedPatientId) setActiveTab('admission');
+              else setActiveTab('none');
+            }}
+            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === 'E.M.R' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+          >
+            E.M.R
+          </button>
+          <button 
+            onClick={() => {
+              setActiveTopMenu('환경설정');
+              setShowSettings(true);
+            }}
+            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '환경설정' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+          >
+            환경설정
+          </button>
+          <button 
+            onClick={() => {
+              setActiveTopMenu('로그아웃');
+              handleLogout();
+            }}
+            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '로그아웃' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+          >
+            로그아웃
+          </button>
+          <button 
+            onClick={() => {
+              setActiveTopMenu('종료');
+              setSelectedPatientId(null);
+              setFormData(INITIAL_FORM_DATA);
+              setActiveTab('none');
+            }}
+            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '종료' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+          >
+            종료
+          </button>
         </div>
 
-        <div className="flex items-center gap-1">
-          <TabButton label="응급기록" count={tabCounts.er} active={activeTab === 'er'} onClick={() => setActiveTab('er')} theme={currentTheme} />
-          <TabButton label="입원경과" count={tabCounts.admission} active={activeTab === 'admission'} onClick={() => setActiveTab('admission')} theme={currentTheme} />
-          <TabButton label="수술처치" count={tabCounts.surgery} active={activeTab === 'surgery'} onClick={() => setActiveTab('surgery')} theme={currentTheme} />
-          <TabButton label="협진기록" count={tabCounts.consult} active={activeTab === 'consult'} onClick={() => setActiveTab('consult')} theme={currentTheme} />
-          <TabButton label="퇴원요약" count={tabCounts.discharge} active={activeTab === 'discharge'} onClick={() => setActiveTab('discharge')} theme={currentTheme} />
-          <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} theme={currentTheme} />
-          <TabButton label="기타기록" count={tabCounts.other_record} active={activeTab === 'other_record'} onClick={() => setActiveTab('other_record')} theme={currentTheme} />
-          <TabButton label="타병원기록" count={tabCounts.other_hospital} active={activeTab === 'other_hospital'} onClick={() => setActiveTab('other_hospital')} theme={currentTheme} />
-          <TabButton label="처방" count={tabCounts.prescription} active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} theme={currentTheme} />
-        </div>
+        {/* Existing Header Row */}
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <HeaderButton 
+              icon={Save} 
+              label={isSaving ? "저장 중..." : "저장"} 
+              onClick={handleSave} 
+              color={isSaving ? "text-gray-400" : "text-black"} 
+              borderColor="border-transparent"
+              disabled={isSaving}
+            />
+            <HeaderButton icon={Trash2} label="삭제" color="text-black" borderColor="border-transparent" onClick={handleDelete} />
+            <HeaderButton icon={X} label="종료" color="text-black" borderColor="border-transparent" onClick={() => {
+              setSelectedPatientId(null);
+              setFormData(INITIAL_FORM_DATA);
+              setActiveTab('none');
+            }} />
+          </div>
 
-        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <TabButton label="응급기록" count={tabCounts.er} active={activeTab === 'er'} onClick={() => setActiveTab('er')} theme={currentTheme} />
+            <TabButton label="입원경과" count={tabCounts.admission} active={activeTab === 'admission'} onClick={() => setActiveTab('admission')} theme={currentTheme} />
+            <TabButton label="수술처치" count={tabCounts.surgery} active={activeTab === 'surgery'} onClick={() => setActiveTab('surgery')} theme={currentTheme} />
+            <TabButton label="협진기록" count={tabCounts.consult} active={activeTab === 'consult'} onClick={() => setActiveTab('consult')} theme={currentTheme} />
+            <TabButton label="퇴원요약" count={tabCounts.discharge} active={activeTab === 'discharge'} onClick={() => setActiveTab('discharge')} theme={currentTheme} />
+            <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} theme={currentTheme} />
+            <TabButton label="기타기록" count={tabCounts.other_record} active={activeTab === 'other_record'} onClick={() => setActiveTab('other_record')} theme={currentTheme} />
+            <TabButton label="타병원기록" count={tabCounts.other_hospital} active={activeTab === 'other_hospital'} onClick={() => setActiveTab('other_hospital')} theme={currentTheme} />
+            <TabButton label="처방" count={tabCounts.prescription} active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} theme={currentTheme} />
+          </div>
+
+          <div className="flex items-center gap-2">
           <div className="relative">
             <HeaderButton icon={Printer} label="출력" onClick={() => setShowPrintMenu(!showPrintMenu)} color="text-black" bgColor="bg-gray-200" />
             {showPrintMenu && (
@@ -1604,7 +1683,7 @@ export default function App() {
             color="text-white" 
             bgColor="bg-gradient-to-b from-[#FF4081] to-[#C2185B]" 
             borderColor="border-pink-700" 
-            onClick={() => window.open('https://drive.google.com/drive/folders/1r_cmIh0FC640nmOZLu0L3WjCvzNF-QWp?usp=drive_link', '_blank')} 
+            onClick={() => window.open('https://drive.google.com/drive/folders/1glFfxZVQzXt4XeUdLagr32rjpvrYf01e?usp=sharing', '_blank')} 
           />
           <HeaderButton 
             label="제증명" 
@@ -1621,6 +1700,7 @@ export default function App() {
           />
         </div>
       </div>
+    </div>
 
       <div className="flex flex-1 overflow-hidden">
         <div className="w-64 bg-white border-r-2 border-black flex flex-col">
@@ -1688,6 +1768,12 @@ export default function App() {
             className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
           >
             <Settings size={16} /> 환경설정
+          </button>
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0] text-red-600"
+          >
+            <LogOut size={16} /> 로그아웃
           </button>
           <button 
             onClick={handleSave}
