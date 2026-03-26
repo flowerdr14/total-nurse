@@ -884,85 +884,88 @@ export default function App() {
                   </table>
                 </div>
 
-                <div className="border-2 border-black mb-4">
-                  <div className="border-b-2 border-black p-1 font-bold text-xl flex justify-between items-center">
-                    <span>영상검사 (Imaging Test)</span>
-                    <label className="bg-gray-400 text-white px-3 py-1 rounded cursor-pointer hover:bg-gray-500 font-bold text-sm">
-                      사진 업로드
-                      <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-                    </label>
-                  </div>
-                  <div className="p-2">
-                    <textarea 
-                      value={formData.imagingNote}
-                      onChange={(e) => updateField('imagingNote', e.target.value)}
-                      placeholder="영상검사 결과 및 판독 내용을 입력하세요..."
-                      spellCheck="false"
-                      className="w-full h-24 p-2 border border-gray-300 focus:outline-none resize-none"
-                    />
-                  </div>
-                  <div className="p-2 border-t border-gray-300">
-                    <div className="flex flex-wrap gap-4">
-                      {(formData.imagingPhotos || []).map((photo, idx) => (
-                        <div key={idx} className="relative group">
-                          <img 
-                            src={photo} 
-                            alt={`Imaging ${idx}`} 
-                            className="w-32 h-32 object-cover border-2 border-black rounded shadow-sm cursor-zoom-in"
-                            onClick={() => window.open(photo)}
-                          />
-                          <button 
-                            onClick={() => removePhoto(idx)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ))}
-                      {(formData.imagingPhotos || []).length === 0 && (
-                        <div className="text-sm text-gray-400 py-4">등록된 사진이 없습니다.</div>
-                      )}
+                <div className="flex gap-4 mb-4">
+                  <div className="flex-1 border-2 border-black">
+                    <div className="border-b-2 border-black p-1 font-bold text-xl flex justify-between items-center">
+                      <span>영상검사 (Imaging Test)</span>
+                      <label className="bg-gray-400 text-white px-3 py-1 rounded cursor-pointer hover:bg-gray-500 font-bold text-sm">
+                        사진 업로드
+                        <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                      </label>
+                    </div>
+                    <div className="p-2">
+                      <textarea 
+                        value={formData.imagingNote}
+                        onChange={(e) => updateField('imagingNote', e.target.value)}
+                        placeholder="영상검사 결과 및 판독 내용을 입력하세요..."
+                        spellCheck="false"
+                        className="w-full h-24 p-2 border border-gray-300 focus:outline-none resize-none"
+                      />
+                    </div>
+                    <div className="p-2 border-t border-gray-300">
+                      <div className="flex flex-wrap gap-4">
+                        {(formData.imagingPhotos || []).map((photo, idx) => (
+                          <div key={idx} className="relative group">
+                            <img 
+                              src={photo} 
+                              alt={`Imaging ${idx}`} 
+                              className="w-32 h-32 object-cover border-2 border-black rounded shadow-sm cursor-zoom-in"
+                              onClick={() => window.open(photo)}
+                            />
+                            <button 
+                              onClick={() => removePhoto(idx)}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                        {(formData.imagingPhotos || []).length === 0 && (
+                          <div className="text-sm text-gray-400 py-4">등록된 사진이 없습니다.</div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="border-2 border-black mb-4">
-                  <div className="border-b-2 border-black p-1 font-bold text-xl flex justify-between items-center">
-                    <span>진단검사 (Diagnostic Test)</span>
-                    <label className="bg-gray-400 text-white px-3 py-1 rounded cursor-pointer hover:bg-gray-500 font-bold text-sm">
-                      사진 업로드
-                      <input type="file" accept="image/*" onChange={handleDiagnosticPhotoUpload} className="hidden" />
-                    </label>
-                  </div>
-                  <div className="p-2">
-                    <textarea 
-                      value={formData.diagnosticNote}
-                      onChange={(e) => updateField('diagnosticNote', e.target.value)}
-                      placeholder="진단검사 결과 및 부가 설명을 입력하세요..."
-                      spellCheck="false"
-                      className="w-full h-24 p-2 border border-gray-300 focus:outline-none resize-none"
-                    />
-                  </div>
-                  <div className="p-2 border-t border-gray-300">
-                    <div className="flex flex-wrap gap-4">
-                      {(formData.diagnosticPhotos || []).map((photo, idx) => (
-                        <div key={idx} className="relative group">
-                          <img 
-                            src={photo} 
-                            alt={`Diagnostic ${idx}`} 
-                            className="w-32 h-32 object-cover border-2 border-black rounded shadow-sm cursor-zoom-in"
-                            onClick={() => window.open(photo)}
-                          />
-                          <button 
-                            onClick={() => removeDiagnosticPhoto(idx)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ))}
-                      {(formData.diagnosticPhotos || []).length === 0 && (
-                        <div className="text-sm text-gray-400 py-4">등록된 사진이 없습니다.</div>
-                      )}
+
+                  <div className="flex-1 border-2 border-black">
+                    <div className="border-b-2 border-black p-1 font-bold text-xl flex justify-between items-center">
+                      <span>진단검사 (Diagnostic Test)</span>
+                      <label className="bg-gray-400 text-white px-3 py-1 rounded cursor-pointer hover:bg-gray-500 font-bold text-sm">
+                        사진 업로드
+                        <input type="file" accept="image/*" onChange={handleDiagnosticPhotoUpload} className="hidden" />
+                      </label>
+                    </div>
+                    <div className="p-2">
+                      <textarea 
+                        value={formData.diagnosticNote}
+                        onChange={(e) => updateField('diagnosticNote', e.target.value)}
+                        placeholder="진단검사 결과 및 부가 설명을 입력하세요..."
+                        spellCheck="false"
+                        className="w-full h-24 p-2 border border-gray-300 focus:outline-none resize-none"
+                      />
+                    </div>
+                    <div className="p-2 border-t border-gray-300">
+                      <div className="flex flex-wrap gap-4">
+                        {(formData.diagnosticPhotos || []).map((photo, idx) => (
+                          <div key={idx} className="relative group">
+                            <img 
+                              src={photo} 
+                              alt={`Diagnostic ${idx}`} 
+                              className="w-32 h-32 object-cover border-2 border-black rounded shadow-sm cursor-zoom-in"
+                              onClick={() => window.open(photo)}
+                            />
+                            <button 
+                              onClick={() => removeDiagnosticPhoto(idx)}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                        {(formData.diagnosticPhotos || []).length === 0 && (
+                          <div className="text-sm text-gray-400 py-4">등록된 사진이 없습니다.</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
