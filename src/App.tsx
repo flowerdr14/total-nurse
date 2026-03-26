@@ -663,10 +663,6 @@ export default function App() {
     if (activeTab === 'none') {
       return (
         <div className="flex-1 flex items-center justify-center bg-white">
-          <div className="text-center">
-            <p className="text-3xl font-bold text-gray-800 mb-2">위 탭에서 기능을 선택하거나</p>
-            <p className="text-3xl font-bold text-gray-800">환자를 검색하세요.</p>
-          </div>
         </div>
       );
     }
@@ -878,38 +874,9 @@ export default function App() {
                     </tbody>
                   </table>
                 </div>
-                <div className="border-2 border-black mb-4">
-                  <div className="border-b-2 border-black p-1 font-bold text-xl">Regimen</div>
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-400 border-b-2 border-black">
-                        {['Cycle', 'Day', 'Drug', 'Dose'].map(h => (
-                          <th key={h} className="border-r-2 border-black p-1 w-1/4">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {formData.regimenRows.map((row, i) => (
-                        <tr key={i} className="border-b border-black h-8">
-                          {row.map((cell, j) => (
-                            <td key={j} className={`border-r-2 border-black p-0 ${j === 1 ? 'bg-slate-100' : j === 2 ? 'bg-yellow-50' : j === 3 ? 'bg-green-50' : ''}`}>
-                              <input 
-                                type="text" 
-                                value={cell} 
-                                onChange={(e) => updateRegimenCell(i, j, e.target.value)}
-                                spellCheck="false"
-                                className="w-full h-full bg-transparent px-1 focus:outline-none"
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
 
-                <div className="flex gap-4 mb-4">
-                  <div className="flex-1 border-2 border-black">
+                <div className="flex flex-col gap-4 mb-4">
+                  <div className="border-2 border-black">
                     <div className="border-b-2 border-black p-1 font-bold text-xl flex justify-between items-center">
                       <span>영상검사 (Imaging Test)</span>
                       <label className="bg-gray-400 text-white px-3 py-1 rounded cursor-pointer hover:bg-gray-500 font-bold text-sm">
@@ -951,7 +918,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="flex-1 border-2 border-black">
+                  <div className="border-2 border-black">
                     <div className="border-b-2 border-black p-1 font-bold text-xl flex justify-between items-center">
                       <span>진단검사 (Diagnostic Test)</span>
                       <label className="bg-gray-400 text-white px-3 py-1 rounded cursor-pointer hover:bg-gray-500 font-bold text-sm">
