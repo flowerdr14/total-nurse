@@ -2262,8 +2262,9 @@ export default function App() {
           <button 
             onClick={() => {
               setActiveTopMenu('간호');
-              if (selectedPatientId) setActiveTab('nursing');
-              else setActiveTab('none');
+              setSelectedPatientId(null);
+              setFormData(INITIAL_FORM_DATA);
+              setActiveTab('nursing');
             }}
             className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '간호' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
