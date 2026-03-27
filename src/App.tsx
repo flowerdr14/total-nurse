@@ -342,6 +342,17 @@ export default function App() {
   const [printType, setPrintType] = useState<TabType | null>(null);
   const lastSyncedIdRef = useRef<string | null>(null);
 
+  const [showAssessmentTool, setShowAssessmentTool] = useState(false);
+  const [assessmentTab, setAssessmentTab] = useState<'NRS' | 'FLACC'>('NRS');
+  const [nrsScore, setNrsScore] = useState<number | null>(null);
+  const [flaccScores, setFlaccScores] = useState<Record<string, number>>({
+    face: 0,
+    legs: 0,
+    activity: 0,
+    cry: 0,
+    consolability: 0
+  });
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     const user = ACCOUNTS[loginId];
@@ -1392,8 +1403,14 @@ export default function App() {
                   value={formData.erTime} 
                   onChange={(e) => updateField('erTime', e.target.value)}
                   spellCheck="false"
-                  className="h-12 px-2 focus:outline-none"
+                  className="h-12 px-2 focus:outline-none border-b border-black"
                 />
+                <button 
+                  onClick={() => setShowAssessmentTool(true)}
+                  className="h-12 bg-gray-300 border-b border-black font-bold hover:bg-gray-400"
+                >
+                  평가도구
+                </button>
               </div>
             </div>
             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
@@ -1926,6 +1943,96 @@ export default function App() {
       {printType && (
         <div id="print-area" className="fixed inset-0 bg-white z-[9999] p-8 overflow-y-auto print:block hidden">
           <PrintForm patient={formData} type={printType} />
+        </div>
+      )}
+
+      {showAssessmentTool && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+          <div className="bg-white border-2 border-black w-[800px] h-[500px] flex flex-col relative">
+            {/* Tabs */}
+            <div className="flex border-b-2 border-black">
+              <button 
+                onClick={() => setAssessmentTab('NRS')}
+                className={`px-8 py-2 font-bold border-r-2 border-black ${assessmentTab === 'NRS' ? 'bg-[#ff99ff]' : 'bg-white'}`}
+              >
+                NRS
+              </button>
+              <button 
+                onClick={() => setAssessmentTab('FLACC')}
+                className={`px-8 py-2 font-bold border-r-2 border-black ${assessmentTab === 'FLACC' ? 'bg-[#ff99ff]' : 'bg-white'}`}
+              >
+                FLACC Scale
+              </button>
+              <button 
+                onClick={() => setShowAssessmentTool(false)}
+                className="ml-auto px-4 py-2 font-bold hover:bg-gray-100"
+              >
+                X
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 p-8 flex flex-col items-center justify-center">
+              {assessmentTab === 'NRS' ? (
+                <div className="w-full flex flex-col items-center gap-8">
+                  <div className="w-full h-32 bg-[#a6a6a6] border-2 border-black"></div>
+                  <div className="flex border-2 border-black">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => (
+                      <button 
+                        key={score}
+                        onClick={() => setNrsScore(score)}
+                        className={`w-16 h-10 border-r border-black last:border-r-0 font-bold hover:bg-gray-100 ${nrsScore === score ? 'bg-yellow-200' : 'bg-white'}`}
+                      >
+                        {score}점
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full flex flex-col items-center gap-6">
+                  <table className="w-full border-2 border-black border-collapse">
+                    <tbody>
+                      {(['face', 'legs', 'activity', 'cry', 'consolability'] as const).map(cat => (
+                        <tr key={cat} className="border-b border-black last:border-b-0">
+                          <td className="w-40 bg-[#ff99ff] text-white font-bold p-2 text-center border-r border-black capitalize">
+                            {cat === 'consolability' ? 'Consolability' : cat}
+                          </td>
+                          {[1, 2].map(score => (
+                            <td 
+                              key={score}
+                              onClick={() => setFlaccScores(prev => ({ ...prev, [cat]: score }))}
+                              className={`p-2 text-center border-r border-black last:border-r-0 cursor-pointer hover:bg-gray-100 font-bold ${flaccScores[cat] === score ? 'bg-yellow-200' : ''}`}
+                            >
+                              {score}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="flex border-2 border-black">
+                    <div className="bg-[#ff99ff] text-white font-bold px-8 py-2 border-r border-black">총점</div>
+                    <div className="w-32 flex items-center justify-center font-bold">
+                      {(Object.values(flaccScores) as number[]).reduce((a, b) => a + b, 0)}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 flex justify-end">
+              <button 
+                onClick={() => {
+                  // Save logic could go here, for now just close
+                  setShowAssessmentTool(false);
+                }}
+                className="bg-[#99cc66] border-2 border-black px-8 py-1 font-bold hover:opacity-90"
+              >
+                저장
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
