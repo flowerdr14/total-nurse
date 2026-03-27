@@ -39,13 +39,23 @@ declare global {
   }
 }
 
-type TabType = 'admission' | 'surgery' | 'consult' | 'discharge' | 'lab' | 'other_record' | 'other_hospital' | 'prescription' | 'er' | 'none';
+type TabType = 'admission' | 'surgery' | 'consult' | 'discharge' | 'lab' | 'other_record' | 'other_hospital' | 'prescription' | 'er' | 'nursing' | 'none';
 
 interface SoapBlock {
   s: string;
   o: string;
   a: string;
   p: string;
+}
+
+interface NursingRecord {
+  occurTime: string;
+  occurPlace: string;
+  eventType: string;
+  action: string;
+  reporter: string;
+  patientChange: string;
+  detail: string;
 }
 
 interface Patient {
@@ -81,6 +91,7 @@ interface Patient {
   erSoapNote: string;
   erSoapBlocks: SoapBlock[];
   erExam: string;
+  erAssessment: string;
   imagingNote: string;
   imagingPhotos: string[];
   diagnosticNote: string;
@@ -121,6 +132,8 @@ interface Patient {
   consultSoapBlocks: SoapBlock[];
   dischargeSoapBlocks: SoapBlock[];
   otherRecordSoapBlocks: SoapBlock[];
+  nursingCategory: string;
+  nursingRecords: Record<string, NursingRecord>;
 }
 
 const PRESCRIPTION_SUB_TABS = ['검사 처방', '영상 검사', '약물 지시', '처치/시술', '진료 지시', '컨설트', '항암 처방', '기타'];
@@ -157,6 +170,7 @@ const INITIAL_FORM_DATA: Patient = {
   erSoapNote: '',
   erSoapBlocks: [],
   erExam: '',
+  erAssessment: '',
   imagingNote: '',
   imagingPhotos: [],
   diagnosticNote: '',
@@ -197,6 +211,8 @@ const INITIAL_FORM_DATA: Patient = {
   consultSoapBlocks: [],
   dischargeSoapBlocks: [],
   otherRecordSoapBlocks: [],
+  nursingCategory: '낙상기록지',
+  nursingRecords: {},
 };
 
 const ACCOUNTS: Record<string, { pw: string, name: string }> = {
@@ -262,9 +278,9 @@ const TabButton = ({ label, count, active, onClick, theme }: { label: string, co
   </div>
 );
 
-const InputField = ({ label, value, onChange, readOnly = false }: { label: string, value?: string | number, onChange?: (val: string) => void, readOnly?: boolean }) => (
+const InputField = ({ label, value, onChange, readOnly = false, labelWidth = "w-20" }: { label: string, value?: string | number, onChange?: (val: string) => void, readOnly?: boolean, labelWidth?: string }) => (
   <div className="flex items-center gap-2 mb-1">
-    <span className="w-20 font-bold text-sm text-gray-700">{label}</span>
+    <span className={`${labelWidth} font-bold text-sm text-gray-700 shrink-0`}>{label}</span>
     <input 
       type="text" 
       value={value || ''} 
@@ -1411,6 +1427,11 @@ export default function App() {
                 >
                   평가도구
                 </button>
+                {formData.erAssessment && (
+                  <div className="p-2 text-sm font-bold bg-yellow-50 border-b border-black">
+                    {formData.erAssessment}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
@@ -1498,9 +1519,164 @@ export default function App() {
             </div>
           </div>
         );
+      case 'nursing':
+        return renderNursingContent();
       default:
         return null;
     }
+  };
+
+  const renderNursingContent = () => {
+    const currentNursingRecord = formData.nursingRecords[formData.nursingCategory] || {
+      occurTime: '',
+      occurPlace: '',
+      eventType: '',
+      action: '',
+      reporter: '',
+      patientChange: '',
+      detail: '',
+    };
+
+    const updateNursingField = (field: keyof NursingRecord, value: string) => {
+      const newRecords = {
+        ...formData.nursingRecords,
+        [formData.nursingCategory]: {
+          ...currentNursingRecord,
+          [field]: value
+        }
+      };
+      updateField('nursingRecords', newRecords);
+    };
+
+    return (
+      <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
+        {/* Center Column */}
+        <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+          {/* 기록지 Header */}
+          <div className="border-2 border-black flex flex-col bg-white">
+            <div className="flex items-center justify-center gap-2 p-4 border-b-2 border-black">
+              <FileText size={40} />
+              <span className="text-4xl font-black">기록지</span>
+            </div>
+            
+            {/* Categories */}
+            <div className="flex p-4 gap-12">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 font-bold text-2xl">
+                  <ChevronDown size={24} /> 환자 안전 사고
+                </div>
+                <div className="flex flex-col gap-1 ml-8 text-xl font-bold">
+                  <button onClick={() => updateField('nursingCategory', '낙상기록지')} className={`flex items-center gap-2 hover:text-blue-600 ${formData.nursingCategory === '낙상기록지' ? 'text-blue-600' : ''}`}>
+                    <ChevronDown size={20} className="rotate-[-90deg]" /> 낙상기록지
+                  </button>
+                  <button onClick={() => updateField('nursingCategory', '이탈기록지')} className={`flex items-center gap-2 hover:text-blue-600 ${formData.nursingCategory === '이탈기록지' ? 'text-blue-600' : ''}`}>
+                    <ChevronDown size={20} className="rotate-[-90deg]" /> 이탈기록지
+                  </button>
+                  <button onClick={() => updateField('nursingCategory', '욕창기록지')} className={`flex items-center gap-2 hover:text-blue-600 ${formData.nursingCategory === '욕창기록지' ? 'text-blue-600' : ''}`}>
+                    <ChevronDown size={20} className="rotate-[-90deg]" /> 욕창기록지
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 font-bold text-2xl">
+                  <ChevronDown size={24} /> 폭력 및 보안
+                </div>
+                <div className="flex flex-col gap-1 ml-8 text-xl font-bold">
+                  <button onClick={() => updateField('nursingCategory', '폭행')} className={`flex items-center gap-2 hover:text-blue-600 ${formData.nursingCategory === '폭행' ? 'text-blue-600' : ''}`}>
+                    <ChevronDown size={20} className="rotate-[-90deg]" /> 폭행
+                  </button>
+                  <button onClick={() => updateField('nursingCategory', '보호자 문제')} className={`flex items-center gap-2 hover:text-blue-600 ${formData.nursingCategory === '보호자 문제' ? 'text-blue-600' : ''}`}>
+                    <ChevronDown size={20} className="rotate-[-90deg]" /> 보호자 문제
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 작성창 */}
+          <div className="border-2 border-black flex flex-col flex-1 min-h-0 bg-white">
+            <div className="p-2 border-b-2 border-black text-center text-3xl font-black">작성창</div>
+            <div className="flex-1 overflow-y-auto">
+              <table className="w-full border-collapse">
+                <tbody>
+                  {[
+                    { id: 'occurTime', label: '발생일시' },
+                    { id: 'occurPlace', label: '발생장소' },
+                    { id: 'eventType', label: '사건유형' },
+                    { id: 'action', label: '즉각처치' },
+                    { id: 'reporter', label: '보고자 / 확인자' },
+                    { id: 'patientChange', label: '환자 상태 변화' },
+                  ].map((row) => (
+                    <tr key={row.id} className="border-b-2 border-black">
+                      <td className="w-64 bg-[#ff99ff] border-r-2 border-black p-4 text-center font-bold text-2xl text-white">
+                        {row.label}
+                      </td>
+                      <td className="p-0">
+                        <input 
+                          type="text"
+                          value={(currentNursingRecord as any)[row.id] || ''}
+                          onChange={(e) => updateNursingField(row.id as keyof NursingRecord, e.target.value)}
+                          className="w-full p-4 focus:outline-none text-xl"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td className="w-64 bg-[#ff99ff] border-r-2 border-black p-4 text-center font-bold text-2xl text-white align-middle">
+                      상세 내용
+                    </td>
+                    <td className="p-0">
+                      <AutoHeightTextarea 
+                        value={currentNursingRecord.detail}
+                        onChange={(e: any) => updateNursingField('detail', e.target.value)}
+                        className="w-full p-4 focus:outline-none block text-xl"
+                        minHeight="200px"
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Sidebar: 환자기본정보 */}
+        <div className="w-96 border-2 border-black flex flex-col shrink-0 bg-white overflow-y-auto">
+          <div className="bg-[#999] text-white font-bold p-4 text-2xl">환자기본정보</div>
+          <div className="p-4 flex flex-col gap-4">
+            <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} labelWidth="w-24" />
+            <InputField label="병실" value={formData.room} onChange={(v) => updateField('room', v)} labelWidth="w-24" />
+            <InputField label="전문의" value={formData.doctor} onChange={(v) => updateField('doctor', v)} labelWidth="w-24" />
+            <InputField label="성명" value={formData.name} onChange={(v) => updateField('name', v)} labelWidth="w-24" />
+            <InputField label="나이" value={formData.age} onChange={(v) => updateField('age', v)} labelWidth="w-24" />
+            <InputField label="거주지" value={formData.address} onChange={(v) => updateField('address', v)} labelWidth="w-24" />
+            <InputField label="Dx" value={formData.dx} onChange={(v) => updateField('dx', v)} labelWidth="w-24" />
+            <InputField label="C.C" value={formData.cc} onChange={(v) => updateField('cc', v)} labelWidth="w-24" />
+            <InputField label="On Set" value={formData.onset} onChange={(v) => updateField('onset', v)} labelWidth="w-24" />
+            <InputField label="혈액형" value={formData.bloodType} onChange={(v) => updateField('bloodType', v)} labelWidth="w-24" />
+            <InputField label="진료과" value={formData.dept} onChange={(v) => updateField('dept', v)} labelWidth="w-24" />
+            <div className="flex items-center gap-2 text-lg font-bold">
+              <span className="w-24">생년월일</span>
+              <div className="flex items-center gap-1">
+                <input type="text" value={formData.dobYear} onChange={(e) => updateField('dobYear', e.target.value)} className="w-16 border-2 border-black px-1 text-center" />년
+                <input type="text" value={formData.dobMonth} onChange={(e) => updateField('dobMonth', e.target.value)} className="w-10 border-2 border-black px-1 text-center" />월
+                <input type="text" value={formData.dobDay} onChange={(e) => updateField('dobDay', e.target.value)} className="w-10 border-2 border-black px-1 text-center" />일
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-lg font-bold">
+              <span className="w-24">성별</span>
+              <label className="flex items-center gap-1">
+                <input type="radio" name="nursing_gender" checked={formData.gender === 'M'} onChange={() => updateField('gender', 'M')} /> 남
+              </label>
+              <label className="flex items-center gap-1">
+                <input type="radio" name="nursing_gender" checked={formData.gender === 'F'} onChange={() => updateField('gender', 'F')} /> 여
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
     if (!isLoggedIn) {
@@ -1581,12 +1757,13 @@ export default function App() {
           </button>
           <button 
             onClick={() => {
-              setActiveTopMenu('양식');
-              window.open('https://total-emr.vercel.app/', '_blank');
+              setActiveTopMenu('간호');
+              if (selectedPatientId) setActiveTab('nursing');
+              else setActiveTab('none');
             }}
-            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '양식' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '간호' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
-            양식
+            간호
           </button>
           <button 
             onClick={() => {
@@ -1747,7 +1924,8 @@ export default function App() {
                 key={patient.id}
                 onClick={() => {
                   setSelectedPatientId(patient.id);
-                  setActiveTab('admission');
+                  if (activeTopMenu === '간호') setActiveTab('nursing');
+                  else setActiveTab('admission');
                 }}
                 onContextMenu={(e) => {
                   e.preventDefault();
@@ -2024,7 +2202,10 @@ export default function App() {
             <div className="p-4 flex justify-end">
               <button 
                 onClick={() => {
-                  // Save logic could go here, for now just close
+                  const scoreText = assessmentTab === 'NRS' 
+                    ? `NRS: ${nrsScore}점` 
+                    : `FLACC: ${(Object.values(flaccScores) as number[]).reduce((a, b) => a + b, 0)}점`;
+                  updateField('erAssessment', scoreText);
                   setShowAssessmentTool(false);
                 }}
                 className="bg-[#99cc66] border-2 border-black px-8 py-1 font-bold hover:opacity-90"
