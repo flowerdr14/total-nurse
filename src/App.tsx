@@ -155,6 +155,7 @@ interface Patient {
   treatmentData: Record<string, { date: string, time: string, status: string, note: string }>;
   nursingPlan: { diagnosis: string, plan: string, evaluation: string };
   specialRecord: { before: string, after: string };
+  vitalSigns: { hr: string, rr: string, bp: string, bt: string };
 }
 
 const PRESCRIPTION_SUB_TABS = ['검사 처방', '영상 검사', '약물 지시', '처치/시술', '진료 지시', '컨설트', '항암 처방', '기타'];
@@ -258,6 +259,7 @@ const INITIAL_FORM_DATA: Patient = {
   },
   nursingPlan: { diagnosis: '', plan: '', evaluation: '' },
   specialRecord: { before: '', after: '' },
+  vitalSigns: { hr: '', rr: '', bp: '', bt: '' },
 };
 
 const ACCOUNTS: Record<string, { pw: string, name: string }> = {
@@ -290,16 +292,25 @@ const THEME_COLORS = [
 
 // --- Components ---
 
-const HeaderButton = ({ icon: Icon, label, onClick, color = "text-black", disabled = false, bgColor, borderColor = "border-gray-400" }: { icon?: any, label: string, onClick?: () => void, color?: string, disabled?: boolean, bgColor?: string, borderColor?: string }) => (
-  <button 
-    onClick={onClick}
-    disabled={disabled}
-    className={`flex items-center gap-1 px-2.5 py-1 hover:opacity-80 transition-opacity ${color} font-bold text-[13px] border ${borderColor} rounded shadow-sm ${bgColor || 'bg-transparent'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-  >
-    {Icon && <Icon size={15} strokeWidth={2.5} />}
-    <span>{label}</span>
-  </button>
-);
+const HeaderButton = ({ icon: Icon, label, onClick, color = "text-black", disabled = false, bgColor, borderColor = "border-gray-400" }: { icon?: any, label: string, onClick?: () => void, color?: string, disabled?: boolean, bgColor?: string, borderColor?: string }) => {
+  const isHexBg = bgColor?.startsWith('#');
+  const isHexBorder = borderColor?.startsWith('#');
+  
+  return (
+    <button 
+      onClick={onClick}
+      disabled={disabled}
+      style={{ 
+        backgroundColor: isHexBg ? bgColor : undefined,
+        borderColor: isHexBorder ? borderColor : undefined
+      }}
+      className={`flex items-center gap-1 px-2.5 py-1 hover:opacity-80 transition-opacity ${color} font-bold text-[13px] border ${!isHexBorder ? borderColor : ''} rounded shadow-sm ${!isHexBg ? (bgColor || 'bg-transparent') : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    >
+      {Icon && <Icon size={15} strokeWidth={2.5} />}
+      <span>{label}</span>
+    </button>
+  );
+};
 
 const TabButton: React.FC<{ label: string, count: number, active: boolean, onClick: () => void, theme: any }> = ({ label, count, active, onClick, theme }) => (
   <div className="relative flex flex-col items-center">
@@ -1173,7 +1184,12 @@ export default function App() {
 
               {(isAdmission || isSurgery || isConsult || isDischarge || isOtherRecord) && (
                 <div className="mt-4 border-t-2 border-black pt-4">
-                  <div className="bg-gray-700 text-white px-3 py-1 font-bold text-sm mb-2">경과기록</div>
+                  <div 
+                    className="text-white px-3 py-1 font-bold text-sm mb-2"
+                    style={{ backgroundColor: currentTheme.color }}
+                  >
+                    경과기록
+                  </div>
                   <div className="flex flex-col gap-2">
                     <button 
                       onClick={addSoapBlock}
@@ -1181,6 +1197,57 @@ export default function App() {
                     >
                       <span>SOAP 추가</span>
                     </button>
+                  </div>
+
+                  <div className="mt-4 border-t-2 border-black pt-4">
+                    <div 
+                      className="text-white px-3 py-1 font-bold text-sm mb-2"
+                      style={{ backgroundColor: currentTheme.color }}
+                    >
+                      V/S &gt;
+                    </div>
+                    <div className="flex flex-col gap-1 px-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 font-bold">HR</span>
+                        <span>-</span>
+                        <input 
+                          type="text" 
+                          value={formData.vitalSigns.hr} 
+                          onChange={(e) => updateField('vitalSigns', { ...formData.vitalSigns, hr: e.target.value })}
+                          className="flex-1 border-b border-black focus:outline-none px-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 font-bold">RR</span>
+                        <span>-</span>
+                        <input 
+                          type="text" 
+                          value={formData.vitalSigns.rr} 
+                          onChange={(e) => updateField('vitalSigns', { ...formData.vitalSigns, rr: e.target.value })}
+                          className="flex-1 border-b border-black focus:outline-none px-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 font-bold">BP</span>
+                        <span>-</span>
+                        <input 
+                          type="text" 
+                          value={formData.vitalSigns.bp} 
+                          onChange={(e) => updateField('vitalSigns', { ...formData.vitalSigns, bp: e.target.value })}
+                          className="flex-1 border-b border-black focus:outline-none px-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 font-bold">BT</span>
+                        <span>-</span>
+                        <input 
+                          type="text" 
+                          value={formData.vitalSigns.bt} 
+                          onChange={(e) => updateField('vitalSigns', { ...formData.vitalSigns, bt: e.target.value })}
+                          className="flex-1 border-b border-black focus:outline-none px-1"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1467,7 +1534,12 @@ export default function App() {
 
                 {/* 응급실 기록 퀵 메뉴 */}
                 <div className="mt-auto border-t-2 border-black p-4 bg-gray-200">
-                  <div className="bg-gray-700 text-white px-3 py-1 font-bold text-sm mb-2">경과기록</div>
+                  <div 
+                    className="text-white px-3 py-1 font-bold text-sm mb-2"
+                    style={{ backgroundColor: currentTheme.color }}
+                  >
+                    경과기록
+                  </div>
                   <div className="flex flex-col gap-2">
                     <button 
                       onClick={addSoapBlock}
@@ -1476,17 +1548,60 @@ export default function App() {
                       <span>SOAP 추가</span>
                     </button>
                   </div>
+
+                  <div className="mt-4 border-t-2 border-black pt-4">
+                    <div 
+                      className="text-white px-3 py-1 font-bold text-sm mb-2"
+                      style={{ backgroundColor: currentTheme.color }}
+                    >
+                      V/S &gt;
+                    </div>
+                    <div className="flex flex-col gap-1 px-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 font-bold">HR</span>
+                        <span>-</span>
+                        <input 
+                          type="text" 
+                          value={formData.vitalSigns.hr} 
+                          onChange={(e) => updateField('vitalSigns', { ...formData.vitalSigns, hr: e.target.value })}
+                          className="flex-1 border-b border-black focus:outline-none px-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 font-bold">RR</span>
+                        <span>-</span>
+                        <input 
+                          type="text" 
+                          value={formData.vitalSigns.rr} 
+                          onChange={(e) => updateField('vitalSigns', { ...formData.vitalSigns, rr: e.target.value })}
+                          className="flex-1 border-b border-black focus:outline-none px-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 font-bold">BP</span>
+                        <span>-</span>
+                        <input 
+                          type="text" 
+                          value={formData.vitalSigns.bp} 
+                          onChange={(e) => updateField('vitalSigns', { ...formData.vitalSigns, bp: e.target.value })}
+                          className="flex-1 border-b border-black focus:outline-none px-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 font-bold">BT</span>
+                        <span>-</span>
+                        <input 
+                          type="text" 
+                          value={formData.vitalSigns.bt} 
+                          onChange={(e) => updateField('vitalSigns', { ...formData.vitalSigns, bt: e.target.value })}
+                          className="flex-1 border-b border-black focus:outline-none px-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="border-2 border-black flex flex-col shrink-0">
-                <div className="bg-[#5a9a9a] text-white font-bold p-2 text-center">V/S</div>
-                <input 
-                  type="text" 
-                  value={formData.erVS} 
-                  onChange={(e) => updateField('erVS', e.target.value)}
-                  spellCheck="false"
-                  className="border-b border-black h-12 px-2 focus:outline-none"
-                />
                 <div className="bg-[#5a9a9a] text-white font-bold p-2 text-center">Mode of arrival</div>
                 <input 
                   type="text" 
@@ -1638,7 +1753,12 @@ export default function App() {
           return (
             <div className="flex-1 flex gap-4 overflow-hidden">
               <div className="flex-1 border-2 border-black flex flex-col bg-white">
-                <div className="bg-[#FF99FF] text-white py-2 text-center font-bold text-2xl border-b-2 border-black">간호기록지</div>
+                <div 
+                  style={{ backgroundColor: currentTheme.color }}
+                  className="text-white py-2 text-center font-bold text-2xl border-b-2 border-black"
+                >
+                  간호기록지
+                </div>
                 <AutoHeightTextarea 
                   value={formData.nursingNote}
                   onChange={(e: any) => updateField('nursingNote', e.target.value)}
@@ -1648,12 +1768,20 @@ export default function App() {
               </div>
               <div className="flex-1 flex flex-col gap-4 overflow-hidden">
                 <div className="flex-1 border-2 border-black flex flex-col bg-white overflow-hidden">
-                  <div className="bg-[#FF99FF] text-white py-2 text-center font-bold text-2xl border-b-2 border-black">Progress Note</div>
+                  <div 
+                  style={{ backgroundColor: currentTheme.color }}
+                  className="text-white py-2 text-center font-bold text-2xl border-b-2 border-black"
+                >
+                  Progress Note
+                </div>
                   <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
                     <div className="flex-[2] border-2 border-black rounded overflow-hidden flex flex-col">
-                      <div className="bg-gray-300 px-3 py-1 border-b-2 border-black font-bold text-sm flex justify-between items-center">
+                      <div 
+                        style={{ backgroundColor: currentTheme.color }}
+                        className="px-3 py-1 border-b-2 border-black font-bold text-sm flex justify-between items-center"
+                      >
                         <span className="bg-white px-4 py-1 rounded text-gray-500">SOAP</span>
-                        <button onClick={addSoapBlock} className="text-blue-600 hover:underline text-xs">+ 추가</button>
+                        <button onClick={addSoapBlock} className="text-white hover:underline text-xs">+ 추가</button>
                       </div>
                       <div className="flex-1 overflow-y-auto">
                         {formData.nursingSoapBlocks.map((block, idx) => (
@@ -1673,7 +1801,10 @@ export default function App() {
                       </div>
                     </div>
                     <div className="flex-1 border-2 border-black rounded overflow-hidden flex flex-col">
-                      <div className="bg-gray-300 px-3 py-1 border-b-2 border-black font-bold text-sm">
+                      <div 
+                        style={{ backgroundColor: currentTheme.color }}
+                        className="px-3 py-1 border-b-2 border-black font-bold text-sm"
+                      >
                         <span className="bg-white px-4 py-1 rounded text-gray-500">EXAM</span>
                       </div>
                       <AutoHeightTextarea 
@@ -1706,7 +1837,10 @@ export default function App() {
                     { id: 'note', label: '기타기록' },
                   ].map((row) => (
                     <tr key={row.id} className="border-b-2 border-black last:border-b-0">
-                      <td className="w-48 bg-[#FF99FF] border-r-2 border-black p-4 text-center font-bold text-2xl text-white">
+                      <td 
+                        style={{ backgroundColor: currentTheme.color }}
+                        className="w-48 border-r-2 border-black p-4 text-center font-bold text-2xl text-white"
+                      >
                         {row.label}
                       </td>
                       <td className="p-0">
@@ -1740,7 +1874,10 @@ export default function App() {
             <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
               {['드레싱', '카테터', '산소치료', '검사'].map(section => (
                 <div key={section} className="border-2 border-black bg-white flex flex-col">
-                  <div className="bg-gray-300 p-2 border-b-2 border-black">
+                  <div 
+                    style={{ backgroundColor: currentTheme.color }}
+                    className="p-2 border-b-2 border-black"
+                  >
                     <span className="bg-white border-2 border-black px-8 py-1 rounded-xl font-bold text-2xl">{section}</span>
                   </div>
                   <table className="w-full border-collapse">
@@ -1752,7 +1889,10 @@ export default function App() {
                         { id: 'note', label: '기타기록' },
                       ].map(row => (
                         <tr key={row.id} className="border-b-2 border-black last:border-b-0">
-                          <td className="w-48 bg-[#FF99FF] border-r-2 border-black p-2 text-center font-bold text-xl text-white">
+                          <td 
+                            style={{ backgroundColor: currentTheme.color }}
+                            className="w-48 border-r-2 border-black p-2 text-center font-bold text-xl text-white"
+                          >
                             {row.label}
                           </td>
                           <td className="p-0">
@@ -1778,7 +1918,10 @@ export default function App() {
           return (
             <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
               <div className="border-2 border-black flex flex-col bg-white">
-                <div className="flex items-center justify-center gap-2 p-4 border-b-2 border-black">
+                <div 
+                  style={{ backgroundColor: currentTheme.color }}
+                  className="flex items-center justify-center gap-2 p-4 border-b-2 border-black text-white"
+                >
                   <FileText size={40} />
                   <span className="text-4xl font-black">기록지</span>
                 </div>
@@ -1811,7 +1954,12 @@ export default function App() {
               </div>
 
               <div className="border-2 border-black flex flex-col bg-white">
-                <div className="p-2 border-b-2 border-black text-center text-3xl font-black">작성창</div>
+                <div 
+                  style={{ backgroundColor: currentTheme.color }}
+                  className="p-2 border-b-2 border-black text-center text-3xl font-black text-white"
+                >
+                  작성창
+                </div>
                 <table className="w-full border-collapse">
                   <tbody>
                     {[
@@ -1823,7 +1971,10 @@ export default function App() {
                       { id: 'patientChange', label: '환자 상태 변화' },
                     ].map((row) => (
                       <tr key={row.id} className="border-b-2 border-black">
-                        <td className="w-64 bg-[#ff99ff] border-r-2 border-black p-4 text-center font-bold text-2xl text-white">
+                        <td 
+                          style={{ backgroundColor: currentTheme.color }}
+                          className="w-64 border-r-2 border-black p-4 text-center font-bold text-2xl text-white"
+                        >
                           {row.label}
                         </td>
                         <td className="p-0">
@@ -1837,7 +1988,10 @@ export default function App() {
                       </tr>
                     ))}
                     <tr>
-                      <td className="w-64 bg-[#ff99ff] border-r-2 border-black p-4 text-center font-bold text-2xl text-white align-middle">
+                      <td 
+                        style={{ backgroundColor: currentTheme.color }}
+                        className="w-64 border-r-2 border-black p-4 text-center font-bold text-2xl text-white align-middle"
+                      >
                         상세 내용
                       </td>
                       <td className="p-0">
@@ -1858,7 +2012,12 @@ export default function App() {
           return (
             <div className="flex-1 border-2 border-black bg-white flex overflow-hidden">
               <div className="flex-1 flex flex-col border-r-2 border-black">
-                <div className="bg-[#FF99FF] text-white py-2 text-center font-bold text-2xl border-b-2 border-black">간호진단</div>
+                <div 
+                  style={{ backgroundColor: currentTheme.color }}
+                  className="text-white py-2 text-center font-bold text-2xl border-b-2 border-black"
+                >
+                  간호진단
+                </div>
                 <AutoHeightTextarea 
                   value={formData.nursingPlan.diagnosis}
                   onChange={(e: any) => updateField('nursingPlan', { ...formData.nursingPlan, diagnosis: e.target.value })}
@@ -1866,7 +2025,12 @@ export default function App() {
                 />
               </div>
               <div className="flex-1 flex flex-col border-r-2 border-black">
-                <div className="bg-[#FF99FF] text-white py-2 text-center font-bold text-2xl border-b-2 border-black">향후계획</div>
+                <div 
+                  style={{ backgroundColor: currentTheme.color }}
+                  className="text-white py-2 text-center font-bold text-2xl border-b-2 border-black"
+                >
+                  향후계획
+                </div>
                 <AutoHeightTextarea 
                   value={formData.nursingPlan.plan}
                   onChange={(e: any) => updateField('nursingPlan', { ...formData.nursingPlan, plan: e.target.value })}
@@ -1874,7 +2038,12 @@ export default function App() {
                 />
               </div>
               <div className="flex-1 flex flex-col">
-                <div className="bg-[#FF99FF] text-white py-2 text-center font-bold text-2xl border-b-2 border-black">평가</div>
+                <div 
+                  style={{ backgroundColor: currentTheme.color }}
+                  className="text-white py-2 text-center font-bold text-2xl border-b-2 border-black"
+                >
+                  평가
+                </div>
                 <AutoHeightTextarea 
                   value={formData.nursingPlan.evaluation}
                   onChange={(e: any) => updateField('nursingPlan', { ...formData.nursingPlan, evaluation: e.target.value })}
@@ -1887,12 +2056,20 @@ export default function App() {
           return (
             <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
               <div className="border-2 border-black bg-white flex flex-col">
-                <div className="bg-gray-300 p-2 border-b-2 border-black">
+                <div 
+                  style={{ backgroundColor: currentTheme.color }}
+                  className="p-2 border-b-2 border-black"
+                >
                   <span className="bg-white border-2 border-black px-8 py-1 rounded-xl font-bold text-2xl">수술 간호 기록</span>
                 </div>
                 <div className="flex gap-4 p-4">
                   <div className="flex-1 border-2 border-black relative">
-                    <div className="absolute top-2 left-2 bg-gray-300 border-2 border-black px-4 py-1 rounded-xl font-bold text-2xl">전</div>
+                    <div 
+                      style={{ backgroundColor: currentTheme.color }}
+                      className="absolute top-2 left-2 border-2 border-black px-4 py-1 rounded-xl font-bold text-2xl text-white"
+                    >
+                      전
+                    </div>
                     <AutoHeightTextarea 
                       value={formData.specialRecord.before}
                       onChange={(e: any) => updateField('specialRecord', { ...formData.specialRecord, before: e.target.value })}
@@ -1901,7 +2078,12 @@ export default function App() {
                     />
                   </div>
                   <div className="flex-1 border-2 border-black relative">
-                    <div className="absolute top-2 left-2 bg-gray-300 border-2 border-black px-4 py-1 rounded-xl font-bold text-2xl">후</div>
+                    <div 
+                      style={{ backgroundColor: currentTheme.color }}
+                      className="absolute top-2 left-2 border-2 border-black px-4 py-1 rounded-xl font-bold text-2xl text-white"
+                    >
+                      후
+                    </div>
                     <AutoHeightTextarea 
                       value={formData.specialRecord.after}
                       onChange={(e: any) => updateField('specialRecord', { ...formData.specialRecord, after: e.target.value })}
@@ -1928,7 +2110,12 @@ export default function App() {
 
           {/* Right Sidebar: 환자기본정보 */}
           <div className="w-96 border-2 border-black flex flex-col shrink-0 bg-white overflow-y-auto">
-            <div className="bg-[#999] text-white font-bold p-4 text-2xl">환자기본정보</div>
+            <div 
+              className="text-white font-bold p-4 text-2xl"
+              style={{ backgroundColor: currentTheme.color }}
+            >
+              환자기본정보
+            </div>
             <div className="p-4 flex flex-col gap-4">
               <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} labelWidth="w-24" />
               <InputField label="병실" value={formData.room} onChange={(v) => updateField('room', v)} labelWidth="w-24" />
@@ -1957,6 +2144,74 @@ export default function App() {
                 <label className="flex items-center gap-1">
                   <input type="radio" name="nursing_gender" checked={formData.gender === 'F'} onChange={() => updateField('gender', 'F')} /> 여
                 </label>
+              </div>
+
+              <div className="mt-4 border-t-2 border-black pt-4">
+                <div 
+                  className="text-white px-3 py-1 font-bold text-sm mb-2"
+                  style={{ backgroundColor: currentTheme.color }}
+                >
+                  경과기록
+                </div>
+                <div className="flex flex-col gap-2">
+                  <button 
+                    onClick={addSoapBlock}
+                    className="py-3 bg-gray-300 border-2 border-black font-bold text-lg hover:bg-gray-400 flex flex-col items-center"
+                  >
+                    <span>SOAP 추가</span>
+                  </button>
+                </div>
+
+                <div className="mt-4 border-t-2 border-black pt-4">
+                  <div 
+                    className="text-white px-3 py-1 font-bold text-sm mb-2"
+                    style={{ backgroundColor: currentTheme.color }}
+                  >
+                    V/S &gt;
+                  </div>
+                  <div className="flex flex-col gap-1 px-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 font-bold">HR</span>
+                      <span>-</span>
+                      <input 
+                        type="text" 
+                        value={formData.vitalSigns.hr} 
+                        onChange={(e) => updateField('vitalSigns', { ...formData.vitalSigns, hr: e.target.value })}
+                        className="flex-1 border-b border-black focus:outline-none px-1"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 font-bold">RR</span>
+                      <span>-</span>
+                      <input 
+                        type="text" 
+                        value={formData.vitalSigns.rr} 
+                        onChange={(e) => updateField('vitalSigns', { ...formData.vitalSigns, rr: e.target.value })}
+                        className="flex-1 border-b border-black focus:outline-none px-1"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 font-bold">BP</span>
+                      <span>-</span>
+                      <input 
+                        type="text" 
+                        value={formData.vitalSigns.bp} 
+                        onChange={(e) => updateField('vitalSigns', { ...formData.vitalSigns, bp: e.target.value })}
+                        className="flex-1 border-b border-black focus:outline-none px-1"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 font-bold">BT</span>
+                      <span>-</span>
+                      <input 
+                        type="text" 
+                        value={formData.vitalSigns.bt} 
+                        onChange={(e) => updateField('vitalSigns', { ...formData.vitalSigns, bt: e.target.value })}
+                        className="flex-1 border-b border-black focus:outline-none px-1"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -2178,8 +2433,8 @@ export default function App() {
           <HeaderButton 
             label="서식저장" 
             color="text-white" 
-            bgColor="bg-gradient-to-b from-[#FF4081] to-[#C2185B]" 
-            borderColor="border-pink-700" 
+            bgColor={currentTheme.color} 
+            borderColor={currentTheme.shadow} 
             onClick={() => window.open('https://drive.google.com/drive/folders/1glFfxZVQzXt4XeUdLagr32rjpvrYf01e?usp=sharing', '_blank')} 
           />
           <HeaderButton 
@@ -2191,8 +2446,8 @@ export default function App() {
           <HeaderButton 
             label="임시저장" 
             color="text-white" 
-            bgColor="bg-[#FF4081]" 
-            borderColor="border-pink-600" 
+            bgColor={currentTheme.color} 
+            borderColor={currentTheme.shadow} 
             onClick={() => {}} 
           />
         </div>
