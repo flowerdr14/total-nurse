@@ -754,6 +754,7 @@ export default function App() {
       activeTab === 'consult' ? 'consultSoapBlocks' :
       activeTab === 'discharge' ? 'dischargeSoapBlocks' :
       activeTab === 'other_record' ? 'otherRecordSoapBlocks' :
+      activeTab === 'nursing' ? 'nursingSoapBlocks' :
       'soapBlocks';
     setFormData(prev => ({
       ...prev,
@@ -768,6 +769,7 @@ export default function App() {
       activeTab === 'consult' ? 'consultSoapBlocks' :
       activeTab === 'discharge' ? 'dischargeSoapBlocks' :
       activeTab === 'other_record' ? 'otherRecordSoapBlocks' :
+      activeTab === 'nursing' ? 'nursingSoapBlocks' :
       'soapBlocks';
     setFormData(prev => {
       const newBlocks = [...(prev[blockField] as SoapBlock[])];
@@ -783,6 +785,7 @@ export default function App() {
       activeTab === 'consult' ? 'consultSoapBlocks' :
       activeTab === 'discharge' ? 'dischargeSoapBlocks' :
       activeTab === 'other_record' ? 'otherRecordSoapBlocks' :
+      activeTab === 'nursing' ? 'nursingSoapBlocks' :
       'soapBlocks';
     setFormData(prev => {
       const newBlocks = [...(prev[blockField] as SoapBlock[])];
@@ -798,6 +801,7 @@ export default function App() {
       activeTab === 'consult' ? 'consultSoapBlocks' :
       activeTab === 'discharge' ? 'dischargeSoapBlocks' :
       activeTab === 'other_record' ? 'otherRecordSoapBlocks' :
+      activeTab === 'nursing' ? 'nursingSoapBlocks' :
       'soapBlocks';
     setFormData(prev => {
       const newBlocks = [...(prev[blockField] as SoapBlock[])];
@@ -1645,24 +1649,26 @@ export default function App() {
               <div className="flex-1 flex flex-col gap-4 overflow-hidden">
                 <div className="flex-1 border-2 border-black flex flex-col bg-white overflow-hidden">
                   <div className="bg-[#FF99FF] text-white py-2 text-center font-bold text-2xl border-b-2 border-black">Progress Note</div>
-                  <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-                    <div className="border-2 border-black rounded overflow-hidden">
+                  <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
+                    <div className="flex-[2] border-2 border-black rounded overflow-hidden flex flex-col">
                       <div className="bg-gray-300 px-3 py-1 border-b-2 border-black font-bold text-sm flex justify-between items-center">
                         <span className="bg-white px-4 py-1 rounded text-gray-500">SOAP</span>
                         <button onClick={addSoapBlock} className="text-blue-600 hover:underline text-xs">+ 추가</button>
                       </div>
-                      {formData.nursingSoapBlocks.map((block, idx) => (
-                        <div key={idx} className="border-b border-black last:border-b-0 p-2">
-                          <div className="grid grid-cols-2 gap-2">
-                            <AutoHeightTextarea value={block.s} onChange={(e: any) => updateSoapBlock(idx, 's', e.target.value)} placeholder="S" className="border p-1 text-sm" />
-                            <AutoHeightTextarea value={block.o} onChange={(e: any) => updateSoapBlock(idx, 'o', e.target.value)} placeholder="O" className="border p-1 text-sm" />
-                            <AutoHeightTextarea value={block.a} onChange={(e: any) => updateSoapBlock(idx, 'a', e.target.value)} placeholder="A" className="border p-1 text-sm" />
-                            <AutoHeightTextarea value={block.p} onChange={(e: any) => updateSoapBlock(idx, 'p', e.target.value)} placeholder="P" className="border p-1 text-sm" />
+                      <div className="flex-1 overflow-y-auto">
+                        {formData.nursingSoapBlocks.map((block, idx) => (
+                          <div key={idx} className="border-b border-black last:border-b-0 p-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <AutoHeightTextarea value={block.s} onChange={(e: any) => updateSoapBlock(idx, 's', e.target.value)} placeholder="S" className="border p-1 text-sm" />
+                              <AutoHeightTextarea value={block.o} onChange={(e: any) => updateSoapBlock(idx, 'o', e.target.value)} placeholder="O" className="border p-1 text-sm" />
+                              <AutoHeightTextarea value={block.a} onChange={(e: any) => updateSoapBlock(idx, 'a', e.target.value)} placeholder="A" className="border p-1 text-sm" />
+                              <AutoHeightTextarea value={block.p} onChange={(e: any) => updateSoapBlock(idx, 'p', e.target.value)} placeholder="P" className="border p-1 text-sm" />
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                    <div className="border-2 border-black rounded overflow-hidden flex-1 flex flex-col">
+                    <div className="flex-1 border-2 border-black rounded overflow-hidden flex flex-col">
                       <div className="bg-gray-300 px-3 py-1 border-b-2 border-black font-bold text-sm">
                         <span className="bg-white px-4 py-1 rounded text-gray-500">EXAM</span>
                       </div>
@@ -1670,7 +1676,7 @@ export default function App() {
                         value={formData.nursingExam}
                         onChange={(e: any) => updateField('nursingExam', e.target.value)}
                         className="flex-1 p-3 text-sm focus:outline-none"
-                        minHeight="200px"
+                        minHeight="100px"
                       />
                     </div>
                   </div>
