@@ -1658,6 +1658,10 @@ export default function App() {
                       <div className="flex-1 overflow-y-auto">
                         {formData.nursingSoapBlocks.map((block, idx) => (
                           <div key={idx} className="border-b border-black last:border-b-0 p-2">
+                            <div className="flex justify-end gap-2 mb-1">
+                              <button onClick={() => duplicateSoapBlock(idx)} className="text-[10px] text-gray-500 hover:text-blue-600">복제</button>
+                              <button onClick={() => removeSoapBlock(idx)} className="text-[10px] text-gray-500 hover:text-red-600">삭제</button>
+                            </div>
                             <div className="grid grid-cols-2 gap-2">
                               <AutoHeightTextarea value={block.s} onChange={(e: any) => updateSoapBlock(idx, 's', e.target.value)} placeholder="S" className="border p-1 text-sm" />
                               <AutoHeightTextarea value={block.o} onChange={(e: any) => updateSoapBlock(idx, 'o', e.target.value)} placeholder="O" className="border p-1 text-sm" />
