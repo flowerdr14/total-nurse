@@ -440,6 +440,8 @@ export default function App() {
           consultSoapBlocks: typeof data.consultSoapBlocks === 'string' ? JSON.parse(data.consultSoapBlocks) : (data.consultSoapBlocks || []),
           dischargeSoapBlocks: typeof data.dischargeSoapBlocks === 'string' ? JSON.parse(data.dischargeSoapBlocks) : (data.dischargeSoapBlocks || []),
           otherRecordSoapBlocks: typeof data.otherRecordSoapBlocks === 'string' ? JSON.parse(data.otherRecordSoapBlocks) : (data.otherRecordSoapBlocks || []),
+          nursingCategory: data.nursingCategory ?? '낙상기록지',
+          nursingRecords: typeof data.nursingRecords === 'string' ? JSON.parse(data.nursingRecords) : (data.nursingRecords || {}),
         } as Patient);
       });
       setPatients(patientsData);
@@ -584,7 +586,8 @@ export default function App() {
         surgerySoapBlocks: JSON.stringify(formData.surgerySoapBlocks),
         consultSoapBlocks: JSON.stringify(formData.consultSoapBlocks),
         dischargeSoapBlocks: JSON.stringify(formData.dischargeSoapBlocks),
-        otherRecordSoapBlocks: JSON.stringify(formData.otherRecordSoapBlocks)
+        otherRecordSoapBlocks: JSON.stringify(formData.otherRecordSoapBlocks),
+        nursingRecords: JSON.stringify(formData.nursingRecords || {}),
       };
       
       // Update local state immediately to prevent sync issues and provide instant feedback
@@ -603,7 +606,8 @@ export default function App() {
         surgerySoapBlocks: [...formData.surgerySoapBlocks],
         consultSoapBlocks: [...formData.consultSoapBlocks],
         dischargeSoapBlocks: [...formData.dischargeSoapBlocks],
-        otherRecordSoapBlocks: [...formData.otherRecordSoapBlocks]
+        otherRecordSoapBlocks: [...formData.otherRecordSoapBlocks],
+        nursingRecords: { ...formData.nursingRecords }
       };
       
       setFormData(updatedFormData);
@@ -1527,7 +1531,7 @@ export default function App() {
   };
 
   const renderNursingContent = () => {
-    const currentNursingRecord = formData.nursingRecords[formData.nursingCategory] || {
+    const currentNursingRecord = (formData.nursingRecords?.[formData.nursingCategory]) || {
       occurTime: '',
       occurPlace: '',
       eventType: '',
@@ -1539,7 +1543,7 @@ export default function App() {
 
     const updateNursingField = (field: keyof NursingRecord, value: string) => {
       const newRecords = {
-        ...formData.nursingRecords,
+        ...(formData.nursingRecords || {}),
         [formData.nursingCategory]: {
           ...currentNursingRecord,
           [field]: value
