@@ -157,6 +157,7 @@ interface Patient {
     note: string;
   };
   medicationRows: string[][];
+  medicationChecked: boolean[];
   treatmentData: Record<string, { date: string, time: string, status: string, note: string }>;
   nursingPlan: { diagnosis: string, plan: string, evaluation: string };
   specialRecord: { before: string, after: string };
@@ -260,6 +261,7 @@ const INITIAL_FORM_DATA: Patient = {
     note: ''
   },
   medicationRows: Array(1).fill(0).map(() => Array(8).fill('')),
+  medicationChecked: [false],
   treatmentData: {
     '드레싱': { date: '', time: '', status: '', note: '' },
     '카테터': { date: '', time: '', status: '', note: '' },
@@ -1776,53 +1778,94 @@ export default function App() {
             </div>
           );
         case '투약기록':
-          const medData = formData.medicationData || INITIAL_FORM_DATA.medicationData;
-          const updateMed = (f: string, v: any) => updateField('medicationData', { ...medData, [f]: v });
+          const meds = formData.medicationRows || [Array(8).fill('')];
+          const medChecked = formData.medicationChecked || [false];
+          const updateMedRow = (rowIdx: number, colIdx: number, val: string) => {
+            const newMeds = [...meds];
+            newMeds[rowIdx] = [...newMeds[rowIdx]];
+            newMeds[rowIdx][colIdx] = val;
+            updateField('medicationRows', newMeds);
+          };
+          const toggleMedChecked = (idx: number) => {
+            const newChecked = [...medChecked];
+            newChecked[idx] = !newChecked[idx];
+            updateField('medicationChecked', newChecked);
+          };
+          const addMedRow = () => {
+            updateField('medicationRows', [...meds, Array(8).fill('')]);
+            updateField('medicationChecked', [...medChecked, false]);
+          };
+          const removeMedRow = (idx: number) => {
+            if (meds.length <= 1) return;
+            const newMeds = meds.filter((_, i) => i !== idx);
+            const newChecked = medChecked.filter((_, i) => i !== idx);
+            updateField('medicationRows', newMeds);
+            updateField('medicationChecked', newChecked);
+          };
+
           return (
-            <div className="flex-1 border-2 border-black bg-white flex flex-col">
-              <table className="w-full border-collapse h-full">
-                <tbody>
-                  {[
-                    { id: 'time', label: '투여시간' },
-                    { id: 'date', label: '투여일' },
-                    { id: 'drug', label: '약품명' },
-                    { id: 'dose', label: '용량' },
-                    { id: 'route', label: '경로' },
-                    { id: 'prescriber', label: '처방자' },
-                    { id: 'status', label: '투약여부' },
-                    { id: 'note', label: '기타기록' },
-                  ].map((row) => (
-                    <tr key={row.id} className="border-b-2 border-black last:border-b-0">
-                      <td 
-                        style={{ backgroundColor: currentTheme.color }}
-                        className="w-48 border-r-2 border-black p-4 text-center font-bold text-2xl text-white"
-                      >
-                        {row.label}
-                      </td>
-                      <td className="p-0">
-                        {row.id === 'status' ? (
-                          <div className="flex items-center p-4">
-                            <div 
-                              onClick={() => updateMed('statusChecked', !medData.statusChecked)}
-                              className="w-12 h-12 border-2 border-black flex items-center justify-center cursor-pointer hover:bg-gray-100"
-                            >
-                              {medData.statusChecked && <div className="w-8 h-8 bg-black"></div>}
-                            </div>
-                            <input type="text" value={(medData as any)[row.id]} onChange={(e) => updateMed(row.id, e.target.value)} className="flex-1 ml-4 focus:outline-none text-2xl" />
-                          </div>
-                        ) : (
-                          <input 
-                            type="text"
-                            value={(medData as any)[row.id] || ''}
-                            onChange={(e) => updateMed(row.id, e.target.value)}
-                            className="w-full p-4 focus:outline-none text-2xl"
-                          />
-                        )}
-                      </td>
+            <div className="flex-1 border-2 border-black bg-white flex flex-col overflow-hidden">
+              <div className="overflow-x-auto overflow-y-auto flex-1">
+                <table className="w-full border-collapse min-w-[800px]">
+                  <thead className="sticky top-0 z-10">
+                    <tr style={{ backgroundColor: currentTheme.color }} className="text-white font-bold text-sm">
+                      <th className="border-r border-b border-black p-2 w-24">투여시간</th>
+                      <th className="border-r border-b border-black p-2 w-24">투여일</th>
+                      <th className="border-r border-b border-black p-2">약품명</th>
+                      <th className="border-r border-b border-black p-2 w-20">용량</th>
+                      <th className="border-r border-b border-black p-2 w-20">경로</th>
+                      <th className="border-r border-b border-black p-2 w-24">처방자</th>
+                      <th className="border-r border-b border-black p-2 w-32">투약여부</th>
+                      <th className="border-r border-b border-black p-2">기타기록</th>
+                      <th className="border-b border-black p-2 w-12"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {meds.map((row, rowIdx) => (
+                      <tr key={rowIdx} className="border-b border-black hover:bg-gray-50">
+                        {row.map((cell, colIdx) => (
+                          <td key={colIdx} className="border-r border-black p-0">
+                            {colIdx === 6 ? (
+                              <div className="flex items-center gap-2 p-1">
+                                <div 
+                                  onClick={() => toggleMedChecked(rowIdx)}
+                                  className="w-6 h-6 border-2 border-black flex items-center justify-center cursor-pointer bg-white shrink-0"
+                                >
+                                  {medChecked[rowIdx] && <div className="w-4 h-4 bg-black"></div>}
+                                </div>
+                                <input 
+                                  type="text"
+                                  value={cell}
+                                  onChange={(e) => updateMedRow(rowIdx, colIdx, e.target.value)}
+                                  className="flex-1 p-1 focus:outline-none text-sm"
+                                />
+                              </div>
+                            ) : (
+                              <input 
+                                type="text"
+                                value={cell}
+                                onChange={(e) => updateMedRow(rowIdx, colIdx, e.target.value)}
+                                className="w-full p-2 focus:outline-none text-sm text-center"
+                              />
+                            )}
+                          </td>
+                        ))}
+                        <td className="p-1 text-center">
+                          <button onClick={() => removeMedRow(rowIdx)} className="text-red-500 hover:text-red-700 text-xs font-bold">X</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="p-2 border-t border-black bg-gray-100 flex justify-center">
+                <button 
+                  onClick={addMedRow}
+                  className="bg-blue-600 text-white px-4 py-1 rounded text-sm font-bold hover:bg-blue-700"
+                >
+                  + 투약기록 추가
+                </button>
+              </div>
             </div>
           );
         case '처치기록':
@@ -1872,30 +1915,30 @@ export default function App() {
             <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
               <div className="border-2 border-black flex flex-col bg-white">
                 <div className="flex items-center justify-center gap-2 p-4 border-b-2 border-black">
-                  <FileText size={40} />
-                  <span className="text-4xl font-black">기록지</span>
+                  <FileText size={32} />
+                  <span className="text-2xl font-black">기록지</span>
                 </div>
                 <div className="flex p-4 gap-12">
                   <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 font-bold text-2xl">
-                      <ChevronDown size={24} /> 환자 안전 사고
+                    <div className="flex items-center gap-2 font-bold text-lg">
+                      <ChevronDown size={20} /> 환자 안전 사고
                     </div>
-                    <div className="flex flex-col gap-1 ml-8 text-xl font-bold">
+                    <div className="flex flex-col gap-1 ml-8 text-base font-bold">
                       {['낙상기록지', '이탈기록지', '욕창기록지'].map(cat => (
                         <button key={cat} onClick={() => updateField('nursingCategory', cat)} className={`flex items-center gap-2 hover:text-blue-600 ${formData.nursingCategory === cat ? 'text-blue-600' : ''}`}>
-                          <ChevronDown size={20} className="rotate-[-90deg]" /> {cat}
+                          <ChevronDown size={16} className="rotate-[-90deg]" /> {cat}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 font-bold text-2xl">
-                      <ChevronDown size={24} /> 폭력 및 보안
+                    <div className="flex items-center gap-2 font-bold text-lg">
+                      <ChevronDown size={20} /> 폭력 및 보안
                     </div>
-                    <div className="flex flex-col gap-1 ml-8 text-xl font-bold">
+                    <div className="flex flex-col gap-1 ml-8 text-base font-bold">
                       {['폭행', '보호자 문제'].map(cat => (
                         <button key={cat} onClick={() => updateField('nursingCategory', cat)} className={`flex items-center gap-2 hover:text-blue-600 ${formData.nursingCategory === cat ? 'text-blue-600' : ''}`}>
-                          <ChevronDown size={20} className="rotate-[-90deg]" /> {cat}
+                          <ChevronDown size={16} className="rotate-[-90deg]" /> {cat}
                         </button>
                       ))}
                     </div>
@@ -1906,7 +1949,7 @@ export default function App() {
               <div className="border-2 border-black flex flex-col bg-white">
                 <div 
                   style={{ backgroundColor: currentTheme.color }}
-                  className="p-2 border-b-2 border-black text-center text-3xl font-black text-white"
+                  className="p-2 border-b-2 border-black text-center text-xl font-black text-white"
                 >
                   작성창
                 </div>
@@ -1923,7 +1966,7 @@ export default function App() {
                       <tr key={row.id} className="border-b-2 border-black">
                         <td 
                           style={{ backgroundColor: currentTheme.color }}
-                          className="w-64 border-r-2 border-black p-4 text-center font-bold text-2xl text-white"
+                          className="w-64 border-r-2 border-black p-4 text-center font-bold text-lg text-white"
                         >
                           {row.label}
                         </td>
@@ -1932,7 +1975,7 @@ export default function App() {
                             type="text"
                             value={(currentNursingRecord as any)[row.id] || ''}
                             onChange={(e) => updateNursingField(row.id as keyof NursingRecord, e.target.value)}
-                            className="w-full p-4 focus:outline-none text-xl"
+                            className="w-full p-4 focus:outline-none text-base"
                           />
                         </td>
                       </tr>
@@ -1940,7 +1983,7 @@ export default function App() {
                     <tr>
                       <td 
                         style={{ backgroundColor: currentTheme.color }}
-                        className="w-64 border-r-2 border-black p-4 text-center font-bold text-2xl text-white align-middle"
+                        className="w-64 border-r-2 border-black p-4 text-center font-bold text-lg text-white align-middle"
                       >
                         상세 내용
                       </td>
@@ -1948,7 +1991,7 @@ export default function App() {
                         <AutoHeightTextarea 
                           value={currentNursingRecord.detail}
                           onChange={(e: any) => updateNursingField('detail', e.target.value)}
-                          className="w-full p-4 focus:outline-none block text-xl"
+                          className="w-full p-4 focus:outline-none block text-base"
                           minHeight="200px"
                         />
                       </td>
