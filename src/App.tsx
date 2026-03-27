@@ -78,6 +78,11 @@ interface Patient {
   dobDay: string;
   height: string;
   weight: string;
+  hr: string;
+  rr: string;
+  bpSys: string;
+  bpDia: string;
+  bt: string;
   // Additional fields for records
   admissionDate: string;
   soapNote: string;
@@ -178,6 +183,11 @@ const INITIAL_FORM_DATA: Patient = {
   dobDay: '01',
   height: '',
   weight: '',
+  hr: '',
+  rr: '',
+  bpSys: '',
+  bpDia: '',
+  bt: '',
   admissionDate: '',
   soapNote: '',
   soapBlocks: [],
@@ -1180,6 +1190,39 @@ export default function App() {
                 </label>
               </div>
 
+              <div className="mt-4">
+                <div className="bg-[#999] text-white px-3 py-1 font-bold text-lg mb-2 flex items-center justify-between">
+                  <span>V/S</span>
+                  <span>&gt;</span>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-12 font-bold">HR</span>
+                    <input type="text" value={formData.hr} onChange={(e) => updateField('hr', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                    <span className="text-xs font-bold">bpm</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-12 font-bold">RR</span>
+                    <input type="text" value={formData.rr} onChange={(e) => updateField('rr', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                    <span className="text-xs font-bold">회/min</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-12 font-bold">BP</span>
+                    <div className="flex-1 flex items-center gap-1">
+                      <input type="text" value={formData.bpSys} onChange={(e) => updateField('bpSys', e.target.value)} className="w-12 border-2 border-black px-1 h-8 focus:outline-none text-center" />
+                      <span>/</span>
+                      <input type="text" value={formData.bpDia} onChange={(e) => updateField('bpDia', e.target.value)} className="w-12 border-2 border-black px-1 h-8 focus:outline-none text-center" />
+                      <span className="text-xs font-bold ml-1">mmHg</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-12 font-bold">BT</span>
+                    <input type="text" value={formData.bt} onChange={(e) => updateField('bt', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                    <span className="text-xs font-bold">°C</span>
+                  </div>
+                </div>
+              </div>
+
               {(isAdmission || isSurgery || isConsult || isDischarge || isOtherRecord) && (
                 <div className="mt-4 border-t-2 border-black pt-4">
                   <div className="bg-gray-700 text-white px-3 py-1 font-bold text-sm mb-2">경과기록</div>
@@ -1472,6 +1515,39 @@ export default function App() {
                       <input type="radio" name="er_gender" checked={formData.gender === 'F'} onChange={() => updateField('gender', 'F')} /> 여
                     </label>
                   </div>
+
+                  <div className="mt-4">
+                    <div className="bg-[#5a9a9a] text-white font-bold p-2 text-lg flex items-center justify-between">
+                      <span>V/S</span>
+                      <span>&gt;</span>
+                    </div>
+                    <div className="flex flex-col gap-2 mt-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-12 font-bold">HR</span>
+                        <input type="text" value={formData.hr} onChange={(e) => updateField('hr', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                        <span className="text-xs font-bold">bpm</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-12 font-bold">RR</span>
+                        <input type="text" value={formData.rr} onChange={(e) => updateField('rr', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                        <span className="text-xs font-bold">회/min</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-12 font-bold">BP</span>
+                        <div className="flex-1 flex items-center gap-1">
+                          <input type="text" value={formData.bpSys} onChange={(e) => updateField('bpSys', e.target.value)} className="w-12 border-2 border-black px-1 h-8 focus:outline-none text-center" />
+                          <span>/</span>
+                          <input type="text" value={formData.bpDia} onChange={(e) => updateField('bpDia', e.target.value)} className="w-12 border-2 border-black px-1 h-8 focus:outline-none text-center" />
+                          <span className="text-xs font-bold ml-1">mmHg</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-12 font-bold">BT</span>
+                        <input type="text" value={formData.bt} onChange={(e) => updateField('bt', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                        <span className="text-xs font-bold">°C</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 응급실 기록 퀵 메뉴 */}
@@ -1488,14 +1564,6 @@ export default function App() {
                 </div>
               </div>
               <div className="border-2 border-black flex flex-col shrink-0">
-                <div className="bg-[#5a9a9a] text-white font-bold p-2 text-center">V/S</div>
-                <input 
-                  type="text" 
-                  value={formData.erVS} 
-                  onChange={(e) => updateField('erVS', e.target.value)}
-                  spellCheck="false"
-                  className="border-b border-black h-12 px-2 focus:outline-none"
-                />
                 <div className="bg-[#5a9a9a] text-white font-bold p-2 text-center">Mode of arrival</div>
                 <input 
                   type="text" 
@@ -2021,6 +2089,39 @@ export default function App() {
                 <label className="flex items-center gap-1">
                   <input type="radio" name="nursing_gender" checked={formData.gender === 'F'} onChange={() => updateField('gender', 'F')} /> 여
                 </label>
+              </div>
+
+              <div className="mt-4">
+                <div className="bg-[#999] text-white font-bold p-4 text-2xl flex items-center justify-between">
+                  <span>V/S</span>
+                  <span>&gt;</span>
+                </div>
+                <div className="flex flex-col gap-4 mt-4 px-2">
+                  <div className="flex items-center gap-4">
+                    <span className="w-16 font-bold text-xl">HR</span>
+                    <input type="text" value={formData.hr} onChange={(e) => updateField('hr', e.target.value)} className="flex-1 border-2 border-black px-2 h-10 focus:outline-none text-xl" />
+                    <span className="text-sm font-bold">bpm</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="w-16 font-bold text-xl">RR</span>
+                    <input type="text" value={formData.rr} onChange={(e) => updateField('rr', e.target.value)} className="flex-1 border-2 border-black px-2 h-10 focus:outline-none text-xl" />
+                    <span className="text-sm font-bold">회/min</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="w-16 font-bold text-xl">BP</span>
+                    <div className="flex-1 flex items-center gap-2">
+                      <input type="text" value={formData.bpSys} onChange={(e) => updateField('bpSys', e.target.value)} className="w-20 border-2 border-black px-2 h-10 focus:outline-none text-center text-xl" />
+                      <span className="text-xl">/</span>
+                      <input type="text" value={formData.bpDia} onChange={(e) => updateField('bpDia', e.target.value)} className="w-20 border-2 border-black px-2 h-10 focus:outline-none text-center text-xl" />
+                      <span className="text-sm font-bold ml-1">mmHg</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="w-16 font-bold text-xl">BT</span>
+                    <input type="text" value={formData.bt} onChange={(e) => updateField('bt', e.target.value)} className="flex-1 border-2 border-black px-2 h-10 focus:outline-none text-xl" />
+                    <span className="text-sm font-bold">°C</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
