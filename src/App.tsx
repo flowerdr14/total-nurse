@@ -2103,8 +2103,8 @@ export default function App() {
 
           {/* Right Sidebar: 환자기본정보 */}
           <div className="w-96 border-2 border-black flex flex-col shrink-0 bg-white overflow-y-auto">
-            <div className="bg-[#999] text-white font-bold p-4 text-2xl">환자기본정보</div>
-            <div className="p-4 flex flex-col gap-4">
+            <div className="bg-[#999] text-white px-3 py-1 font-bold text-lg mb-2">환자기본정보</div>
+            <div className="p-4 flex flex-col gap-2">
               <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} labelWidth="w-24" />
               <InputField label="병실" value={formData.room} onChange={(v) => updateField('room', v)} labelWidth="w-24" />
               <InputField label="전문의" value={formData.doctor} onChange={(v) => updateField('doctor', v)} labelWidth="w-24" />
@@ -2116,7 +2116,7 @@ export default function App() {
               <InputField label="On Set" value={formData.onset} onChange={(v) => updateField('onset', v)} labelWidth="w-24" />
               <InputField label="혈액형" value={formData.bloodType} onChange={(v) => updateField('bloodType', v)} labelWidth="w-24" />
               <InputField label="진료과" value={formData.dept} onChange={(v) => updateField('dept', v)} labelWidth="w-24" />
-              <div className="flex items-center gap-2 text-lg font-bold">
+              <div className="flex items-center gap-2 text-sm font-bold">
                 <span className="w-24">생년월일</span>
                 <div className="flex items-center gap-1">
                   <input type="text" value={formData.dobYear} onChange={(e) => updateField('dobYear', e.target.value)} className="w-16 border-2 border-black px-1 text-center" />년
@@ -2124,7 +2124,7 @@ export default function App() {
                   <input type="text" value={formData.dobDay} onChange={(e) => updateField('dobDay', e.target.value)} className="w-10 border-2 border-black px-1 text-center" />일
                 </div>
               </div>
-              <div className="flex items-center gap-4 text-lg font-bold">
+              <div className="flex items-center gap-4 text-sm font-bold">
                 <span className="w-24">성별</span>
                 <label className="flex items-center gap-1">
                   <input type="radio" name="nursing_gender" checked={formData.gender === 'M'} onChange={() => updateField('gender', 'M')} /> 남
@@ -2135,34 +2135,34 @@ export default function App() {
               </div>
 
               <div className="mt-4">
-                <div className="bg-[#999] text-white font-bold p-4 text-2xl flex items-center justify-between">
+                <div className="bg-[#999] text-white font-bold px-3 py-1 text-lg flex items-center justify-between">
                   <span>V/S</span>
                   <span>&gt;</span>
                 </div>
-                <div className="flex flex-col gap-4 mt-4 px-2">
-                  <div className="flex items-center gap-4">
-                    <span className="w-16 font-bold text-xl">HR</span>
-                    <input type="text" value={formData.hr} onChange={(e) => updateField('hr', e.target.value)} className="flex-1 border-2 border-black px-2 h-10 focus:outline-none text-xl" />
-                    <span className="text-sm font-bold">bpm</span>
+                <div className="flex flex-col gap-2 mt-2 px-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-12 font-bold">HR</span>
+                    <input type="text" value={formData.hr} onChange={(e) => updateField('hr', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                    <span className="text-xs font-bold">bpm</span>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="w-16 font-bold text-xl">RR</span>
-                    <input type="text" value={formData.rr} onChange={(e) => updateField('rr', e.target.value)} className="flex-1 border-2 border-black px-2 h-10 focus:outline-none text-xl" />
-                    <span className="text-sm font-bold">회/min</span>
+                  <div className="flex items-center gap-2">
+                    <span className="w-12 font-bold">RR</span>
+                    <input type="text" value={formData.rr} onChange={(e) => updateField('rr', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                    <span className="text-xs font-bold">회/min</span>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="w-16 font-bold text-xl">BP</span>
-                    <div className="flex-1 flex items-center gap-2">
-                      <input type="text" value={formData.bpSys} onChange={(e) => updateField('bpSys', e.target.value)} className="w-20 border-2 border-black px-2 h-10 focus:outline-none text-center text-xl" />
-                      <span className="text-xl">/</span>
-                      <input type="text" value={formData.bpDia} onChange={(e) => updateField('bpDia', e.target.value)} className="w-20 border-2 border-black px-2 h-10 focus:outline-none text-center text-xl" />
-                      <span className="text-sm font-bold ml-1">mmHg</span>
+                  <div className="flex items-center gap-2">
+                    <span className="w-12 font-bold">BP</span>
+                    <div className="flex-1 flex items-center gap-1">
+                      <input type="text" value={formData.bpSys} onChange={(e) => updateField('bpSys', e.target.value)} className="w-12 border-2 border-black px-1 h-8 focus:outline-none text-center" />
+                      <span>/</span>
+                      <input type="text" value={formData.bpDia} onChange={(e) => updateField('bpDia', e.target.value)} className="w-12 border-2 border-black px-1 h-8 focus:outline-none text-center" />
+                      <span className="text-xs font-bold ml-1">mmHg</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="w-16 font-bold text-xl">BT</span>
-                    <input type="text" value={formData.bt} onChange={(e) => updateField('bt', e.target.value)} className="flex-1 border-2 border-black px-2 h-10 focus:outline-none text-xl" />
-                    <span className="text-sm font-bold">°C</span>
+                  <div className="flex items-center gap-2">
+                    <span className="w-12 font-bold">BT</span>
+                    <input type="text" value={formData.bt} onChange={(e) => updateField('bt', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                    <span className="text-xs font-bold">°C</span>
                   </div>
                 </div>
               </div>
