@@ -2418,13 +2418,18 @@ export default function App() {
                 </div>
                 <div className="h-32 border-2 border-black flex flex-col">
                   <div className="bg-[#00C9B1] text-white font-bold p-2 text-center text-lg">최종결과</div>
-                  <div className="flex-1 p-2">
-                    <textarea 
+                  <div className="flex-1 p-2 flex items-center justify-center">
+                    <select 
                       value={formData.erFinalResult}
                       onChange={(e) => updateField('erFinalResult', e.target.value)}
-                      spellCheck="false"
-                      className="w-full h-full resize-none focus:outline-none" 
-                    />
+                      className="w-full border-2 border-black h-10 px-2 focus:outline-none font-bold text-center"
+                    >
+                      <option value="">-- 선택 --</option>
+                      <option value="귀가">귀가</option>
+                      <option value="입원">입원</option>
+                      <option value="전원">전원</option>
+                      <option value="사망">사망</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -3972,7 +3977,7 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
                 </div>
                 <div className="border-2 border-black flex flex-col h-40">
                   <div className="bg-[#00C9B1] text-white font-bold p-2 text-center">최종결과</div>
-                  <div className="flex-1 p-2 text-sm whitespace-pre-wrap">{patient.erFinalResult}</div>
+                  <div className="flex-1 p-2 flex items-center justify-center text-xl font-bold">{patient.erFinalResult}</div>
                 </div>
               </div>
 
