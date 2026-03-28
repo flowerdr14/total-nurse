@@ -3178,7 +3178,7 @@ export default function App() {
     </div>
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-64 bg-white border-r-2 border-black flex flex-col">
+        <div className="w-80 bg-white border-r-2 border-black flex flex-col">
           <div 
             style={{ backgroundColor: currentTheme.color }}
             className="text-white px-2 py-1 flex items-center justify-between font-bold border-b-2 border-black h-[30px] text-sm"
