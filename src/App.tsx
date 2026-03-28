@@ -230,6 +230,20 @@ interface Patient {
   mainDxName: string;
   subDxCode: string;
   subDxName: string;
+  // GCS
+  gcsEye: string;
+  gcsVerbal: string;
+  gcsMotor: string;
+  // History
+  hpi: string;
+  pmh: string;
+  psh: string;
+  medication: string;
+  allergy: string;
+  // New ER fields
+  erOrder: string;
+  erTreatmentRecord: string;
+  erFinalResult: string;
 }
 
 const PRESCRIPTION_SUB_TABS = ['검사 처방', '영상 검사', '약물 지시', '처치/시술', '진료 지시', '컨설트', '항암 처방', '기타'];
@@ -639,6 +653,17 @@ const INITIAL_FORM_DATA: Patient = {
   mainDxName: '',
   subDxCode: '',
   subDxName: '',
+  gcsEye: '',
+  gcsVerbal: '',
+  gcsMotor: '',
+  hpi: '',
+  pmh: '',
+  psh: '',
+  medication: '',
+  allergy: '',
+  erOrder: '',
+  erTreatmentRecord: '',
+  erFinalResult: '',
 };
 
 const ACCOUNTS: Record<string, { pw: string, name: string }> = {
@@ -2241,83 +2266,329 @@ export default function App() {
       case 'er':
         return (
           <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
-            {/* Left Column: 처치기록, 시술기록, 최종결과 */}
-            <div className="w-60 flex flex-col gap-4 shrink-0">
-              <div className="border-2 border-black flex flex-col h-[30%]">
-                <div className="bg-[#00c0c0] text-white font-bold p-2 text-center text-lg">처치기록</div>
-                <textarea 
-                  value={formData.erTreatmentNote}
-                  onChange={(e) => updateField('erTreatmentNote', e.target.value)}
-                  className="flex-1 p-2 resize-none focus:outline-none"
-                />
+            <div className="w-80 flex flex-col gap-4 shrink-0 overflow-y-auto pr-2">
+              <div className="border-2 border-black flex flex-col">
+                <div className="bg-[#5a9a9a] text-white font-bold p-2 text-lg">환자기본정보</div>
+                <div className="p-4 flex flex-col gap-2">
+                  <InputField label="성명" value={formData.name} onChange={(v) => updateField('name', v)} />
+                  <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} />
+                  <InputField label="진료과" value={formData.dept} onChange={(v) => updateField('dept', v)} />
+                  <InputField label="혈액형" value={formData.bloodType} onChange={(v) => updateField('bloodType', v)} />
+                  <InputField label="나이" value={formData.age} onChange={(v) => updateField('age', v)} />
+                  <div className="flex items-center gap-4 text-sm font-bold">
+                    <span className="w-20">성별</span>
+                    <label className="flex items-center gap-1">
+                      <input type="radio" name="er_gender" checked={formData.gender === 'M'} onChange={() => updateField('gender', 'M')} /> 남
+                    </label>
+                    <label className="flex items-center gap-1">
+                      <input type="radio" name="er_gender" checked={formData.gender === 'F'} onChange={() => updateField('gender', 'F')} /> 여
+                    </label>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="bg-[#5a9a9a] text-white font-bold p-2 text-lg flex items-center justify-between">
+                      <span>V/S</span>
+                      <span>&gt;</span>
+                    </div>
+                    <div className="flex flex-col gap-2 mt-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-12 font-bold">HR</span>
+                        <input type="text" value={formData.hr} onChange={(e) => updateField('hr', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                        <span className="text-xs font-bold">bpm</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-12 font-bold">RR</span>
+                        <input type="text" value={formData.rr} onChange={(e) => updateField('rr', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                        <span className="text-xs font-bold">회/min</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-12 font-bold">BP</span>
+                        <div className="flex-1 flex items-center gap-1">
+                          <input type="text" value={formData.bpSys} onChange={(e) => updateField('bpSys', e.target.value)} className="w-12 border-2 border-black px-1 h-8 focus:outline-none text-center" />
+                          <span>/</span>
+                          <input type="text" value={formData.bpDia} onChange={(e) => updateField('bpDia', e.target.value)} className="w-12 border-2 border-black px-1 h-8 focus:outline-none text-center" />
+                          <span className="text-xs font-bold ml-1">mmHg</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-12 font-bold">BT</span>
+                        <input type="text" value={formData.bt} onChange={(e) => updateField('bt', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                        <span className="text-xs font-bold">°C</span>
+                      </div>
+                    </div>
+                  </div>
+
+
+                  {/* 진단관리 */}
+                  <div className="mt-4">
+                    <div className="bg-[#BDBDBD] text-white font-bold px-3 py-1 text-lg text-center">
+                      진단관리
+                    </div>
+                    <div className="flex flex-col gap-2 mt-2 px-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-24 font-bold">주진단코드 -</span>
+                        <select 
+                          value={formData.mainDxCode} 
+                          onChange={(e) => {
+                            const code = e.target.value;
+                            const dx = DX_CODES.find(d => d.code === code);
+                            updateField('mainDxCode', code);
+                            if (dx) updateField('mainDxName', dx.name);
+                          }}
+                          className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                        >
+                          {DX_CODES.map(dx => (
+                            <option key={dx.code} value={dx.code}>{dx.code}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-24 font-bold">주진단명 -</span>
+                        <input type="text" value={formData.mainDxName} onChange={(e) => updateField('mainDxName', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none text-sm" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-24 font-bold">부진단코드 -</span>
+                        <select 
+                          value={formData.subDxCode} 
+                          onChange={(e) => {
+                            const code = e.target.value;
+                            const dx = DX_CODES.find(d => d.code === code);
+                            updateField('subDxCode', code);
+                            if (dx) updateField('subDxName', dx.name);
+                          }}
+                          className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                        >
+                          {DX_CODES.map(dx => (
+                            <option key={dx.code} value={dx.code}>{dx.code}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-24 font-bold">부진단명 -</span>
+                        <input type="text" value={formData.subDxName} onChange={(e) => updateField('subDxName', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none text-sm" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
-              <div className="border-2 border-black flex flex-col h-[30%]">
-                <div className="bg-[#00c0c0] text-white font-bold p-2 text-center text-lg">시술기록</div>
-                <textarea 
-                  value={formData.erProcedureNote}
-                  onChange={(e) => updateField('erProcedureNote', e.target.value)}
-                  className="flex-1 p-2 resize-none focus:outline-none"
+              <div className="border-2 border-black flex flex-col shrink-0">
+                <div className="bg-[#5a9a9a] text-white font-bold p-2 text-center">Mode of arrival</div>
+                <input 
+                  type="text" 
+                  value={formData.erMode} 
+                  onChange={(e) => updateField('erMode', e.target.value)}
+                  spellCheck="false"
+                  className="border-b border-black h-12 px-2 focus:outline-none"
                 />
-              </div>
-              <div className="border-2 border-black flex flex-col h-[15%]">
-                <div className="bg-[#00c0c0] text-white font-bold p-2 text-center text-lg">최종결과</div>
-                <select 
-                  value={formData.erFinalResult}
-                  onChange={(e) => updateField('erFinalResult', e.target.value)}
-                  className="w-full h-full p-2 focus:outline-none"
+                <div className="bg-[#5a9a9a] text-white font-bold p-2 text-center">ED arrival time</div>
+                <input 
+                  type="text" 
+                  value={formData.erTime} 
+                  onChange={(e) => updateField('erTime', e.target.value)}
+                  spellCheck="false"
+                  className="h-12 px-2 focus:outline-none border-b border-black"
+                />
+                <button 
+                  onClick={() => setShowAssessmentTool(true)}
+                  className="h-12 bg-gray-300 border-b border-black font-bold hover:bg-gray-400"
                 >
-                  <option value="">선택</option>
-                  <option value="귀가">귀가</option>
-                  <option value="입원">입원</option>
-                  <option value="전원">전원</option>
-                </select>
+                  평가도구
+                </button>
+                {formData.erAssessment && (
+                  <div className="p-2 text-sm font-bold bg-yellow-50 border-b border-black">
+                    {formData.erAssessment}
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* Middle Column: Order, EXAM */}
-            <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-              <div className="border-2 border-black flex flex-col h-[40%]">
-                <div className="bg-[#00c0c0] text-white font-bold p-2 text-center text-lg">Order</div>
-                <textarea 
-                  value={formData.erOrder}
-                  onChange={(e) => updateField('erOrder', e.target.value)}
-                  className="flex-1 p-2 resize-none focus:outline-none"
-                />
-              </div>
-              <div className="border-2 border-black flex flex-col h-[55%]">
-                <div className="bg-[#00c0c0] text-white font-bold p-2 text-center text-lg">EXAM</div>
-                <textarea 
-                  value={formData.erExam}
-                  onChange={(e) => updateField('erExam', e.target.value)}
-                  className="flex-1 p-2 resize-none focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Right Column: GCS, HPI/PMH, 기본병력 */}
-            <div className="w-80 flex flex-col gap-4 shrink-0">
-              <div className="border-2 border-black flex flex-col">
-                <div className="bg-[#00c0c0] text-white font-bold p-2 text-center text-lg">GCS 의식상태</div>
-                <div className="p-4 flex flex-col gap-2">
-                  <div className="flex justify-between"><span>Eye Opening</span><span>-</span><span className="w-20 border-b border-black"></span></div>
-                  <div className="flex justify-between"><span>Verbal Response</span><span>-</span><span className="w-20 border-b border-black"></span></div>
-                  <div className="flex justify-between"><span>Motor Response</span><span>-</span><span className="w-20 border-b border-black"></span></div>
-                  <div className="flex justify-between font-bold"><span>총점</span><span>-</span><span className="w-20 border-b border-black"></span></div>
+            <div className="flex-1 grid grid-cols-3 gap-4 overflow-hidden">
+              {/* Column 1: 처치/시술기록, 최종결과 */}
+              <div className="flex flex-col gap-4">
+                <div className="flex-1 border-2 border-black flex flex-col">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center text-lg">처치/시술기록</div>
+                  <div className="flex-1 p-2">
+                    <textarea 
+                      value={formData.erTreatmentRecord}
+                      onChange={(e) => updateField('erTreatmentRecord', e.target.value)}
+                      spellCheck="false"
+                      className="w-full h-full resize-none focus:outline-none" 
+                    />
+                  </div>
+                </div>
+                <div className="h-32 border-2 border-black flex flex-col">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center text-lg">최종결과</div>
+                  <div className="flex-1 p-2">
+                    <textarea 
+                      value={formData.erFinalResult}
+                      onChange={(e) => updateField('erFinalResult', e.target.value)}
+                      spellCheck="false"
+                      className="w-full h-full resize-none focus:outline-none" 
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="border-2 border-black flex flex-col">
-                <div className="bg-[#00c0c0] text-white font-bold p-2 text-center text-lg">HPI / PMH</div>
-                <div className="p-4 flex flex-col gap-2">
-                  <div className="flex justify-between"><span>HPI</span><span>-</span><span className="w-20 border-b border-black"></span></div>
-                  <div className="flex justify-between"><span>PMH</span><span>-</span><span className="w-20 border-b border-black"></span></div>
+
+              {/* Column 2: Order, EXAM */}
+              <div className="flex flex-col gap-4">
+                <div className="flex-1 border-2 border-black flex flex-col">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center text-lg">Order</div>
+                  <div className="flex-1 p-2">
+                    <textarea 
+                      value={formData.erOrder}
+                      onChange={(e) => updateField('erOrder', e.target.value)}
+                      spellCheck="false"
+                      className="w-full h-full resize-none focus:outline-none" 
+                    />
+                  </div>
+                </div>
+                <div className="flex-1 border-2 border-black flex flex-col">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center text-lg">EXAM</div>
+                  <div className="flex-1 p-2">
+                    <textarea 
+                      value={formData.erExam}
+                      onChange={(e) => updateField('erExam', e.target.value)}
+                      spellCheck="false"
+                      className="w-full h-full resize-none focus:outline-none" 
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="border-2 border-black flex flex-col">
-                <div className="bg-[#00c0c0] text-white font-bold p-2 text-center text-lg">기본병력</div>
-                <div className="p-4 flex flex-col gap-2">
-                  <div className="flex justify-between"><span>PSH</span><span>-</span><span className="w-20 border-b border-black"></span></div>
-                  <div className="flex justify-between"><span>복용약물</span><span>-</span><span className="w-20 border-b border-black"></span></div>
-                  <div className="flex justify-between"><span>알러지</span><span>-</span><span className="w-20 border-b border-black"></span></div>
+
+              {/* Column 3: GCS, HPI/PMH, 기본병력 */}
+              <div className="flex flex-col gap-4 overflow-y-auto">
+                {/* GCS */}
+                <div className="border-2 border-black flex flex-col">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center text-lg">GCS 의식상태</div>
+                  <div className="p-4 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold">Eye Opening</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">-</span>
+                        <input 
+                          type="text" 
+                          value={formData.gcsEye} 
+                          onChange={(e) => updateField('gcsEye', e.target.value)}
+                          className="w-24 border-b-2 border-black focus:outline-none text-center"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold">Verbal Response</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">-</span>
+                        <input 
+                          type="text" 
+                          value={formData.gcsVerbal} 
+                          onChange={(e) => updateField('gcsVerbal', e.target.value)}
+                          className="w-24 border-b-2 border-black focus:outline-none text-center"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold">Motor Response</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">-</span>
+                        <input 
+                          type="text" 
+                          value={formData.gcsMotor} 
+                          onChange={(e) => updateField('gcsMotor', e.target.value)}
+                          className="w-24 border-b-2 border-black focus:outline-none text-center"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200">
+                      <span className="font-bold">총점</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">-</span>
+                        <div className={`w-24 border-b-2 border-black text-center font-bold ${
+                          (() => {
+                            const total = parseInt(formData.gcsEye || '0') + parseInt(formData.gcsVerbal || '0') + parseInt(formData.gcsMotor || '0');
+                            if (total >= 13) return 'text-green-600';
+                            if (total >= 9) return 'text-yellow-600';
+                            if (total > 0) return 'text-red-600';
+                            return '';
+                          })()
+                        }`}>
+                          {parseInt(formData.gcsEye || '0') + parseInt(formData.gcsVerbal || '0') + parseInt(formData.gcsMotor || '0')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* HPI / PMH */}
+                <div className="border-2 border-black flex flex-col">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center text-lg">HPI / PMH</div>
+                  <div className="p-4 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold">HPI</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">-</span>
+                        <input 
+                          type="text" 
+                          value={formData.hpi} 
+                          onChange={(e) => updateField('hpi', e.target.value)}
+                          className="w-32 border-b-2 border-black focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold">PMH</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">-</span>
+                        <input 
+                          type="text" 
+                          value={formData.pmh} 
+                          onChange={(e) => updateField('pmh', e.target.value)}
+                          className="w-32 border-b-2 border-black focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 기본병력 */}
+                <div className="border-2 border-black flex flex-col">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center text-lg">기본병력</div>
+                  <div className="p-4 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold">PSH</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">-</span>
+                        <input 
+                          type="text" 
+                          value={formData.psh} 
+                          onChange={(e) => updateField('psh', e.target.value)}
+                          className="w-32 border-b-2 border-black focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold">복용약물</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">-</span>
+                        <input 
+                          type="text" 
+                          value={formData.medication} 
+                          onChange={(e) => updateField('medication', e.target.value)}
+                          className="w-32 border-b-2 border-black focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold">알러지</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">-</span>
+                        <input 
+                          type="text" 
+                          value={formData.allergy} 
+                          onChange={(e) => updateField('allergy', e.target.value)}
+                          className="w-32 border-b-2 border-black focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -3691,27 +3962,145 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
       {(type === 'admission' || type === 'er' || type === 'surgery' || type === 'consult' || type === 'discharge' || type === 'other_record' || type === 'other_hospital') && (
         <div className="mt-8">
           <div className="font-bold text-lg mb-2">Progress Note</div>
-          <div className="border-2 border-black min-h-[500px] flex">
-            <div className="w-1/2 border-r-2 border-black p-4">
-              <div className="font-bold text-center border-b-2 border-black mb-4 pb-1">SOAP</div>
-              <div className="text-sm whitespace-pre-wrap">
-                {currentSoapBlocks.map((b, i) => (
-                  <div key={i} className="mb-4 border-b border-gray-300 pb-2 last:border-0">
-                    <div className="font-bold text-xs text-gray-500">Block {i+1}</div>
-                    <div>S: {b.s}</div>
-                    <div>O: {b.o}</div>
-                    <div>A: {b.a}</div>
-                    <div>P: {b.p}</div>
+          {type === 'er' ? (
+            <div className="grid grid-cols-3 gap-4">
+              {/* Column 1: 처치/시술기록, 최종결과 */}
+              <div className="flex flex-col gap-4">
+                <div className="border-2 border-black flex flex-col min-h-[300px]">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center">처치/시술기록</div>
+                  <div className="flex-1 p-2 text-sm whitespace-pre-wrap">{patient.erTreatmentRecord}</div>
+                </div>
+                <div className="border-2 border-black flex flex-col h-40">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center">최종결과</div>
+                  <div className="flex-1 p-2 text-sm whitespace-pre-wrap">{patient.erFinalResult}</div>
+                </div>
+              </div>
+
+              {/* Column 2: Order, EXAM */}
+              <div className="flex flex-col gap-4">
+                <div className="border-2 border-black flex flex-col min-h-[300px]">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center">Order</div>
+                  <div className="flex-1 p-2 text-sm whitespace-pre-wrap">{patient.erOrder}</div>
+                </div>
+                <div className="border-2 border-black flex flex-col min-h-[200px]">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center">EXAM</div>
+                  <div className="flex-1 p-2 text-sm whitespace-pre-wrap">{patient.erExam}</div>
+                </div>
+              </div>
+
+              {/* Column 3: GCS, HPI/PMH, 기본병력 */}
+              <div className="flex flex-col gap-4">
+                <div className="border-2 border-black flex flex-col">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center">GCS 의식상태</div>
+                  <div className="p-4 flex flex-col gap-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-bold">Eye Opening</span>
+                      <span>- {patient.gcsEye || ''}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-bold">Verbal Response</span>
+                      <span>- {patient.gcsVerbal || ''}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-bold">Motor Response</span>
+                      <span>- {patient.gcsMotor || ''}</span>
+                    </div>
+                    <div className="flex justify-between mt-2 pt-2 border-t border-gray-300">
+                      <span className="font-bold">총점</span>
+                      <span className={`font-bold ${
+                        (() => {
+                          const total = parseInt(patient.gcsEye || '0') + parseInt(patient.gcsVerbal || '0') + parseInt(patient.gcsMotor || '0');
+                          if (total >= 13) return 'text-green-600';
+                          if (total >= 9) return 'text-yellow-600';
+                          if (total > 0) return 'text-red-600';
+                          return '';
+                        })()
+                      }`}>
+                        - {parseInt(patient.gcsEye || '0') + parseInt(patient.gcsVerbal || '0') + parseInt(patient.gcsMotor || '0')}
+                      </span>
+                    </div>
                   </div>
-                ))}
-                <div className="mt-4 pt-4 border-t-2 border-black italic">{currentNote}</div>
+                </div>
+
+                <div className="border-2 border-black flex flex-col">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center">HPI / PMH</div>
+                  <div className="p-4 flex flex-col gap-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-bold">HPI</span>
+                      <span>- {patient.hpi || ''}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-bold">PMH</span>
+                      <span>- {patient.pmh || ''}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-2 border-black flex flex-col">
+                  <div className="bg-[#00C9B1] text-white font-bold p-2 text-center">기본병력</div>
+                  <div className="p-4 flex flex-col gap-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-bold">PSH</span>
+                      <span>- {patient.psh || ''}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-bold">복용약물</span>
+                      <span>- {patient.medication || ''}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-bold">알러지</span>
+                      <span>- {patient.allergy || ''}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="w-1/2 p-4">
-              <div className="font-bold text-center border-b-2 border-black mb-4 pb-1">EXAM</div>
-              <div className="text-sm whitespace-pre-wrap">{currentExam}</div>
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="border-2 border-black min-h-[500px] flex">
+                <div className="w-1/2 border-r-2 border-black p-4">
+                  <div className="font-bold text-center border-b-2 border-black mb-4 pb-1">SOAP</div>
+                  <div className="text-sm whitespace-pre-wrap">
+                    {currentSoapBlocks.map((b, i) => (
+                      <div key={i} className="mb-4 border-b border-gray-300 pb-2 last:border-0">
+                        <div className="font-bold text-xs text-gray-500">Block {i+1}</div>
+                        <div>S: {b.s}</div>
+                        <div>O: {b.o}</div>
+                        <div>A: {b.a}</div>
+                        <div>P: {b.p}</div>
+                      </div>
+                    ))}
+                    <div className="mt-4 pt-4 border-t-2 border-black italic">{currentNote}</div>
+                  </div>
+                </div>
+                <div className="w-1/2 p-4">
+                  <div className="font-bold text-center border-b-2 border-black mb-4 pb-1">EXAM</div>
+                  <div className="text-sm whitespace-pre-wrap">{currentExam}</div>
+                </div>
+              </div>
+
+              <div className="border-2 border-black p-4 mt-4">
+                <div className="font-bold text-lg mb-2">GCS 의식상태</div>
+                <div className="text-sm">
+                  <div>Eye Opening: {patient.gcsEye}</div>
+                  <div>Verbal Response: {patient.gcsVerbal}</div>
+                  <div>Motor Response: {patient.gcsMotor}</div>
+                  <div>총점: {parseInt(patient.gcsEye || '0') + parseInt(patient.gcsVerbal || '0') + parseInt(patient.gcsMotor || '0')}</div>
+                </div>
+              </div>
+
+              <div className="border-2 border-black p-4 mt-4">
+                <div className="font-bold text-lg mb-2">History</div>
+                <div className="text-sm">
+                  <div>HPI: {patient.hpi}</div>
+                  <div>PMH: {patient.pmh}</div>
+                  <div>PSH: {patient.psh}</div>
+                  <div>복용약물: {patient.medication}</div>
+                  <div>알러지: {patient.allergy}</div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
