@@ -1546,21 +1546,38 @@ export default function App() {
         <div className="flex flex-col gap-2 mt-2 px-1">
           <div className="flex items-center gap-2">
             <span className="w-24 font-bold">주진단코드 -</span>
-            <select 
-              value={formData.mainDxCode} 
-              onChange={(e) => {
-                const code = e.target.value;
-                const dx = DX_CODES.find(d => d.code === code);
-                updateField('mainDxCode', code);
-                if (dx) updateField('mainDxName', dx.name);
-              }}
-              className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
-            >
-              <option value="">선택</option>
-              {DX_CODES.map(dx => (
-                <option key={dx.code} value={dx.code}>{dx.code}</option>
-              ))}
-            </select>
+            <div className="flex-1 flex gap-1">
+              <select 
+                value={formData.mainDxCode.charAt(0) || ''} 
+                onChange={(e) => {
+                  const letter = e.target.value;
+                  const number = formData.mainDxCode.slice(1) || '01';
+                  const newCode = letter + number;
+                  updateField('mainDxCode', newCode);
+                  const dx = DX_CODES.find(d => d.code === newCode);
+                  if (dx) updateField('mainDxName', dx.name);
+                }}
+                className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+              >
+                <option value="">선택</option>
+                {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+              <select 
+                value={formData.mainDxCode.slice(1) || ''} 
+                onChange={(e) => {
+                  const letter = formData.mainDxCode.charAt(0) || 'A';
+                  const number = e.target.value;
+                  const newCode = letter + number;
+                  updateField('mainDxCode', newCode);
+                  const dx = DX_CODES.find(d => d.code === newCode);
+                  if (dx) updateField('mainDxName', dx.name);
+                }}
+                className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+              >
+                <option value="">선택</option>
+                {Array.from({ length: 99 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-24 font-bold">주진단명 -</span>
@@ -1568,21 +1585,38 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2">
             <span className="w-24 font-bold">부진단코드 -</span>
-            <select 
-              value={formData.subDxCode} 
-              onChange={(e) => {
-                const code = e.target.value;
-                const dx = DX_CODES.find(d => d.code === code);
-                updateField('subDxCode', code);
-                if (dx) updateField('subDxName', dx.name);
-              }}
-              className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
-            >
-              <option value="">선택</option>
-              {DX_CODES.map(dx => (
-                <option key={dx.code} value={dx.code}>{dx.code}</option>
-              ))}
-            </select>
+            <div className="flex-1 flex gap-1">
+              <select 
+                value={formData.subDxCode.charAt(0) || ''} 
+                onChange={(e) => {
+                  const letter = e.target.value;
+                  const number = formData.subDxCode.slice(1) || '01';
+                  const newCode = letter + number;
+                  updateField('subDxCode', newCode);
+                  const dx = DX_CODES.find(d => d.code === newCode);
+                  if (dx) updateField('subDxName', dx.name);
+                }}
+                className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+              >
+                <option value="">선택</option>
+                {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+              <select 
+                value={formData.subDxCode.slice(1) || ''} 
+                onChange={(e) => {
+                  const letter = formData.subDxCode.charAt(0) || 'A';
+                  const number = e.target.value;
+                  const newCode = letter + number;
+                  updateField('subDxCode', newCode);
+                  const dx = DX_CODES.find(d => d.code === newCode);
+                  if (dx) updateField('subDxName', dx.name);
+                }}
+                className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+              >
+                <option value="">선택</option>
+                {Array.from({ length: 99 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-24 font-bold">부진단명 -</span>
@@ -2327,20 +2361,38 @@ export default function App() {
                     <div className="flex flex-col gap-2 mt-2 px-1">
                       <div className="flex items-center gap-2">
                         <span className="w-24 font-bold">주진단코드 -</span>
-                        <select 
-                          value={formData.mainDxCode} 
-                          onChange={(e) => {
-                            const code = e.target.value;
-                            const dx = DX_CODES.find(d => d.code === code);
-                            updateField('mainDxCode', code);
-                            if (dx) updateField('mainDxName', dx.name);
-                          }}
-                          className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
-                        >
-                          {DX_CODES.map(dx => (
-                            <option key={dx.code} value={dx.code}>{dx.code}</option>
-                          ))}
-                        </select>
+                        <div className="flex-1 flex gap-1">
+                          <select 
+                            value={formData.mainDxCode.charAt(0) || ''} 
+                            onChange={(e) => {
+                              const letter = e.target.value;
+                              const number = formData.mainDxCode.slice(1) || '01';
+                              const newCode = letter + number;
+                              updateField('mainDxCode', newCode);
+                              const dx = DX_CODES.find(d => d.code === newCode);
+                              if (dx) updateField('mainDxName', dx.name);
+                            }}
+                            className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                          >
+                            <option value="">선택</option>
+                            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
+                          </select>
+                          <select 
+                            value={formData.mainDxCode.slice(1) || ''} 
+                            onChange={(e) => {
+                              const letter = formData.mainDxCode.charAt(0) || 'A';
+                              const number = e.target.value;
+                              const newCode = letter + number;
+                              updateField('mainDxCode', newCode);
+                              const dx = DX_CODES.find(d => d.code === newCode);
+                              if (dx) updateField('mainDxName', dx.name);
+                            }}
+                            className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                          >
+                            <option value="">선택</option>
+                            {Array.from({ length: 99 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(n => <option key={n} value={n}>{n}</option>)}
+                          </select>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-24 font-bold">주진단명 -</span>
@@ -2348,20 +2400,38 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-24 font-bold">부진단코드 -</span>
-                        <select 
-                          value={formData.subDxCode} 
-                          onChange={(e) => {
-                            const code = e.target.value;
-                            const dx = DX_CODES.find(d => d.code === code);
-                            updateField('subDxCode', code);
-                            if (dx) updateField('subDxName', dx.name);
-                          }}
-                          className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
-                        >
-                          {DX_CODES.map(dx => (
-                            <option key={dx.code} value={dx.code}>{dx.code}</option>
-                          ))}
-                        </select>
+                        <div className="flex-1 flex gap-1">
+                          <select 
+                            value={formData.subDxCode.charAt(0) || ''} 
+                            onChange={(e) => {
+                              const letter = e.target.value;
+                              const number = formData.subDxCode.slice(1) || '01';
+                              const newCode = letter + number;
+                              updateField('subDxCode', newCode);
+                              const dx = DX_CODES.find(d => d.code === newCode);
+                              if (dx) updateField('subDxName', dx.name);
+                            }}
+                            className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                          >
+                            <option value="">선택</option>
+                            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
+                          </select>
+                          <select 
+                            value={formData.subDxCode.slice(1) || ''} 
+                            onChange={(e) => {
+                              const letter = formData.subDxCode.charAt(0) || 'A';
+                              const number = e.target.value;
+                              const newCode = letter + number;
+                              updateField('subDxCode', newCode);
+                              const dx = DX_CODES.find(d => d.code === newCode);
+                              if (dx) updateField('subDxName', dx.name);
+                            }}
+                            className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                          >
+                            <option value="">선택</option>
+                            {Array.from({ length: 99 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(n => <option key={n} value={n}>{n}</option>)}
+                          </select>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-24 font-bold">부진단명 -</span>
@@ -3071,20 +3141,38 @@ export default function App() {
                 <div className="flex flex-col gap-2 mt-2 px-1">
                   <div className="flex items-center gap-2">
                     <span className="w-24 font-bold">주진단코드 -</span>
-                    <select 
-                      value={formData.mainDxCode} 
-                      onChange={(e) => {
-                        const code = e.target.value;
-                        const dx = DX_CODES.find(d => d.code === code);
-                        updateField('mainDxCode', code);
-                        if (dx) updateField('mainDxName', dx.name);
-                      }}
-                      className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
-                    >
-                      {DX_CODES.map(dx => (
-                        <option key={dx.code} value={dx.code}>{dx.code}</option>
-                      ))}
-                    </select>
+                    <div className="flex-1 flex gap-1">
+                      <select 
+                        value={formData.mainDxCode.charAt(0) || ''} 
+                        onChange={(e) => {
+                          const letter = e.target.value;
+                          const number = formData.mainDxCode.slice(1) || '01';
+                          const newCode = letter + number;
+                          updateField('mainDxCode', newCode);
+                          const dx = DX_CODES.find(d => d.code === newCode);
+                          if (dx) updateField('mainDxName', dx.name);
+                        }}
+                        className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                      >
+                        <option value="">선택</option>
+                        {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                      <select 
+                        value={formData.mainDxCode.slice(1) || ''} 
+                        onChange={(e) => {
+                          const letter = formData.mainDxCode.charAt(0) || 'A';
+                          const number = e.target.value;
+                          const newCode = letter + number;
+                          updateField('mainDxCode', newCode);
+                          const dx = DX_CODES.find(d => d.code === newCode);
+                          if (dx) updateField('mainDxName', dx.name);
+                        }}
+                        className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                      >
+                        <option value="">선택</option>
+                        {Array.from({ length: 99 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(n => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-24 font-bold">주진단명 -</span>
@@ -3092,20 +3180,38 @@ export default function App() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-24 font-bold">부진단코드 -</span>
-                    <select 
-                      value={formData.subDxCode} 
-                      onChange={(e) => {
-                        const code = e.target.value;
-                        const dx = DX_CODES.find(d => d.code === code);
-                        updateField('subDxCode', code);
-                        if (dx) updateField('subDxName', dx.name);
-                      }}
-                      className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
-                    >
-                      {DX_CODES.map(dx => (
-                        <option key={dx.code} value={dx.code}>{dx.code}</option>
-                      ))}
-                    </select>
+                    <div className="flex-1 flex gap-1">
+                      <select 
+                        value={formData.subDxCode.charAt(0) || ''} 
+                        onChange={(e) => {
+                          const letter = e.target.value;
+                          const number = formData.subDxCode.slice(1) || '01';
+                          const newCode = letter + number;
+                          updateField('subDxCode', newCode);
+                          const dx = DX_CODES.find(d => d.code === newCode);
+                          if (dx) updateField('subDxName', dx.name);
+                        }}
+                        className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                      >
+                        <option value="">선택</option>
+                        {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                      <select 
+                        value={formData.subDxCode.slice(1) || ''} 
+                        onChange={(e) => {
+                          const letter = formData.subDxCode.charAt(0) || 'A';
+                          const number = e.target.value;
+                          const newCode = letter + number;
+                          updateField('subDxCode', newCode);
+                          const dx = DX_CODES.find(d => d.code === newCode);
+                          if (dx) updateField('subDxName', dx.name);
+                        }}
+                        className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                      >
+                        <option value="">선택</option>
+                        {Array.from({ length: 99 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(n => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-24 font-bold">부진단명 -</span>
