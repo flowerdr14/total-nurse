@@ -3,7 +3,40 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, Component } from 'react';
+
+class ErrorBoundary extends Component<any, any> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError(_: any) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen flex items-center justify-center bg-red-50 p-4 font-sans">
+          <div className="bg-white border-4 border-red-600 p-8 shadow-[8px_8px_0_0_rgba(220,38,38,1)] max-w-md">
+            <h1 className="text-2xl font-black text-red-600 mb-4 underline">SYSTEM ERROR</h1>
+            <p className="font-bold mb-6">애플리케이션 렌더링 중 오류가 발생했습니다. 환자 데이터가 불완전하거나 예기치 않은 상태일 수 있습니다.</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full bg-red-600 text-white font-black py-3 border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+            >
+              새로고침
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (this as any).props.children;
+  }
+}
 import { 
   Save, 
   X, 
@@ -997,7 +1030,7 @@ export default function App() {
       const p = patients.find(p => p.id === selectedPatientId);
       // Only sync from patients if the ID has changed or if we haven't synced this ID yet
       if (p && lastSyncedIdRef.current !== selectedPatientId) {
-        setFormData({ ...p });
+        setFormData({ ...INITIAL_FORM_DATA, ...p });
         lastSyncedIdRef.current = selectedPatientId;
       }
     } else {
@@ -1548,10 +1581,10 @@ export default function App() {
             <span className="w-24 font-bold">주진단코드 -</span>
             <div className="flex-1 flex gap-1">
               <select 
-                value={formData.mainDxCode.charAt(0) || ''} 
+                value={(formData.mainDxCode || '').charAt(0)} 
                 onChange={(e) => {
                   const letter = e.target.value;
-                  const number = formData.mainDxCode.slice(1) || '01';
+                  const number = (formData.mainDxCode || '').slice(1) || '01';
                   const newCode = letter + number;
                   updateField('mainDxCode', newCode);
                   const dx = DX_CODES.find(d => d.code === newCode);
@@ -1563,9 +1596,9 @@ export default function App() {
                 {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
               </select>
               <select 
-                value={formData.mainDxCode.slice(1) || ''} 
+                value={(formData.mainDxCode || '').slice(1)} 
                 onChange={(e) => {
-                  const letter = formData.mainDxCode.charAt(0) || 'A';
+                  const letter = (formData.mainDxCode || '').charAt(0) || 'A';
                   const number = e.target.value;
                   const newCode = letter + number;
                   updateField('mainDxCode', newCode);
@@ -1587,10 +1620,10 @@ export default function App() {
             <span className="w-24 font-bold">부진단코드 -</span>
             <div className="flex-1 flex gap-1">
               <select 
-                value={formData.subDxCode.charAt(0) || ''} 
+                value={(formData.subDxCode || '').charAt(0)} 
                 onChange={(e) => {
                   const letter = e.target.value;
-                  const number = formData.subDxCode.slice(1) || '01';
+                  const number = (formData.subDxCode || '').slice(1) || '01';
                   const newCode = letter + number;
                   updateField('subDxCode', newCode);
                   const dx = DX_CODES.find(d => d.code === newCode);
@@ -1602,9 +1635,9 @@ export default function App() {
                 {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
               </select>
               <select 
-                value={formData.subDxCode.slice(1) || ''} 
+                value={(formData.subDxCode || '').slice(1)} 
                 onChange={(e) => {
-                  const letter = formData.subDxCode.charAt(0) || 'A';
+                  const letter = (formData.subDxCode || '').charAt(0) || 'A';
                   const number = e.target.value;
                   const newCode = letter + number;
                   updateField('subDxCode', newCode);
@@ -2363,10 +2396,10 @@ export default function App() {
                         <span className="w-24 font-bold">주진단코드 -</span>
                         <div className="flex-1 flex gap-1">
                           <select 
-                            value={formData.mainDxCode.charAt(0) || ''} 
+                            value={(formData.mainDxCode || '').charAt(0)} 
                             onChange={(e) => {
                               const letter = e.target.value;
-                              const number = formData.mainDxCode.slice(1) || '01';
+                              const number = (formData.mainDxCode || '').slice(1) || '01';
                               const newCode = letter + number;
                               updateField('mainDxCode', newCode);
                               const dx = DX_CODES.find(d => d.code === newCode);
@@ -2378,9 +2411,9 @@ export default function App() {
                             {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
                           </select>
                           <select 
-                            value={formData.mainDxCode.slice(1) || ''} 
+                            value={(formData.mainDxCode || '').slice(1)} 
                             onChange={(e) => {
-                              const letter = formData.mainDxCode.charAt(0) || 'A';
+                              const letter = (formData.mainDxCode || '').charAt(0) || 'A';
                               const number = e.target.value;
                               const newCode = letter + number;
                               updateField('mainDxCode', newCode);
@@ -2402,10 +2435,10 @@ export default function App() {
                         <span className="w-24 font-bold">부진단코드 -</span>
                         <div className="flex-1 flex gap-1">
                           <select 
-                            value={formData.subDxCode.charAt(0) || ''} 
+                            value={(formData.subDxCode || '').charAt(0)} 
                             onChange={(e) => {
                               const letter = e.target.value;
-                              const number = formData.subDxCode.slice(1) || '01';
+                              const number = (formData.subDxCode || '').slice(1) || '01';
                               const newCode = letter + number;
                               updateField('subDxCode', newCode);
                               const dx = DX_CODES.find(d => d.code === newCode);
@@ -2417,9 +2450,9 @@ export default function App() {
                             {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
                           </select>
                           <select 
-                            value={formData.subDxCode.slice(1) || ''} 
+                            value={(formData.subDxCode || '').slice(1)} 
                             onChange={(e) => {
-                              const letter = formData.subDxCode.charAt(0) || 'A';
+                              const letter = (formData.subDxCode || '').charAt(0) || 'A';
                               const number = e.target.value;
                               const newCode = letter + number;
                               updateField('subDxCode', newCode);
@@ -3143,10 +3176,10 @@ export default function App() {
                     <span className="w-24 font-bold">주진단코드 -</span>
                     <div className="flex-1 flex gap-1">
                       <select 
-                        value={formData.mainDxCode.charAt(0) || ''} 
+                        value={(formData.mainDxCode || '').charAt(0)} 
                         onChange={(e) => {
                           const letter = e.target.value;
-                          const number = formData.mainDxCode.slice(1) || '01';
+                          const number = (formData.mainDxCode || '').slice(1) || '01';
                           const newCode = letter + number;
                           updateField('mainDxCode', newCode);
                           const dx = DX_CODES.find(d => d.code === newCode);
@@ -3158,9 +3191,9 @@ export default function App() {
                         {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
                       <select 
-                        value={formData.mainDxCode.slice(1) || ''} 
+                        value={(formData.mainDxCode || '').slice(1)} 
                         onChange={(e) => {
-                          const letter = formData.mainDxCode.charAt(0) || 'A';
+                          const letter = (formData.mainDxCode || '').charAt(0) || 'A';
                           const number = e.target.value;
                           const newCode = letter + number;
                           updateField('mainDxCode', newCode);
@@ -3182,10 +3215,10 @@ export default function App() {
                     <span className="w-24 font-bold">부진단코드 -</span>
                     <div className="flex-1 flex gap-1">
                       <select 
-                        value={formData.subDxCode.charAt(0) || ''} 
+                        value={(formData.subDxCode || '').charAt(0)} 
                         onChange={(e) => {
                           const letter = e.target.value;
-                          const number = formData.subDxCode.slice(1) || '01';
+                          const number = (formData.subDxCode || '').slice(1) || '01';
                           const newCode = letter + number;
                           updateField('subDxCode', newCode);
                           const dx = DX_CODES.find(d => d.code === newCode);
@@ -3197,9 +3230,9 @@ export default function App() {
                         {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
                       <select 
-                        value={formData.subDxCode.slice(1) || ''} 
+                        value={(formData.subDxCode || '').slice(1)} 
                         onChange={(e) => {
-                          const letter = formData.subDxCode.charAt(0) || 'A';
+                          const letter = (formData.subDxCode || '').charAt(0) || 'A';
                           const number = e.target.value;
                           const newCode = letter + number;
                           updateField('subDxCode', newCode);
@@ -3286,10 +3319,11 @@ export default function App() {
     }
 
   return (
-    <div 
-      style={{ backgroundColor: currentTheme.bg }}
-      className="flex flex-col h-screen min-w-[1200px] font-sans overflow-hidden"
-    >
+    <ErrorBoundary>
+      <div 
+        style={{ backgroundColor: currentTheme.bg }}
+        className="flex flex-col h-screen min-w-[1200px] font-sans overflow-hidden"
+      >
       <div className="flex flex-col border-b-2 border-gray-400 shrink-0 font-['Gulim','굴림',sans-serif]" style={{ backgroundColor: currentTheme.bg }}>
         {/* New Top Row */}
         <div className="flex items-center justify-start gap-2 px-4 py-1.5 border-b border-gray-300 bg-[#f0f0f0]">
@@ -3305,8 +3339,7 @@ export default function App() {
           <button 
             onClick={() => {
               setActiveTopMenu('E.M.R');
-              if (selectedPatientId) setActiveTab('admission');
-              else setActiveTab('none');
+              setActiveTab('admission');
             }}
             className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === 'E.M.R' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
@@ -3315,7 +3348,7 @@ export default function App() {
           <button 
             onClick={() => {
               setActiveTopMenu('간호');
-              setActiveTab('none');
+              setActiveTab('nursing');
             }}
             className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '간호' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
@@ -3398,7 +3431,10 @@ export default function App() {
                     label={subTab} 
                     count={0} 
                     active={formData.nursingSubTab === subTab} 
-                    onClick={() => updateField('nursingSubTab', subTab)} 
+                    onClick={() => {
+                      setActiveTab('nursing');
+                      updateField('nursingSubTab', subTab);
+                    }} 
                     theme={currentTheme} 
                   />
                 ))}
@@ -3855,6 +3891,7 @@ export default function App() {
         <Calculator onClose={() => setShowCalculator(false)} />
       )}
     </div>
+    </ErrorBoundary>
   );
 }
 
