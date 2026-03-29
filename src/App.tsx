@@ -712,7 +712,7 @@ const ACCOUNTS: Record<string, { pw: string, name: string }> = {
   'jiapark84': { pw: 'haesol123', name: '박지아' },
   'leegarden': { pw: 'haesol123', name: '이정원' },
   'jeongout7': { pw: 'haesol123', name: '이정인' },
-  'peppersun': { pw: 'haesol123', name: '순후추' },
+  'huchu': { pw: 'haesol123', name: '순후추' },
   'dohahado': { pw: 'haesol123', name: '도하' },
   'taehyns64': { pw: 'haesol123', name: '박태현' },
   'siuuhyun': { pw: 'haesol123', name: '이수현' },
