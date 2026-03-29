@@ -53,7 +53,8 @@ import {
   ChevronDown,
   Edit,
   ChevronsLeft,
-  RefreshCw
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 import { db } from './firebase';
 import { 
@@ -3650,6 +3651,12 @@ export default function App() {
             className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
           >
             <Edit size={16} /> 수정
+          </button>
+          <button 
+            onClick={() => window.open('https://kcdcode.kr', '_blank')}
+            className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
+          >
+            <ExternalLink size={16} /> 진단코드
           </button>
         </div>
         
