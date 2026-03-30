@@ -53,6 +53,7 @@ import {
   ChevronDown,
   Edit,
   ChevronsLeft,
+  ChevronsRight,
   RefreshCw,
   ExternalLink
 } from 'lucide-react';
@@ -885,6 +886,57 @@ export default function App() {
   const [showCalculator, setShowCalculator] = useState(false);
   const [printType, setPrintType] = useState<TabType | null>(null);
   const lastSyncedIdRef = useRef<string | null>(null);
+
+  const [patientListWidth, setPatientListWidth] = useState(320);
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(384);
+  const [rightSidebarTopHeight, setRightSidebarTopHeight] = useState(400);
+  const [isPatientListCollapsed, setIsPatientListCollapsed] = useState(false);
+  const [isResizingLeft, setIsResizingLeft] = useState(false);
+  const [isResizingRight, setIsResizingRight] = useState(false);
+  const [isResizingRightVertical, setIsResizingRightVertical] = useState(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizingLeft) {
+        const newWidth = e.clientX;
+        if (newWidth > 50 && newWidth < 600) {
+          setPatientListWidth(newWidth);
+        }
+      }
+      if (isResizingRight) {
+        const newWidth = window.innerWidth - e.clientX;
+        if (newWidth > 50 && newWidth < 800) {
+          setRightSidebarWidth(newWidth);
+        }
+      }
+      if (isResizingRightVertical) {
+        const sidebar = document.getElementById('right-sidebar');
+        if (sidebar) {
+          const rect = sidebar.getBoundingClientRect();
+          const newHeight = e.clientY - rect.top;
+          if (newHeight > 100 && newHeight < rect.height - 100) {
+            setRightSidebarTopHeight(newHeight);
+          }
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingLeft(false);
+      setIsResizingRight(false);
+      setIsResizingRightVertical(false);
+    };
+
+    if (isResizingLeft || isResizingRight) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingLeft, isResizingRight]);
 
   const [showAssessmentTool, setShowAssessmentTool] = useState(false);
   const [assessmentTab, setAssessmentTab] = useState<'NRS' | 'FLACC'>('NRS');
@@ -3497,129 +3549,151 @@ export default function App() {
     </div>
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-80 bg-white border-r-2 border-black flex flex-col">
+        <div 
+          style={{ width: isPatientListCollapsed ? '30px' : `${patientListWidth}px` }}
+          className="bg-white border-r-2 border-black flex flex-col transition-all duration-300 relative shrink-0"
+        >
           <div 
             style={{ backgroundColor: currentTheme.color }}
-            className="text-white px-2 py-1 flex items-center justify-between font-bold border-b-2 border-black h-[30px] text-sm"
+            className="text-white px-2 py-1 flex items-center justify-between font-bold border-b-2 border-black h-[30px] text-sm shrink-0"
           >
-            <div className="flex items-center gap-1">
-              <FileText size={16} />
-              <span>환자리스트</span>
-            </div>
-            <ChevronsLeft size={16} className="cursor-pointer" />
-          </div>
-          
-          <div className="bg-[#E5F0FA] border-b-2 border-black">
-            {/* Department Box */}
-            <div className="flex items-center gap-1 p-1 border-b border-[#A0C0E0]">
-              <div className="border border-[#A0C0E0] bg-white px-2 py-0.5 text-[11px] font-bold text-[#333] h-[22px] flex items-center">
-                병동
+            {!isPatientListCollapsed && (
+              <div className="flex items-center gap-1 overflow-hidden whitespace-nowrap">
+                <FileText size={16} />
+                <span>환자리스트</span>
               </div>
-              <select 
-                value={selectedDeptFilter}
-                onChange={(e) => setSelectedDeptFilter(e.target.value)}
-                className="flex-1 border border-[#A0C0E0] p-0.5 text-[11px] focus:outline-none h-[22px] font-bold"
-              >
-                {DEPARTMENTS.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
-              <button className="flex items-center gap-1 border border-[#A0C0E0] bg-white px-2 py-0.5 text-[11px] font-bold text-[#333] hover:bg-[#F0F0F0] h-[22px]">
-                <RefreshCw size={10} className="text-blue-600" />
-                새로고침
-              </button>
-            </div>
-
-            {/* Search */}
-            <div className="flex items-center gap-2 p-1 border-b border-[#A0C0E0]">
-              <div className="flex items-center gap-2 text-xs text-[#333] font-bold whitespace-nowrap">
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input type="checkbox" checked={filterByAll} onChange={(e) => setFilterByAll(e.target.checked)} className="accent-black w-3 h-3" /> 전체
-                </label>
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input type="checkbox" checked={filterByName} onChange={(e) => setFilterByName(e.target.checked)} className="accent-black w-3 h-3" /> 이름
-                </label>
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input type="checkbox" checked={filterByDept} onChange={(e) => setFilterByDept(e.target.checked)} className="accent-black w-3 h-3" /> 과
-                </label>
-              </div>
-              <div className="flex-1 relative flex items-center">
-                <input 
-                  type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  spellCheck="false"
-                  className="w-full border border-[#A0C0E0] pl-1 pr-6 py-0.5 text-xs focus:outline-none h-[24px]"
-                />
-                <Search className="absolute right-1 text-[#555]" size={14} />
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex">
-              <button 
-                onClick={() => setPatientTab('all')}
-                className={`flex-1 py-1 text-[11px] font-bold ${patientTab === 'all' ? 'bg-white border-b-2 border-x border-[#A0C0E0] text-black' : 'bg-[#D0E0F0] text-[#555]'}`}
-              >
-                전체환자
-              </button>
-              <button 
-                onClick={() => setPatientTab('er')}
-                className={`flex-1 py-1 text-[11px] font-bold ${patientTab === 'er' ? 'bg-white border-b-2 border-x border-[#A0C0E0] text-black' : 'bg-[#D0E0F0] text-[#555]'}`}
-              >
-                응급실환자
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {filteredPatients.map(patient => (
-              <button 
-                key={patient.id}
-                onClick={() => {
-                  if (activeTab === 'other_record') return;
-                  setSelectedPatientId(patient.id);
-                  if (activeTopMenu === '간호') setActiveTab('nursing');
-                  else setActiveTab('admission');
-                }}
-                disabled={activeTab === 'other_record'}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setContextMenu({
-                    x: e.clientX,
-                    y: e.clientY,
-                    patientId: patient.id
-                  });
-                }}
-                className={`w-full text-left p-3 border-b border-gray-200 transition-colors ${
-                  activeTab === 'other_record' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
-                } ${
-                  selectedPatientId === patient.id ? 'bg-slate-100 border-l-4 border-[#000080]' : ''
-                }`}
-              >
-                <div className="font-bold text-sm">
-                  {patient.name} / {patient.chartNo} / {patient.gender} / {patient.dept}
-                </div>
-              </button>
-            ))}
-            {filteredPatients.length === 0 && (
-              <div className="p-4 text-center text-gray-500 text-sm">환자가 없습니다.</div>
             )}
+            <button 
+              onClick={() => setIsPatientListCollapsed(!isPatientListCollapsed)}
+              className="hover:bg-black/20 p-0.5 rounded transition-colors"
+            >
+              {isPatientListCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+            </button>
           </div>
           
-          {/* Color Legend */}
-          {activeTab === 'other_record' && (
-            <div className="p-2 border-t-2 border-black bg-white text-xs shrink-0">
-              <div className="grid grid-cols-2 gap-y-2 gap-x-1">
-                {RECORD_COLORS.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-1">
-                    <div className="w-4 h-4 border border-black" style={{ backgroundColor: item.color }}></div>
-                    <span>{item.label}</span>
+          {!isPatientListCollapsed && (
+            <>
+              <div className="bg-[#E5F0FA] border-b-2 border-black shrink-0">
+                {/* Department Box */}
+                <div className="flex items-center gap-1 p-1 border-b border-[#A0C0E0]">
+                  <div className="border border-[#A0C0E0] bg-white px-2 py-0.5 text-[11px] font-bold text-[#333] h-[22px] flex items-center">
+                    병동
                   </div>
-                ))}
+                  <select 
+                    value={selectedDeptFilter}
+                    onChange={(e) => setSelectedDeptFilter(e.target.value)}
+                    className="flex-1 border border-[#A0C0E0] p-0.5 text-[11px] focus:outline-none h-[22px] font-bold"
+                  >
+                    {DEPARTMENTS.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                  <button className="flex items-center gap-1 border border-[#A0C0E0] bg-white px-2 py-0.5 text-[11px] font-bold text-[#333] hover:bg-[#F0F0F0] h-[22px]">
+                    <RefreshCw size={10} className="text-blue-600" />
+                    새로고침
+                  </button>
+                </div>
+
+                {/* Search */}
+                <div className="flex items-center gap-2 p-1 border-b border-[#A0C0E0]">
+                  <div className="flex items-center gap-2 text-xs text-[#333] font-bold whitespace-nowrap">
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input type="checkbox" checked={filterByAll} onChange={(e) => setFilterByAll(e.target.checked)} className="accent-black w-3 h-3" /> 전체
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input type="checkbox" checked={filterByName} onChange={(e) => setFilterByName(e.target.checked)} className="accent-black w-3 h-3" /> 이름
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input type="checkbox" checked={filterByDept} onChange={(e) => setFilterByDept(e.target.checked)} className="accent-black w-3 h-3" /> 과
+                    </label>
+                  </div>
+                  <div className="flex-1 relative flex items-center">
+                    <input 
+                      type="text" 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      spellCheck="false"
+                      className="w-full border border-[#A0C0E0] pl-1 pr-6 py-0.5 text-xs focus:outline-none h-[24px]"
+                    />
+                    <Search className="absolute right-1 text-[#555]" size={14} />
+                  </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex">
+                  <button 
+                    onClick={() => setPatientTab('all')}
+                    className={`flex-1 py-1 text-[11px] font-bold ${patientTab === 'all' ? 'bg-white border-b-2 border-x border-[#A0C0E0] text-black' : 'bg-[#D0E0F0] text-[#555]'}`}
+                  >
+                    전체환자
+                  </button>
+                  <button 
+                    onClick={() => setPatientTab('er')}
+                    className={`flex-1 py-1 text-[11px] font-bold ${patientTab === 'er' ? 'bg-white border-b-2 border-x border-[#A0C0E0] text-black' : 'bg-[#D0E0F0] text-[#555]'}`}
+                  >
+                    응급실환자
+                  </button>
+                </div>
               </div>
-            </div>
+              <div className="flex-1 overflow-y-auto">
+                {filteredPatients.map(patient => (
+                  <button 
+                    key={patient.id}
+                    onClick={() => {
+                      if (activeTab === 'other_record') return;
+                      setSelectedPatientId(patient.id);
+                      if (activeTopMenu === '간호') setActiveTab('nursing');
+                      else setActiveTab('admission');
+                    }}
+                    disabled={activeTab === 'other_record'}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setContextMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        patientId: patient.id
+                      });
+                    }}
+                    className={`w-full text-left p-3 border-b border-gray-200 transition-colors ${
+                      activeTab === 'other_record' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
+                    } ${
+                      selectedPatientId === patient.id ? 'bg-slate-100 border-l-4 border-[#000080]' : ''
+                    }`}
+                  >
+                    <div className="font-bold text-sm">
+                      {patient.name} / {patient.chartNo} / {patient.gender} / {patient.dept}
+                    </div>
+                  </button>
+                ))}
+                {filteredPatients.length === 0 && (
+                  <div className="p-4 text-center text-gray-500 text-sm">환자가 없습니다.</div>
+                )}
+              </div>
+              
+              {/* Color Legend */}
+              {activeTab === 'other_record' && (
+                <div className="p-2 border-t-2 border-black bg-white text-xs shrink-0">
+                  <div className="grid grid-cols-2 gap-y-2 gap-x-1">
+                    {RECORD_COLORS.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-1">
+                        <div className="w-4 h-4 border border-black" style={{ backgroundColor: item.color }}></div>
+                        <span>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
+
+        {/* Left Resize Handle */}
+        {!isPatientListCollapsed && (
+          <div 
+            className="w-1 bg-gray-300 hover:bg-blue-400 cursor-col-resize transition-colors shrink-0"
+            onMouseDown={() => setIsResizingLeft(true)}
+          />
+        )}
 
         <div className="flex-1 flex flex-col bg-[#D0D0D0] overflow-hidden">
           {renderContent()}
@@ -3648,16 +3722,19 @@ export default function App() {
             <Save size={16} /> 저장
           </button>
           <button 
+            onClick={handleSave}
             className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
           >
             <Edit size={16} /> 수정
           </button>
-          <button 
-            onClick={() => window.open('https://kcdcode.kr', '_blank')}
-            className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
+          <a 
+            href="https://kcdcode.kr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0] no-underline text-black"
           >
             <ExternalLink size={16} /> 진단코드
-          </button>
+          </a>
         </div>
         
         <div className="flex items-center border border-[#707070] bg-white ml-3 h-[34px]">
