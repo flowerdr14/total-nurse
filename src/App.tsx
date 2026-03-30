@@ -774,7 +774,7 @@ const TabButton: React.FC<{ label: string, count: number, active: boolean, onCli
 );
 
 const InputField = ({ label, value, onChange, readOnly = false, labelWidth = "w-20" }: { label: string, value?: string | number, onChange?: (val: string) => void, readOnly?: boolean, labelWidth?: string }) => (
-  <div className="flex items-center gap-2 mb-1">
+  <div className="flex items-center gap-4">
     <span className={`${labelWidth} font-bold text-sm text-gray-700 shrink-0`}>{label}</span>
     <input 
       type="text" 
@@ -782,7 +782,7 @@ const InputField = ({ label, value, onChange, readOnly = false, labelWidth = "w-
       onChange={(e) => onChange?.(e.target.value)}
       readOnly={readOnly}
       spellCheck="false"
-      className="flex-1 border-2 border-black px-2 py-0.5 text-sm focus:outline-none"
+      className="flex-1 border-b border-black px-1 py-0.5 text-sm focus:outline-none"
     />
   </div>
 );
@@ -1518,7 +1518,11 @@ export default function App() {
   );
 
   const renderRightSidebar = (showSoapAdd: boolean = true) => (
-    <div className="w-[400px] border-2 border-black p-4 flex flex-col gap-2 shrink-0 overflow-y-auto">
+    <div className="w-[500px] border-2 border-black p-4 flex flex-col gap-6 shrink-0 overflow-y-auto">
+      <div className="mb-4">
+        <div className="text-xl font-bold text-center mb-1">경과기록지</div>
+        <div className="border-b-2 border-black w-full"></div>
+      </div>
       <div className="bg-[#999] text-white px-3 py-1 font-bold text-lg mb-2">환자기본정보</div>
 
       <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} />
@@ -1713,13 +1717,30 @@ export default function App() {
 
       {showSoapAdd && (
         <div className="mt-4 border-t-2 border-black pt-4">
-          <div className="bg-gray-700 text-white px-3 py-1 font-bold text-sm mb-2">경과기록</div>
-          <div className="flex flex-col gap-2">
+          <div className="bg-[#BDBDBD] text-black font-bold px-3 py-1 text-lg text-center mb-4">
+            Progress
+          </div>
+          <div className="grid grid-cols-3 gap-2">
             <button 
               onClick={addSoapBlock}
-              className="py-3 bg-gray-300 border-2 border-black font-bold text-lg hover:bg-gray-400 flex flex-col items-center"
+              className="h-32 bg-[#BDBDBD] border-2 border-black flex flex-col items-center justify-center font-bold hover:bg-gray-400"
             >
-              <span>SOAP 추가</span>
+              <div className="text-xl">SOAP</div>
+              <div className="text-xl">추가</div>
+            </button>
+            <button 
+              onClick={addSoapBlock}
+              className="h-32 bg-[#BDBDBD] border-2 border-black flex flex-col items-center justify-center font-bold hover:bg-gray-400"
+            >
+              <div className="text-xl">SOAP</div>
+              <div className="text-xl">박스</div>
+            </button>
+            <button 
+              onClick={addSoapBlock}
+              className="h-32 bg-[#BDBDBD] border-2 border-black flex flex-col items-center justify-center font-bold hover:bg-gray-400"
+            >
+              <div className="text-xl">EXAM</div>
+              <div className="text-xl">박스</div>
             </button>
           </div>
         </div>
@@ -1738,7 +1759,7 @@ export default function App() {
     switch (activeTab) {
       case 'admission':
         return (
-          <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
+          <div className="flex-1 flex gap-10 p-4 bg-white overflow-hidden">
             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
               <div className="border-2 border-black py-1 px-2 bg-gray-100 flex items-center gap-4 shrink-0">
                 <span className="font-bold">입원일</span>
@@ -1759,7 +1780,7 @@ export default function App() {
         );
       case 'surgery':
         return (
-          <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
+          <div className="flex-1 flex gap-10 p-4 bg-white overflow-hidden">
             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
               <div className="border-2 border-black p-2 bg-gray-100 grid grid-cols-2 gap-x-4 gap-y-2 shrink-0">
                 <div className="flex items-center gap-2">
@@ -1831,7 +1852,7 @@ export default function App() {
         );
       case 'consult':
         return (
-          <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
+          <div className="flex-1 flex gap-10 p-4 bg-white overflow-hidden">
             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
               <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
                 <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10 flex justify-between items-center">
@@ -1916,7 +1937,7 @@ export default function App() {
         );
       case 'discharge':
         return (
-          <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
+          <div className="flex-1 flex gap-10 p-4 bg-white overflow-hidden">
             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
               <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
                 <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">
@@ -1949,7 +1970,7 @@ export default function App() {
         );
       case 'other_record':
         return (
-          <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
+          <div className="flex-1 flex gap-10 p-4 bg-white overflow-hidden">
             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
               <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
                 <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10 flex justify-between items-center">
@@ -2104,7 +2125,7 @@ export default function App() {
         );
       case 'other_hospital':
         return (
-          <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
+          <div className="flex-1 flex gap-10 p-4 bg-white overflow-hidden">
             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
               <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
                 <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">
@@ -2385,11 +2406,15 @@ export default function App() {
         );
       case 'er':
         return (
-          <div className="flex-1 flex gap-4 p-4 bg-white overflow-hidden">
-            <div className="w-80 flex flex-col gap-4 shrink-0 overflow-y-auto pr-2">
+          <div className="flex-1 flex gap-10 p-4 bg-white overflow-hidden">
+            <div className="w-[450px] flex flex-col gap-4 shrink-0 overflow-y-auto pr-2">
               <div className="border-2 border-black flex flex-col">
+                <div className="mb-4">
+                  <div className="text-xl font-bold text-center mb-1">경과기록지</div>
+                  <div className="border-b-2 border-black w-full"></div>
+                </div>
                 <div className="bg-[#5a9a9a] text-white font-bold p-2 text-lg">환자기본정보</div>
-                <div className="p-4 flex flex-col gap-2">
+                <div className="p-4 flex flex-col gap-6">
                   <InputField label="성명" value={formData.name} onChange={(v) => updateField('name', v)} />
                   <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} />
                   <InputField label="진료과" value={formData.dept} onChange={(v) => updateField('dept', v)} />
@@ -3128,16 +3153,20 @@ export default function App() {
 
     return (
       <div className="flex-1 flex flex-col bg-white overflow-hidden">
-        <div className="flex-1 flex gap-4 p-4 overflow-hidden">
+        <div className="flex-1 flex gap-10 p-4 overflow-hidden">
           {/* Center Column */}
           <div className="flex-1 flex flex-col gap-4 overflow-hidden">
             {renderSubTabContent()}
           </div>
 
           {/* Right Sidebar: 환자기본정보 */}
-          <div className="w-96 border-2 border-black flex flex-col shrink-0 bg-white overflow-y-auto">
+          <div className="w-[500px] border-2 border-black flex flex-col shrink-0 bg-white overflow-y-auto">
+            <div className="mb-4">
+              <div className="text-xl font-bold text-center mb-1">경과기록지</div>
+              <div className="border-b-2 border-black w-full"></div>
+            </div>
             <div className="bg-[#999] text-white px-3 py-1 font-bold text-lg mb-2">환자기본정보</div>
-            <div className="p-4 flex flex-col gap-2">
+            <div className="p-4 flex flex-col gap-6">
               <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} labelWidth="w-24" />
               <InputField label="병실" value={formData.room} onChange={(v) => updateField('room', v)} labelWidth="w-24" />
               <InputField label="전문의" value={formData.doctor} onChange={(v) => updateField('doctor', v)} labelWidth="w-24" />
