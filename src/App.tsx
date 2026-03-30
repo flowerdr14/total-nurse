@@ -142,7 +142,9 @@ interface Patient {
   bloodType: string;
   dx: string;
   cc: string;
-  onset: string;
+  onsetYear: string;
+  onsetMonth: string;
+  onsetDay: string;
   address: string;
   dobYear: string;
   dobMonth: string;
@@ -574,7 +576,9 @@ const INITIAL_FORM_DATA: Patient = {
   bloodType: '',
   dx: '',
   cc: '',
-  onset: '',
+  onsetYear: '2024',
+  onsetMonth: '01',
+  onsetDay: '01',
   address: '',
   dobYear: '2024',
   dobMonth: '01',
@@ -1533,7 +1537,36 @@ export default function App() {
       <InputField label="거주지" value={formData.address} onChange={(v) => updateField('address', v)} />
       <InputField label="Dx" value={formData.dx} onChange={(v) => updateField('dx', v)} />
       <InputField label="C.C" value={formData.cc} onChange={(v) => updateField('cc', v)} />
-      <InputField label="On Set" value={formData.onset} onChange={(v) => updateField('onset', v)} />
+      <div className="flex items-center gap-1 text-sm font-bold">
+        <span className="w-20">On Set</span>
+        <select 
+          value={formData.onsetYear} 
+          onChange={(e) => updateField('onsetYear', e.target.value)}
+          className="border-2 border-black px-1"
+        >
+          {Array.from({ length: 2101 - 1900 }, (_, i) => 1900 + i).map(y => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select> <span>년</span>
+        <select 
+          value={formData.onsetMonth} 
+          onChange={(e) => updateField('onsetMonth', e.target.value)}
+          className="border-2 border-black px-1"
+        >
+          {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select> <span>월</span>
+        <select 
+          value={formData.onsetDay} 
+          onChange={(e) => updateField('onsetDay', e.target.value)}
+          className="border-2 border-black px-1"
+        >
+          {Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(d => (
+            <option key={d} value={d}>{d}</option>
+          ))}
+        </select> <span>일</span>
+      </div>
       <InputField label="혈액형" value={formData.bloodType} onChange={(v) => updateField('bloodType', v)} />
       <InputField label="진료과" value={formData.dept} onChange={(v) => updateField('dept', v)} />
       <div className="flex items-center gap-1 text-sm font-bold">
@@ -3175,7 +3208,38 @@ export default function App() {
               <InputField label="거주지" value={formData.address} onChange={(v) => updateField('address', v)} labelWidth="w-24" />
               <InputField label="Dx" value={formData.dx} onChange={(v) => updateField('dx', v)} labelWidth="w-24" />
               <InputField label="C.C" value={formData.cc} onChange={(v) => updateField('cc', v)} labelWidth="w-24" />
-              <InputField label="On Set" value={formData.onset} onChange={(v) => updateField('onset', v)} labelWidth="w-24" />
+              <div className="flex items-center gap-2 text-sm font-bold">
+                <span className="w-24">On Set</span>
+                <div className="flex items-center gap-1">
+                  <select 
+                    value={formData.onsetYear} 
+                    onChange={(e) => updateField('onsetYear', e.target.value)}
+                    className="border-2 border-black px-1"
+                  >
+                    {Array.from({ length: 2101 - 1900 }, (_, i) => 1900 + i).map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select> <span>년</span>
+                  <select 
+                    value={formData.onsetMonth} 
+                    onChange={(e) => updateField('onsetMonth', e.target.value)}
+                    className="border-2 border-black px-1"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select> <span>월</span>
+                  <select 
+                    value={formData.onsetDay} 
+                    onChange={(e) => updateField('onsetDay', e.target.value)}
+                    className="border-2 border-black px-1"
+                  >
+                    {Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select> <span>일</span>
+                </div>
+              </div>
               <InputField label="혈액형" value={formData.bloodType} onChange={(v) => updateField('bloodType', v)} labelWidth="w-24" />
               <InputField label="진료과" value={formData.dept} onChange={(v) => updateField('dept', v)} labelWidth="w-24" />
               <div className="flex items-center gap-2 text-sm font-bold">
@@ -4166,7 +4230,7 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
               ['거주지', patient.address],
               ['Dx', patient.dx],
               ['C.C', patient.cc],
-              ['On Set', patient.onset],
+              ['On Set', `${patient.onsetYear}-${patient.onsetMonth}-${patient.onsetDay}`],
               ['혈액형', patient.bloodType],
               ['진료과', patient.dept],
               ['생년월일', `${patient.dobYear}-${patient.dobMonth}-${patient.dobDay}`],
