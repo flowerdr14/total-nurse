@@ -1753,27 +1753,13 @@ export default function App() {
           <div className="bg-[#BDBDBD] text-black font-bold px-3 py-1 text-lg text-center mb-4">
             Progress
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             <button 
               onClick={addSoapBlock}
               className="h-32 bg-[#BDBDBD] border-2 border-black flex flex-col items-center justify-center font-bold hover:bg-gray-400"
             >
               <div className="text-xl">SOAP</div>
               <div className="text-xl">추가</div>
-            </button>
-            <button 
-              onClick={addSoapBlock}
-              className="h-32 bg-[#BDBDBD] border-2 border-black flex flex-col items-center justify-center font-bold hover:bg-gray-400"
-            >
-              <div className="text-xl">SOAP</div>
-              <div className="text-xl">박스</div>
-            </button>
-            <button 
-              onClick={addSoapBlock}
-              className="h-32 bg-[#BDBDBD] border-2 border-black flex flex-col items-center justify-center font-bold hover:bg-gray-400"
-            >
-              <div className="text-xl">EXAM</div>
-              <div className="text-xl">박스</div>
             </button>
           </div>
         </div>
