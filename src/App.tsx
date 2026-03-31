@@ -3310,12 +3310,24 @@ export default function App() {
                 <div className="flex flex-col gap-2 mt-2 px-1">
                   <div className="flex items-center gap-2">
                     <span className="w-16 font-bold">HOD -</span>
-                    <input type="date" value={formData.admissionDate} onChange={(e) => updateField('admissionDate', e.target.value)} className="border-2 border-black px-1 h-8 focus:outline-none flex-1 text-sm" />
+                    <input 
+                      type="date" 
+                      value={formData.admissionDate} 
+                      onChange={(e) => updateField('admissionDate', e.target.value)} 
+                      disabled={!!formData.dischargeDate}
+                      className="border-2 border-black px-1 h-8 focus:outline-none flex-1 text-sm disabled:bg-gray-200" 
+                    />
                     <span className="w-12 text-center font-bold">{calculateDays(formData.admissionDate, true)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-16 font-bold">POD -</span>
-                    <input type="date" value={formData.surgeryDate} onChange={(e) => updateField('surgeryDate', e.target.value)} className="border-2 border-black px-1 h-8 focus:outline-none flex-1 text-sm" />
+                    <input 
+                      type="date" 
+                      value={formData.surgeryDate} 
+                      onChange={(e) => updateField('surgeryDate', e.target.value)} 
+                      disabled={!!formData.dischargeDate}
+                      className="border-2 border-black px-1 h-8 focus:outline-none flex-1 text-sm disabled:bg-gray-200" 
+                    />
                     <span className="w-12 text-center font-bold">{calculateDays(formData.surgeryDate, false)}</span>
                   </div>
                 </div>
