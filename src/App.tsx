@@ -84,6 +84,10 @@ interface SoapBlock {
   o: string;
   a: string;
   p: string;
+  lastModified?: {
+    time: string;
+    name: string;
+  };
 }
 
 interface NursingRecord {
@@ -1348,7 +1352,14 @@ export default function App() {
       'soapBlocks';
     setFormData(prev => {
       const newBlocks = [...(prev[blockField] as SoapBlock[])];
-      newBlocks[index] = { ...newBlocks[index], [field]: value };
+      newBlocks[index] = { 
+        ...newBlocks[index], 
+        [field]: value,
+        lastModified: {
+          time: new Date().toLocaleString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          name: ACCOUNTS[loginId]?.name || loginId
+        }
+      };
       return { ...prev, [blockField]: newBlocks };
     });
   };
@@ -1380,7 +1391,12 @@ export default function App() {
       'soapBlocks';
     setFormData(prev => {
       const newBlocks = [...(prev[blockField] as SoapBlock[])];
-      newBlocks.splice(index + 1, 0, { ...newBlocks[index] });
+      const newBlock = { ...newBlocks[index] };
+      newBlock.lastModified = {
+        time: new Date().toLocaleString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        name: ACCOUNTS[loginId]?.name || loginId
+      };
+      newBlocks.splice(index + 1, 0, newBlock);
       return { ...prev, [blockField]: newBlocks };
     });
   };
@@ -1477,19 +1493,26 @@ export default function App() {
                     <td className="w-32 bg-[#C0C0C0] border-r-2 border-black p-2 text-center font-bold text-gray-700">
                       관리
                     </td>
-                    <td className="p-2 flex justify-end gap-2">
-                      <button 
-                        onClick={() => duplicateSoapBlock(idx)}
-                        className="bg-gray-400 text-white px-4 py-1 rounded-lg font-bold hover:bg-gray-500 transition-colors text-sm"
-                      >
-                        복제
-                      </button>
-                      <button 
-                        onClick={() => removeSoapBlock(idx)}
-                        className="bg-gray-400 text-white px-4 py-1 rounded-lg font-bold hover:bg-gray-500 transition-colors text-sm"
-                      >
-                        삭제
-                      </button>
+                    <td className="p-2 flex justify-between items-center gap-2">
+                      {block.lastModified && (
+                        <span className="text-xs text-gray-500 font-bold">
+                          [저장됨: {block.lastModified.time} / {block.lastModified.name}]
+                        </span>
+                      )}
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => duplicateSoapBlock(idx)}
+                          className="bg-gray-400 text-white px-4 py-1 rounded-lg font-bold hover:bg-gray-500 transition-colors text-sm"
+                        >
+                          복제
+                        </button>
+                        <button 
+                          onClick={() => removeSoapBlock(idx)}
+                          className="bg-gray-400 text-white px-4 py-1 rounded-lg font-bold hover:bg-gray-500 transition-colors text-sm"
+                        >
+                          삭제
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -3880,7 +3903,17 @@ export default function App() {
             </div>
 
             <div className="mb-6 pt-4 border-t-2 border-black">
-              <p className="font-bold mb-1 text-xs text-gray-500">사용자 정보</p>
+              <div className="flex justify-between items-center mb-2">
+                <p className="font-bold text-xs text-gray-500">사용자 정보</p>
+                <a 
+                  href="https://docs.google.com/document/d/1kOBFq4SKzBeLYG_QGgTMxX4fK5IyV9yZDW7n85OJZH8/edit?usp=sharing" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 font-bold text-xs hover:underline"
+                >
+                  사용법
+                </a>
+              </div>
               <div className="flex items-center justify-between">
                 <p className="font-black text-base">
                   {ACCOUNTS[loginId]?.name || loginId} ({loginId})
