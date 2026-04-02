@@ -5230,7 +5230,7 @@ export default function App() {
             {NURSING_SIDEBAR_ITEMS.map(item => (
               <div key={item.id}>
                 <button
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-white hover:bg-white/10 transition-colors text-[13px] text-left ${formData.nursingSubTab === item.label ? 'bg-white/20 font-bold' : ''}`}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/10 transition-colors text-[13px] text-left ${currentTheme.name === 'Pink' ? 'text-black' : 'text-white'} ${formData.nursingSubTab === item.label ? 'bg-white/20 font-bold' : ''}`}
                   onClick={() => {
                     if (item.hasSub) {
                       setNursingSidebarOpen(prev => ({ ...prev, [item.id]: !prev[item.id] }));
@@ -5254,7 +5254,7 @@ export default function App() {
                     {item.subItems.map(sub => (
                       <div key={sub.id}>
                         <button
-                          className={`w-full flex items-center gap-3 pl-10 pr-4 py-2 text-white/80 hover:bg-white/10 transition-colors text-[12px] text-left ${formData.nursingSubTab === sub.label ? 'bg-white/20 font-bold text-white' : ''}`}
+                          className={`w-full flex items-center gap-3 pl-10 pr-4 py-2 hover:bg-white/10 transition-colors text-[12px] text-left ${currentTheme.name === 'Pink' ? (formData.nursingSubTab === sub.label ? 'bg-white/20 font-bold text-black' : 'text-black/80') : (formData.nursingSubTab === sub.label ? 'bg-white/20 font-bold text-white' : 'text-white/80')}`}
                           onClick={() => {
                             if (sub.hasSub) {
                               setNursingSidebarOpen(prev => ({ ...prev, [sub.id]: !prev[sub.id] }));
@@ -5278,7 +5278,7 @@ export default function App() {
                             {sub.subItems.map(ss => (
                               <button
                                 key={ss.id}
-                                className={`w-full flex items-center gap-3 pl-14 pr-4 py-1.5 text-white/60 hover:bg-white/10 transition-colors text-[11px] text-left ${formData.nursingSubTab === ss.label ? 'bg-white/20 font-bold text-white' : ''}`}
+                                className={`w-full flex items-center gap-3 pl-14 pr-4 py-1.5 hover:bg-white/10 transition-colors text-[11px] text-left ${currentTheme.name === 'Pink' ? (formData.nursingSubTab === ss.label ? 'bg-white/20 font-bold text-black' : 'text-black/60') : (formData.nursingSubTab === ss.label ? 'bg-white/20 font-bold text-white' : 'text-white/60')}`}
                                 onClick={() => {
                                   updateField('nursingSubTab', ss.label);
                                   setNursingIsWriting(false);
