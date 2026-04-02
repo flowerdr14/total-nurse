@@ -3923,92 +3923,19 @@ export default function App() {
           );
         case '기록작성':
           return (
-            <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
-              <div className="border-2 border-black flex flex-col bg-white">
-                <div className="flex items-center justify-center gap-2 p-4 border-b-2 border-black">
-                  <FileText size={32} />
-                  <span className="text-2xl font-black">기록지</span>
+            <div className="flex h-full gap-4 overflow-hidden">
+              <div className="flex-1 flex flex-col gap-4 overflow-y-auto border-r-2 border-black pr-4">
+                <div className="border-2 border-black p-4 bg-white">
+                  <h2 className="font-bold text-lg mb-2">처방 내역</h2>
+                  <div className="whitespace-pre-wrap text-sm">{formData.erOrder || '처방 내역이 없습니다.'}</div>
                 </div>
-                <div className="flex p-4 gap-12">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 font-bold text-lg">
-                      <ChevronDown size={20} /> 환자 안전 사고
-                    </div>
-                    <div className="flex flex-col gap-1 ml-8 text-base font-bold">
-                      {['낙상기록지', '이탈기록지', '욕창기록지'].map(cat => (
-                        <button key={cat} onClick={() => updateField('nursingCategory', cat)} className={`flex items-center gap-2 hover:text-blue-600 ${formData.nursingCategory === cat ? 'text-blue-600' : ''}`}>
-                          <ChevronDown size={16} className="rotate-[-90deg]" /> {cat}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 font-bold text-lg">
-                      <ChevronDown size={20} /> 폭력 및 보안
-                    </div>
-                    <div className="flex flex-col gap-1 ml-8 text-base font-bold">
-                      {['폭행', '보호자 문제'].map(cat => (
-                        <button key={cat} onClick={() => updateField('nursingCategory', cat)} className={`flex items-center gap-2 hover:text-blue-600 ${formData.nursingCategory === cat ? 'text-blue-600' : ''}`}>
-                          <ChevronDown size={16} className="rotate-[-90deg]" /> {cat}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <div className="border-2 border-black p-4 bg-white">
+                  <h2 className="font-bold text-lg mb-2">간호 기록 내역</h2>
+                  <div className="whitespace-pre-wrap text-sm">{formData.nursingNote || '작성된 간호기록이 없습니다.'}</div>
                 </div>
               </div>
-
-              <div className="border-2 border-black flex flex-col bg-white">
-                <div 
-                  style={{ backgroundColor: currentTheme.color }}
-                  className="p-2 border-b-2 border-black text-center text-xl font-black text-white"
-                >
-                  작성창
-                </div>
-                <table className="w-full border-collapse">
-                  <tbody>
-                    {[
-                      { id: 'occurTime', label: '발생일시' },
-                      { id: 'occurPlace', label: '발생장소' },
-                      { id: 'eventType', label: '사건유형' },
-                      { id: 'action', label: '즉각처치' },
-                      { id: 'reporter', label: '보고자 / 확인자' },
-                      { id: 'patientChange', label: '환자 상태 변화' },
-                    ].map((row) => (
-                      <tr key={row.id} className="border-b-2 border-black">
-                        <td 
-                          style={{ backgroundColor: currentTheme.color }}
-                          className="w-64 border-r-2 border-black p-4 text-center font-bold text-lg text-white"
-                        >
-                          {row.label}
-                        </td>
-                        <td className="p-0">
-                          <input 
-                            type="text"
-                            value={(currentNursingRecord as any)[row.id] || ''}
-                            onChange={(e) => updateNursingField(row.id as keyof NursingRecord, e.target.value)}
-                            className="w-full p-4 focus:outline-none text-base"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                    <tr>
-                      <td 
-                        style={{ backgroundColor: currentTheme.color }}
-                        className="w-64 border-r-2 border-black p-4 text-center font-bold text-lg text-white align-middle"
-                      >
-                        상세 내용
-                      </td>
-                      <td className="p-0">
-                        <AutoHeightTextarea 
-                          value={currentNursingRecord.detail}
-                          onChange={(e: any) => updateNursingField('detail', e.target.value)}
-                          className="w-full p-4 focus:outline-none block text-base"
-                          minHeight="200px"
-                        />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div className="flex-1 overflow-y-auto">
+                <NursingWriter patient={formData} onSave={(data) => updateField('nursingNote', data)} />
               </div>
             </div>
           );
@@ -4105,12 +4032,24 @@ export default function App() {
     };
 
     return (
-      <div className="flex-1 flex flex-col bg-white overflow-hidden">
-        <div className="flex-1 flex gap-10 p-4 overflow-hidden">
-          {/* Center Column */}
-          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-            {renderSubTabContent()}
-          </div>
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex gap-2 p-2 bg-gray-100 border-b-2 border-black">
+          {NURSING_SUB_TABS.map(tab => (
+            <button 
+              key={tab} 
+              onClick={() => updateField('nursingSubTab', tab)}
+              className={`px-4 py-2 font-bold border-2 border-black ${formData.nursingSubTab === tab ? 'bg-white' : 'bg-gray-300'}`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+        <div className="flex-1 overflow-hidden p-2">
+          {renderSubTabContent()}
+        </div>
+      </div>
+    );
+  };
 
           {/* Right Sidebar: 간호기록 작성 & 환자기본정보 */}
           <div className="w-[450px] border-2 border-black flex flex-col shrink-0 bg-white overflow-hidden">
@@ -4286,8 +4225,6 @@ export default function App() {
         </div>
       </div>
     );
-  };
-
     if (!isLoggedIn) {
       return (
         <div 
@@ -4618,7 +4555,9 @@ export default function App() {
                     onClick={() => {
                       if (activeTab === 'other_record') return;
                       setSelectedPatientId(patient.id);
-                      setShowPatientModal(true);
+                      if (activeTopMenu !== 'E.M.R') {
+                        setShowPatientModal(true);
+                      }
                       if (activeTopMenu === '간호') setActiveTab('nursing');
                       else setActiveTab('admission');
                     }}
