@@ -303,6 +303,28 @@ export interface Patient {
   domain?: string;
   class?: string;
   diagnosis?: string;
+  target?: string;
+  recorder?: string;
+  infoProvider?: string;
+  admissionTime?: string;
+  admissionBP?: string;
+  admissionBT?: string;
+  admissionHR?: string;
+  admissionRR?: string;
+  admissionSpO2?: string;
+  smokingStatus?: string;
+  drinkingStatus?: string;
+  religion?: string;
+  education?: string;
+  occupation?: string;
+  maritalStatus?: string;
+  livingArrangement?: string;
+  admissionDiagnosis?: string;
+  chiefComplaint?: string;
+  presentIllness?: string;
+  pastMedicalHistory?: string;
+  pastSurgicalHistory?: string;
+  allergies?: string;
   pressureUlcerRisk?: {
     sensoryPerception: number;
     moisture: number;
@@ -673,6 +695,22 @@ const INITIAL_FORM_DATA: Patient = {
   surgeryVital: '',
   admissionPath: '',
   admissionMethod: '',
+  admissionTime: '',
+  infoProvider: '',
+  recorder: '',
+  admissionBP: '',
+  admissionBT: '',
+  admissionHR: '',
+  admissionRR: '',
+  admissionSpO2: '',
+  smokingStatus: '',
+  drinkingStatus: '',
+  religion: '',
+  education: '',
+  occupation: '',
+  maritalStatus: '',
+  livingArrangement: '',
+  admissionDiagnosis: '',
   mentalStatus: '',
   familyHistory: '',
   familyHistoryNote: '',
@@ -889,7 +927,7 @@ const InputField = ({ label, value, onChange, readOnly = false, labelWidth = "w-
       value={value || ''} 
       onChange={(e) => onChange?.(e.target.value)}
       readOnly={readOnly}
-      spellCheck="false"
+      spellCheck={false}
       className="flex-1 border-b border-black px-1 py-0.5 text-sm focus:outline-none"
     />
   </div>
@@ -3416,20 +3454,20 @@ export default function App() {
                     <div className="flex flex-col gap-2 mt-2">
                       <div className="flex items-center gap-2">
                         <span className="w-12 font-bold">HR</span>
-                        <input type="text" value={formData.hr} onChange={(e) => updateField('hr', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                        <input type="text" value={formData.hr} onChange={(e) => updateField('hr', e.target.value)} className="flex-1 border-b border-black px-2 h-8 focus:outline-none" spellCheck={false} />
                         <span className="text-xs font-bold">bpm</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-12 font-bold">RR</span>
-                        <input type="text" value={formData.rr} onChange={(e) => updateField('rr', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                        <input type="text" value={formData.rr} onChange={(e) => updateField('rr', e.target.value)} className="flex-1 border-b border-black px-2 h-8 focus:outline-none" spellCheck={false} />
                         <span className="text-xs font-bold">회/min</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-12 font-bold">BP</span>
                         <div className="flex-1 flex items-center gap-1">
-                          <input type="text" value={formData.bpSys} onChange={(e) => updateField('bpSys', e.target.value)} className="w-12 border-2 border-black px-1 h-8 focus:outline-none text-center" />
+                          <input type="text" value={formData.bpSys} onChange={(e) => updateField('bpSys', e.target.value)} className="w-12 border-b border-black px-1 h-8 focus:outline-none text-center" spellCheck={false} />
                           <span>/</span>
-                          <input type="text" value={formData.bpDia} onChange={(e) => updateField('bpDia', e.target.value)} className="w-12 border-2 border-black px-1 h-8 focus:outline-none text-center" />
+                          <input type="text" value={formData.bpDia} onChange={(e) => updateField('bpDia', e.target.value)} className="w-12 border-b border-black px-1 h-8 focus:outline-none text-center" spellCheck={false} />
                           <span className="text-xs font-bold ml-1">mmHg</span>
                         </div>
                       </div>
@@ -3806,6 +3844,260 @@ export default function App() {
       }
     };
 
+    const UnderlineInput = ({ label, value, onChange, width = "w-full", placeholder = "" }: any) => (
+      <div className={`flex items-center gap-2 ${width}`}>
+        {label && <span className="text-gray-600 shrink-0">{label}</span>}
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1 border-b border-gray-400 focus:border-blue-500 outline-none px-1 py-0.5 bg-transparent text-[13px]"
+          spellCheck={false}
+        />
+      </div>
+    );
+
+    const renderAdmissionNursingRecord = () => {
+      return (
+        <div className="flex-1 flex flex-col overflow-y-auto p-8 bg-white font-['Gulim','굴림',sans-serif]">
+          <div className="max-w-4xl mx-auto w-full space-y-8">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">입원간호 기록지</h2>
+            </div>
+
+            {/* Basic Info Section */}
+            <div className="grid grid-cols-3 gap-6 border p-6 rounded-sm bg-gray-50/30">
+              <UnderlineInput label="대상" value={formData.target || '환자 본인'} onChange={(v: string) => updateField('target', v)} />
+              <UnderlineInput label="성명" value={formData.name} onChange={(v: string) => updateField('name', v)} />
+              <UnderlineInput label="연령/성별" value={`${formData.age}/${formData.gender}`} onChange={() => {}} />
+              <UnderlineInput label="진료과" value={formData.dept} onChange={(v: string) => updateField('dept', v)} />
+              <UnderlineInput label="담당의" value={formData.assignedProfessor || '이영진'} onChange={(v: string) => updateField('assignedProfessor', v)} />
+              <UnderlineInput label="기록자" value={formData.recorder} onChange={(v: string) => updateField('recorder', v)} />
+              <UnderlineInput label="정보제공자" value={formData.infoProvider} onChange={(v: string) => updateField('infoProvider', v)} />
+              <UnderlineInput label="입원일시" value={formData.admissionDate} onChange={(v: string) => updateField('admissionDate', v)} />
+              <UnderlineInput label="입원시간" value={formData.admissionTime} onChange={(v: string) => updateField('admissionTime', v)} />
+            </div>
+
+            {/* Admission Info */}
+            <div className="space-y-4 border p-6 rounded-sm">
+              <h3 className="font-bold text-lg border-l-4 border-[#1a4d3c] pl-3 mb-4">1. 입원 관련 정보</h3>
+              <div className="grid grid-cols-2 gap-6">
+                <UnderlineInput label="입원경로" value={formData.admissionPath} onChange={(v: string) => updateField('admissionPath', v)} placeholder="예: 외래, 응급실" />
+                <UnderlineInput label="입원방법" value={formData.admissionMethod} onChange={(v: string) => updateField('admissionMethod', v)} placeholder="예: 도보, 휠체어, 눕는차" />
+                <UnderlineInput label="의식상태" value={formData.mentalStatus} onChange={(v: string) => updateField('mentalStatus', v)} placeholder="예: Alert, Drowsy" />
+                <UnderlineInput label="입원 진단명" value={formData.admissionDiagnosis} onChange={(v: string) => updateField('admissionDiagnosis', v)} />
+              </div>
+              <div className="space-y-4 pt-2">
+                <div className="flex flex-col gap-2">
+                  <span className="text-gray-600 font-medium">주호소 (Chief Complaint)</span>
+                  <textarea 
+                    value={formData.chiefComplaint}
+                    onChange={(e) => updateField('chiefComplaint', e.target.value)}
+                    className="w-full border-b border-gray-400 focus:border-blue-500 outline-none py-1 bg-transparent text-[13px] resize-none"
+                    rows={2}
+                    spellCheck={false}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <span className="text-gray-600 font-medium">현병력 (Present Illness)</span>
+                  <textarea 
+                    value={formData.presentIllness}
+                    onChange={(e) => updateField('presentIllness', e.target.value)}
+                    className="w-full border-b border-gray-400 focus:border-blue-500 outline-none py-1 bg-transparent text-[13px] resize-none"
+                    rows={3}
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Medical History */}
+            <div className="space-y-4 border p-6 rounded-sm">
+              <h3 className="font-bold text-lg border-l-4 border-[#1a4d3c] pl-3 mb-4">2. 과거력 및 가족력</h3>
+              <div className="grid grid-cols-1 gap-4">
+                <UnderlineInput label="과거병력" value={formData.pastMedicalHistory} onChange={(v: string) => updateField('pastMedicalHistory', v)} placeholder="예: 고혈압, 당뇨, 결핵, 간염 등" />
+                <UnderlineInput label="과거수술력" value={formData.pastSurgicalHistory} onChange={(v: string) => updateField('pastSurgicalHistory', v)} />
+                <UnderlineInput label="가족력" value={formData.familyHistory} onChange={(v: string) => updateField('familyHistory', v)} />
+                <UnderlineInput label="알러지" value={formData.allergies} onChange={(v: string) => updateField('allergies', v)} placeholder="약물, 음식, 환경 등" />
+              </div>
+            </div>
+
+            {/* Physical Assessment */}
+            <div className="space-y-4 border p-6 rounded-sm">
+              <h3 className="font-bold text-lg border-l-4 border-[#1a4d3c] pl-3 mb-4">3. 신체 검진 (입원 시)</h3>
+              <div className="grid grid-cols-3 gap-6">
+                <UnderlineInput label="혈압 (BP)" value={formData.admissionBP} onChange={(v: string) => updateField('admissionBP', v)} placeholder="mmHg" />
+                <UnderlineInput label="체온 (BT)" value={formData.admissionBT} onChange={(v: string) => updateField('admissionBT', v)} placeholder="°C" />
+                <UnderlineInput label="맥박 (HR)" value={formData.admissionHR} onChange={(v: string) => updateField('admissionHR', v)} placeholder="회/분" />
+                <UnderlineInput label="호흡 (RR)" value={formData.admissionRR} onChange={(v: string) => updateField('admissionRR', v)} placeholder="회/분" />
+                <UnderlineInput label="SpO2" value={formData.admissionSpO2} onChange={(v: string) => updateField('admissionSpO2', v)} placeholder="%" />
+                <UnderlineInput label="신장/체중" value={`${formData.height}cm / ${formData.weight}kg`} onChange={() => {}} />
+              </div>
+            </div>
+
+            {/* Social History */}
+            <div className="space-y-4 border p-6 rounded-sm">
+              <h3 className="font-bold text-lg border-l-4 border-[#1a4d3c] pl-3 mb-4">4. 사회력 및 생활습관</h3>
+              <div className="grid grid-cols-2 gap-6">
+                <UnderlineInput label="흡연" value={formData.smokingStatus} onChange={(v: string) => updateField('smokingStatus', v)} />
+                <UnderlineInput label="음주" value={formData.drinkingStatus} onChange={(v: string) => updateField('drinkingStatus', v)} />
+                <UnderlineInput label="종교" value={formData.religion} onChange={(v: string) => updateField('religion', v)} />
+                <UnderlineInput label="직업" value={formData.occupation} onChange={(v: string) => updateField('occupation', v)} />
+                <UnderlineInput label="교육" value={formData.education} onChange={(v: string) => updateField('education', v)} />
+                <UnderlineInput label="결혼상태" value={formData.maritalStatus} onChange={(v: string) => updateField('maritalStatus', v)} />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const renderPatientAssessment = () => {
+      return (
+        <div className="flex-1 flex flex-col overflow-y-auto p-8 bg-gray-50 font-['Gulim','굴림',sans-serif]">
+          <div className="max-w-5xl mx-auto w-full space-y-10">
+            {/* Pressure Ulcer Assessment (Braden Scale) */}
+            <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex justify-between items-center mb-6 border-b pb-4">
+                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <span className="bg-orange-100 text-orange-700 p-1.5 rounded">🛡️</span>
+                  욕창위험도 평가도구 (Braden Scale)
+                </h3>
+                <div className="flex items-center gap-4">
+                  <div className="text-sm font-medium px-3 py-1 bg-gray-100 rounded-full">
+                    총점: <span className="text-blue-600 font-bold">{formData.pressureUlcerRisk.totalScore}</span>점
+                  </div>
+                  <div className={`text-sm font-bold px-3 py-1 rounded-full ${
+                    formData.pressureUlcerRisk.totalScore <= 12 ? 'bg-red-100 text-red-700' :
+                    formData.pressureUlcerRisk.totalScore <= 14 ? 'bg-orange-100 text-orange-700' :
+                    formData.pressureUlcerRisk.totalScore <= 18 ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-green-100 text-green-700'
+                  }`}>
+                    위험도: {formData.pressureUlcerRisk.riskLevel}
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 p-2 w-32">평가항목</th>
+                      <th className="border border-gray-300 p-2">1점</th>
+                      <th className="border border-gray-300 p-2">2점</th>
+                      <th className="border border-gray-300 p-2">3점</th>
+                      <th className="border border-gray-300 p-2">4점</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { key: 'sensoryPerception', label: '감각인지', options: ['전혀 못느낌', '매우 제한적', '약간 제한적', '제한 없음'] },
+                      { key: 'moisture', label: '습기', options: ['항상 젖어있음', '축축함', '가끔 젖음', '드물게 젖음'] },
+                      { key: 'activity', label: '활동상태', options: ['침상에 누워있음', '의자에 앉아있음', '가끔 보행', '자주 보행'] },
+                      { key: 'mobility', label: '기동력', options: ['전혀 움직이지 못함', '매우 제한적', '약간 제한적', '제한 없음'] },
+                      { key: 'nutrition', label: '영양상태', options: ['매우 불량', '부적절', '적절', '매우 우수'] },
+                      { key: 'friction', label: '마찰과 응전력', options: ['문제 있음', '잠재적 문제', '문제 없음', '-'], max: 3 },
+                    ].map((item) => (
+                      <tr key={item.key}>
+                        <td className="border border-gray-300 p-2 font-bold bg-gray-50">{item.label}</td>
+                        {[1, 2, 3, 4].map((score) => (
+                          <td 
+                            key={score} 
+                            className={`border border-gray-300 p-2 cursor-pointer transition-colors text-center ${
+                              formData.pressureUlcerRisk[item.key] === score ? 'bg-blue-50 border-blue-400 font-bold text-blue-700' : 'hover:bg-gray-50'
+                            } ${score > (item.max || 4) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                            onClick={() => {
+                              if (score <= (item.max || 4)) {
+                                const newRisk = { ...formData.pressureUlcerRisk, [item.key]: score };
+                                const total = Object.entries(newRisk)
+                                  .filter(([k]) => k !== 'totalScore' && k !== 'riskLevel')
+                                  .reduce((sum, [, v]) => sum + (v as number), 0);
+                                newRisk.totalScore = total;
+                                if (total <= 12) newRisk.riskLevel = '고위험군';
+                                else if (total <= 14) newRisk.riskLevel = '중위험군';
+                                else if (total <= 18) newRisk.riskLevel = '저위험군';
+                                else newRisk.riskLevel = '위험 없음';
+                                updateField('pressureUlcerRisk', newRisk);
+                              }
+                            }}
+                          >
+                            {item.options[score - 1]}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {/* Fall Risk Assessment (Morse Fall Scale) */}
+            <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex justify-between items-center mb-6 border-b pb-4">
+                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <span className="bg-blue-100 text-blue-700 p-1.5 rounded">📉</span>
+                  낙상위험도 평가도구 (Morse Fall Scale)
+                </h3>
+                <div className="flex items-center gap-4">
+                  <div className="text-sm font-medium px-3 py-1 bg-gray-100 rounded-full">
+                    총점: <span className="text-red-600 font-bold">{formData.fallRisk.totalScore}</span>점
+                  </div>
+                  <div className={`text-sm font-bold px-3 py-1 rounded-full ${
+                    formData.fallRisk.totalScore >= 45 ? 'bg-red-100 text-red-700' :
+                    formData.fallRisk.totalScore >= 25 ? 'bg-orange-100 text-orange-700' :
+                    'bg-green-100 text-green-700'
+                  }`}>
+                    위험도: {formData.fallRisk.riskLevel}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  { key: 'history', label: '1. 낙상 과거력 (최근 3개월 이내)', options: [{ label: '없음', score: 0 }, { label: '있음', score: 25 }] },
+                  { key: 'secondaryDiagnosis', label: '2. 이차 진단 (진단명 2개 이상)', options: [{ label: '없음', score: 0 }, { label: '있음', score: 15 }] },
+                  { key: 'ambulatoryAid', label: '3. 보행 보조기구', options: [{ label: '없음/침상안정/휠체어/간호사도움', score: 0 }, { label: '지팡이/보행기', score: 15 }, { label: '가구 잡고 보행', score: 30 }] },
+                  { key: 'ivTherapy', label: '4. 정맥수액 주입/헤파린 락', options: [{ label: '없음', score: 0 }, { label: '있음', score: 20 }] },
+                  { key: 'gait', label: '5. 걸음걸이', options: [{ label: '정상/침상안정/휠체어', score: 0 }, { label: '허약함', score: 10 }, { label: '장애 있음', score: 20 }] },
+                  { key: 'mentalStatus', label: '6. 정신상태', options: [{ label: '자신의 능력을 잘 앎', score: 0 }, { label: '자신의 능력을 과대평가하거나 잊음', score: 15 }] },
+                ].map((item) => (
+                  <div key={item.key} className="border border-gray-200 rounded-sm overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-2 font-bold text-[14px] border-b border-gray-200">{item.label}</div>
+                    <div className="flex flex-wrap gap-2 p-3">
+                      {item.options.map((opt) => (
+                        <button
+                          key={opt.score}
+                          className={`px-4 py-2 rounded border text-[13px] transition-all ${
+                            formData.fallRisk[item.key] === opt.score 
+                              ? 'bg-blue-600 border-blue-600 text-white font-bold shadow-md' 
+                              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                          onClick={() => {
+                            const newRisk = { ...formData.fallRisk, [item.key]: opt.score };
+                            const total = Object.entries(newRisk)
+                              .filter(([k]) => k !== 'totalScore' && k !== 'riskLevel')
+                              .reduce((sum, [, v]) => sum + (v as number), 0);
+                            newRisk.totalScore = total;
+                            if (total >= 45) newRisk.riskLevel = '고위험군';
+                            else if (total >= 25) newRisk.riskLevel = '중위험군';
+                            else newRisk.riskLevel = '저위험군';
+                            updateField('fallRisk', newRisk);
+                          }}
+                        >
+                          {opt.label} ({opt.score}점)
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </div>
+      );
+    };
+
     const renderSubTabContent = () => {
       switch (formData.nursingSubTab) {
         case '간호 기록지':
@@ -3887,6 +4179,10 @@ export default function App() {
               </div>
             </div>
           );
+        case '입원간호 기록지':
+          return renderAdmissionNursingRecord();
+        case '환자평가/환자안전':
+          return renderPatientAssessment();
         default:
           return (
             <div className="flex-1 flex items-center justify-center text-gray-400 bg-gray-50">
@@ -4015,7 +4311,7 @@ export default function App() {
              <div className="flex items-center gap-4"></div>
              <div className="flex items-center gap-4">
                <span className="text-gray-600 w-16">담당교수</span>
-               <span className="font-bold">{formData.assignedProfessor || '이영진(아주대학교)'}</span>
+               <span className="font-bold">{formData.assignedProfessor || '이영진'}</span>
              </div>
              <div className="flex items-center gap-4"></div>
           </div>
