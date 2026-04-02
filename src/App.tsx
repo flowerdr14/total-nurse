@@ -265,6 +265,8 @@ export interface Patient {
   nursingCategory: string;
   nursingRecords: Record<string, NursingRecord>;
   nursingNarrativeNotes: NursingNarrativeNote[];
+  nursingStructuredRecords: { date: string, time: string, type: string, content: string, medicationStatus: string, author: string }[];
+  nursingPrescriptionNote: string;
   imagingRecordItems: ImagingRecordItem[];
   // New Nursing Fields
   nursingSubTab: NursingSubTab;
@@ -861,6 +863,8 @@ const INITIAL_FORM_DATA: Patient = {
   nursingCategory: '낙상기록지',
   nursingRecords: {},
   nursingNarrativeNotes: [],
+  nursingStructuredRecords: [],
+  nursingPrescriptionNote: '',
   imagingRecordItems: [],
   nursingSubTab: '간호 기록지',
   nursingNote: '',
@@ -1165,6 +1169,7 @@ export default function App() {
   const lastSyncedIdRef = useRef<string | null>(null);
 
   const [nursingIsWriting, setNursingIsWriting] = useState(false);
+  const [newNursingRecord, setNewNursingRecord] = useState({ type: '', content: '', medicationStatus: '' });
   const [nursingSidebarOpen, setNursingSidebarOpen] = useState<Record<string, boolean>>({
     'patient-assessment': true,
     'pain-assessment': false
@@ -4203,86 +4208,124 @@ export default function App() {
           return (
             <div className="flex-1 flex flex-col bg-white overflow-hidden font-['Gulim','굴림',sans-serif]">
               <div className="flex-1 flex overflow-hidden">
-                {/* Left: Prescription/Medication (Integrated) */}
-                <div className="w-1/3 border-r border-gray-300 flex flex-col overflow-hidden">
-                  <div className="bg-[#eef2f5] px-3 py-1.5 border-b border-gray-300 font-bold text-sm flex justify-between items-center">
-                    <span>처방/투약 내역</span>
-                    <button className="text-[11px] bg-white border border-gray-300 px-2 py-0.5 rounded hover:bg-gray-50">전체보기</button>
+                {/* Left: Prescription Note (Integrated) */}
+                <div className="w-1/4 border-r border-gray-300 flex flex-col overflow-hidden">
+                  <div className="bg-[#eef2f5] px-3 py-1.5 border-b border-gray-300 font-bold text-sm">
+                    <span>처방 내역</span>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                    {formData.prescriptions && formData.prescriptions.length > 0 ? (
-                      formData.prescriptions.map((p: any, i: number) => (
-                        <div key={i} className="p-2 border border-gray-200 rounded bg-gray-50 text-[12px]">
-                          <div className="flex justify-between font-bold text-blue-800">
-                            <span>{p.name}</span>
-                            <span>{p.dosage}</span>
-                          </div>
-                          <div className="text-gray-500 mt-1">{p.route} | {p.frequency}</div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-10 text-gray-400 text-xs italic">처방 내역이 없습니다.</div>
-                    )}
+                  <div className="flex-1 p-2">
+                    <textarea 
+                      className="w-full h-full border border-gray-300 p-2 text-[13px] focus:outline-none focus:border-blue-500 resize-none"
+                      placeholder="처방 내역을 입력하세요."
+                      value={formData.nursingPrescriptionNote || ''}
+                      onChange={(e) => updateField('nursingPrescriptionNote', e.target.value)}
+                    />
                   </div>
                 </div>
 
-                {/* Right: Nursing Record List */}
+                {/* Right: Nursing Record Table */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                   <div className="bg-[#eef2f5] px-3 py-1.5 border-b border-gray-300 font-bold text-sm flex justify-between items-center">
                     <span>간호기록 내역</span>
+                  </div>
+                  
+                  {/* Add Record Row */}
+                  <div className="p-3 border-b border-gray-300 bg-gray-50 flex gap-2 items-end">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-[11px] font-bold text-gray-600">기록종류</label>
+                      <input 
+                        type="text"
+                        className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                        placeholder="예: 서술기록, 특기사항"
+                        value={newNursingRecord.type}
+                        onChange={(e) => setNewNursingRecord({...newNursingRecord, type: e.target.value})}
+                      />
+                    </div>
+                    <div className="flex-[3] space-y-1">
+                      <label className="text-[11px] font-bold text-gray-600">내용</label>
+                      <input 
+                        type="text"
+                        className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                        placeholder="기록 내용을 입력하세요."
+                        value={newNursingRecord.content}
+                        onChange={(e) => setNewNursingRecord({...newNursingRecord, content: e.target.value})}
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="text-[11px] font-bold text-gray-600">투약여부</label>
+                      <select 
+                        className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                        value={newNursingRecord.medicationStatus}
+                        onChange={(e) => setNewNursingRecord({...newNursingRecord, medicationStatus: e.target.value})}
+                      >
+                        <option value="">-</option>
+                        <option value="완료">완료</option>
+                        <option value="미시행">미시행</option>
+                        <option value="거부">거부</option>
+                      </select>
+                    </div>
                     <button 
-                      onClick={() => setNursingIsWriting(true)}
-                      className="bg-blue-600 text-white px-3 py-0.5 rounded text-[12px] hover:bg-blue-700 flex items-center gap-1"
+                      onClick={() => {
+                        if (!newNursingRecord.type || !newNursingRecord.content) return;
+                        const newEntry = {
+                          date: new Date().toISOString().split('T')[0],
+                          time: new Date().toTimeString().split(' ')[0].substring(0, 5),
+                          type: newNursingRecord.type,
+                          content: newNursingRecord.content,
+                          medicationStatus: newNursingRecord.medicationStatus,
+                          author: 'Nightingale'
+                        };
+                        const updatedRecords = [...(formData.nursingStructuredRecords || []), newEntry];
+                        updateField('nursingStructuredRecords', updatedRecords);
+                        setNewNursingRecord({ type: '', content: '', medicationStatus: '' });
+                      }}
+                      className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm font-bold hover:bg-blue-700"
                     >
-                      <Edit size={12} /> 기록작성
+                      추가
                     </button>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {formData.nursingNarrativeNotes && formData.nursingNarrativeNotes.length > 0 ? (
-                      formData.nursingNarrativeNotes.map((note: any, i: number) => (
-                        <div key={i} className="border border-gray-300 rounded-sm bg-white shadow-sm overflow-hidden">
-                          <div className="bg-gray-100 px-3 py-1 border-b border-gray-200 flex justify-between items-center text-[11px] font-bold">
-                            <span className="text-blue-900">{note.date} {note.time}</span>
-                            <span className="text-gray-600">작성자: {note.author || 'Nightingale'}</span>
-                          </div>
-                          <div className="p-3 text-[13px] leading-relaxed whitespace-pre-wrap">
-                            {note.content}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-20 text-gray-400 italic">저장된 간호기록이 없습니다.</div>
-                    )}
+
+                  <div className="flex-1 overflow-y-auto">
+                    <table className="w-full border-collapse text-[13px]">
+                      <thead className="sticky top-0 bg-gray-100 z-10">
+                        <tr className="border-b border-gray-300">
+                          <th className="p-2 border-r border-gray-300 w-32">일시</th>
+                          <th className="p-2 border-r border-gray-300 w-32">기록종류</th>
+                          <th className="p-2 border-r border-gray-300">내용</th>
+                          <th className="p-2 border-r border-gray-300 w-24">투약여부</th>
+                          <th className="p-2 w-24">작성자</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {formData.nursingStructuredRecords && formData.nursingStructuredRecords.length > 0 ? (
+                          formData.nursingStructuredRecords.map((record: any, i: number) => (
+                            <tr key={i} className="border-b border-gray-200 hover:bg-gray-50">
+                              <td className="p-2 border-r border-gray-300 text-center text-gray-600">{record.date} {record.time}</td>
+                              <td className="p-2 border-r border-gray-300 text-center font-bold">{record.type}</td>
+                              <td className="p-2 border-r border-gray-300 whitespace-pre-wrap">{record.content}</td>
+                              <td className="p-2 border-r border-gray-300 text-center">
+                                {record.medicationStatus && (
+                                  <span className={`px-2 py-0.5 rounded-full text-[11px] ${
+                                    record.medicationStatus === '완료' ? 'bg-green-100 text-green-800' : 
+                                    record.medicationStatus === '미시행' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {record.medicationStatus}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-2 text-center text-gray-500 italic">{record.author}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={5} className="p-20 text-center text-gray-400 italic">저장된 간호기록이 없습니다.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
-
-              {/* Writing Modal/Overlay */}
-              {nursingIsWriting && (
-                <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-10">
-                  <div className="w-full max-w-4xl h-[80vh] bg-white rounded-lg shadow-2xl overflow-hidden flex flex-col">
-                    <div className="bg-blue-900 text-white px-4 py-2 flex justify-between items-center">
-                      <span className="font-bold">간호기록 작성</span>
-                      <button onClick={() => setNursingIsWriting(false)} className="hover:bg-white/20 p-1 rounded">✕</button>
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                      <NursingWriter onSave={(data: any) => {
-                        const newNote = {
-                          date: new Date().toISOString().split('T')[0],
-                          time: data.time,
-                          content: data.activeTab === '서술기록' ? data.narrative : 
-                                   data.activeTab === '특기사항' ? data.specialNotes :
-                                   JSON.stringify(data), // Simplified for now
-                          author: 'Nightingale'
-                        };
-                        const updatedNotes = [...(formData.nursingNarrativeNotes || []), newNote];
-                        updateField('nursingNarrativeNotes', updatedNotes);
-                        setNursingIsWriting(false);
-                      }} />
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           );
         case '투약 기록지':
@@ -4903,7 +4946,6 @@ export default function App() {
             <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} theme={currentTheme} />
             <TabButton label="기타기록" count={tabCounts.other_record} active={activeTab === 'other_record'} onClick={() => setActiveTab('other_record')} theme={currentTheme} />
             <TabButton label="타병원기록" count={tabCounts.other_hospital} active={activeTab === 'other_hospital'} onClick={() => setActiveTab('other_hospital')} theme={currentTheme} />
-            <TabButton label="처방" count={tabCounts.prescription} active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} theme={currentTheme} />
           </div>
 
           <div className="flex items-center gap-2">
