@@ -4032,24 +4032,12 @@ export default function App() {
     };
 
     return (
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="flex gap-2 p-2 bg-gray-100 border-b-2 border-black">
-          {NURSING_SUB_TABS.map(tab => (
-            <button 
-              key={tab} 
-              onClick={() => updateField('nursingSubTab', tab)}
-              className={`px-4 py-2 font-bold border-2 border-black ${formData.nursingSubTab === tab ? 'bg-white' : 'bg-gray-300'}`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-        <div className="flex-1 overflow-hidden p-2">
-          {renderSubTabContent()}
-        </div>
-      </div>
-    );
-  };
+      <div className="flex-1 flex flex-col bg-white overflow-hidden">
+        <div className="flex-1 flex gap-10 p-4 overflow-hidden">
+          {/* Center Column */}
+          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+            {renderSubTabContent()}
+          </div>
 
           {/* Right Sidebar: 간호기록 작성 & 환자기본정보 */}
           <div className="w-[450px] border-2 border-black flex flex-col shrink-0 bg-white overflow-hidden">
@@ -4225,6 +4213,8 @@ export default function App() {
         </div>
       </div>
     );
+  };
+
     if (!isLoggedIn) {
       return (
         <div 
