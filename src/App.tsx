@@ -53,6 +53,8 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  ChevronRight,
+  Upload,
   Edit,
   ChevronsLeft,
   ChevronsRight,
@@ -100,6 +102,23 @@ export interface NursingRecord {
   reporter: string;
   patientChange: string;
   detail: string;
+}
+
+export interface NursingNarrativeNote {
+  id: string;
+  time: string;
+  author: string;
+  note: string;
+}
+
+export interface ImagingRecordItem {
+  id: string;
+  time: string;
+  nameKo: string;
+  nameEn: string;
+  result: string;
+  note: string;
+  images: string[];
 }
 
 export interface OtherRecordItem {
@@ -245,6 +264,8 @@ export interface Patient {
 
   nursingCategory: string;
   nursingRecords: Record<string, NursingRecord>;
+  nursingNarrativeNotes: NursingNarrativeNote[];
+  imagingRecordItems: ImagingRecordItem[];
   // New Nursing Fields
   nursingSubTab: NursingSubTab;
   nursingNote: string;
@@ -276,6 +297,27 @@ export interface Patient {
   mainDxName: string;
   subDxCode: string;
   subDxName: string;
+  
+  // Discharge Nursing Record Fields
+  dischargeType: string;
+  dischargeFollowUpDate: string;
+  dischargeMedication: string;
+  dietEdu: boolean;
+  exerciseEdu: boolean;
+  medEdu: boolean;
+  woundEdu: boolean;
+  emergencyEdu: boolean;
+  otherEdu: boolean;
+  
+  // Imaging Record
+  imagingRecordImage: string;
+  
+  // Medication Records
+  medicationRecords: any[];
+  
+  // Diet Records
+  dietRecords: any[];
+  
   // GCS
   gcsEye: string;
   gcsVerbal: string;
@@ -359,6 +401,9 @@ export interface Patient {
     nutritionStatus: string;
     note: string;
   };
+  currentDiet: string;
+  isFasting: boolean;
+  dietNote: string;
 }
 
 const PRESCRIPTION_SUB_TABS = ['검사 처방', '영상 검사', '약물 지시', '처치/시술', '진료 지시', '컨설트', '항암 처방', '기타'];
@@ -754,6 +799,20 @@ const INITIAL_FORM_DATA: Patient = {
     nutritionStatus: '',
     note: ''
   },
+  medicationRecords: [],
+  dietEdu: false,
+  exerciseEdu: false,
+  medEdu: false,
+  woundEdu: false,
+  emergencyEdu: false,
+  otherEdu: false,
+  dischargeType: '자택',
+  dischargeFollowUpDate: '',
+  dischargeMedication: '',
+  dietRecords: [],
+  currentDiet: '일반식',
+  isFasting: false,
+  dietNote: '',
   surgeryLabNote: '',
   surgeryType: '',
   surgerySoap: '',
@@ -785,6 +844,7 @@ const INITIAL_FORM_DATA: Patient = {
   dischargeDate: '',
   dischargeMainDx: '',
   dischargePostPlan: '',
+  imagingRecordImage: '',
   otherRecordNote: '',
   otherGuardian: '',
   otherReason: '',
@@ -800,6 +860,8 @@ const INITIAL_FORM_DATA: Patient = {
   otherHospitalRecord: '',
   nursingCategory: '낙상기록지',
   nursingRecords: {},
+  nursingNarrativeNotes: [],
+  imagingRecordItems: [],
   nursingSubTab: '간호 기록지',
   nursingNote: '',
   assignedNurse: '',
@@ -1103,6 +1165,10 @@ export default function App() {
   const lastSyncedIdRef = useRef<string | null>(null);
 
   const [nursingIsWriting, setNursingIsWriting] = useState(false);
+  const [nursingSidebarOpen, setNursingSidebarOpen] = useState<Record<string, boolean>>({
+    'patient-assessment': true,
+    'pain-assessment': false
+  });
   const [patientListWidth, setPatientListWidth] = useState(320);
   const [rightSidebarWidth, setRightSidebarWidth] = useState(384);
   const [rightSidebarTopHeight, setRightSidebarTopHeight] = useState(400);
@@ -3805,32 +3871,42 @@ export default function App() {
 
   const renderNursingContent = () => {
     const NURSING_SIDEBAR_ITEMS = [
-      { id: 'e-cardex', label: 'e-CARDEX', icon: '📋' },
-      { id: 'handover', label: '간호 인수인계', icon: '🤝' },
       { id: 'admission-record', label: '입원간호 기록지', icon: '📝' },
-      { id: 'discharge-record', label: '퇴원간호 기록지', icon: '📄' },
-      { id: 'prescription-record', label: '처방 기록지', icon: '💊' },
       { id: 'nursing-record', label: '간호 기록지', icon: '✍️' },
       { id: 'medication-record', label: '투약 기록지', icon: '💉' },
       { id: 'imaging-record', label: '영상검사 기록지', icon: '🩻' },
-      { id: 'lab-record', label: '임상병리검사 기록지', icon: '🧪' },
-      { id: 'observation-record', label: '임상관찰 기록지', icon: '🩺' },
-      { id: 'blood-sugar-record', label: '혈당 기록지', icon: '🩸' },
-      { id: 'patient-assessment', label: '환자평가/환자안전', icon: '👤', hasSub: true },
-      { id: 'pain-assessment', label: '통증평가도구', icon: '😫' },
-      { id: 'mental-health', label: '정신건강 평가도구', icon: '🧠' },
-      { id: 'special-part', label: '특수파트 기록지', icon: '🏥' },
+      { 
+        id: 'patient-assessment-record', 
+        label: '환자평가 기록지', 
+        icon: '📊', 
+        hasSub: true, 
+        subItems: [
+          { 
+            id: 'patient-safety', 
+            label: '환자평가/환자안전', 
+            icon: '🛡️', 
+            hasSub: true, 
+            subItems: [
+              { id: 'pressure-ulcer', label: '욕창도평가도구', icon: '🩹' },
+              { id: 'fall-risk', label: '낙상도평가도구', icon: '📉' }
+            ]
+          },
+          { 
+            id: 'pain-assessment', 
+            label: '통증평가도구', 
+            icon: '😫', 
+            hasSub: true, 
+            subItems: [
+              { id: 'nrs', label: 'NRS', icon: '🔢' }
+            ]
+          },
+        ]
+      },
       { id: 'diet-nutrition', label: '식이/영양 기록지', icon: '🍎' },
-      { id: 'consent', label: '동의서', icon: '✍️' },
-      { id: 'infant-checkup', label: '영유아 건강검진 문진', icon: '👶' },
+      { id: 'discharge-record', label: '퇴원간호 기록지', icon: '📄' },
     ];
 
-    const NURSING_BOTTOM_ITEMS = [
-      { id: 'informatics', label: '간호정보학', icon: '💻' },
-      { id: 'drug-calc', label: '약물계산기', icon: '🧮' },
-      { id: 'checklist', label: '간호기록체크리스트', icon: '✅' },
-      { id: 'schedule', label: '간호사 근무 스케줄표', icon: '📅' },
-    ];
+    const NURSING_BOTTOM_ITEMS: any[] = [];
 
     const calculateDays = (dateStr: string, isHod: boolean) => {
       if (!dateStr) return '0';
@@ -3954,145 +4030,166 @@ export default function App() {
     };
 
     const renderPatientAssessment = () => {
+      const isBraden = formData.nursingSubTab === '욕창도평가도구';
+      const title = isBraden ? '욕창위험도 사정 (Braden Scale)' : '낙상위험도 사정 (Morse Fall Scale)';
+      
       return (
         <div className="flex-1 flex flex-col overflow-y-auto p-8 bg-gray-50 font-['Gulim','굴림',sans-serif]">
-          <div className="max-w-5xl mx-auto w-full space-y-10">
-            {/* Pressure Ulcer Assessment (Braden Scale) */}
-            <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex justify-between items-center mb-6 border-b pb-4">
-                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                  <span className="bg-orange-100 text-orange-700 p-1.5 rounded">🛡️</span>
-                  욕창위험도 평가도구 (Braden Scale)
-                </h3>
-                <div className="flex items-center gap-4">
-                  <div className="text-sm font-medium px-3 py-1 bg-gray-100 rounded-full">
-                    총점: <span className="text-blue-600 font-bold">{formData.pressureUlcerRisk.totalScore}</span>점
-                  </div>
-                  <div className={`text-sm font-bold px-3 py-1 rounded-full ${
-                    formData.pressureUlcerRisk.totalScore <= 12 ? 'bg-red-100 text-red-700' :
-                    formData.pressureUlcerRisk.totalScore <= 14 ? 'bg-orange-100 text-orange-700' :
-                    formData.pressureUlcerRisk.totalScore <= 18 ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-green-100 text-green-700'
-                  }`}>
-                    위험도: {formData.pressureUlcerRisk.riskLevel}
-                  </div>
-                </div>
-              </div>
+          <div className="max-w-4xl mx-auto w-full space-y-8">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">{title}</h2>
+            </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-[13px]">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border border-gray-300 p-2 w-32">평가항목</th>
-                      <th className="border border-gray-300 p-2">1점</th>
-                      <th className="border border-gray-300 p-2">2점</th>
-                      <th className="border border-gray-300 p-2">3점</th>
-                      <th className="border border-gray-300 p-2">4점</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { key: 'sensoryPerception', label: '감각인지', options: ['전혀 못느낌', '매우 제한적', '약간 제한적', '제한 없음'] },
-                      { key: 'moisture', label: '습기', options: ['항상 젖어있음', '축축함', '가끔 젖음', '드물게 젖음'] },
-                      { key: 'activity', label: '활동상태', options: ['침상에 누워있음', '의자에 앉아있음', '가끔 보행', '자주 보행'] },
-                      { key: 'mobility', label: '기동력', options: ['전혀 움직이지 못함', '매우 제한적', '약간 제한적', '제한 없음'] },
-                      { key: 'nutrition', label: '영양상태', options: ['매우 불량', '부적절', '적절', '매우 우수'] },
-                      { key: 'friction', label: '마찰과 응전력', options: ['문제 있음', '잠재적 문제', '문제 없음', '-'], max: 3 },
-                    ].map((item) => (
-                      <tr key={item.key}>
-                        <td className="border border-gray-300 p-2 font-bold bg-gray-50">{item.label}</td>
-                        {[1, 2, 3, 4].map((score) => (
-                          <td 
-                            key={score} 
-                            className={`border border-gray-300 p-2 cursor-pointer transition-colors text-center ${
-                              formData.pressureUlcerRisk[item.key] === score ? 'bg-blue-50 border-blue-400 font-bold text-blue-700' : 'hover:bg-gray-50'
-                            } ${score > (item.max || 4) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                            onClick={() => {
-                              if (score <= (item.max || 4)) {
-                                const newRisk = { ...formData.pressureUlcerRisk, [item.key]: score };
-                                const total = Object.entries(newRisk)
-                                  .filter(([k]) => k !== 'totalScore' && k !== 'riskLevel')
-                                  .reduce((sum, [, v]) => sum + (v as number), 0);
-                                newRisk.totalScore = total;
-                                if (total <= 12) newRisk.riskLevel = '고위험군';
-                                else if (total <= 14) newRisk.riskLevel = '중위험군';
-                                else if (total <= 18) newRisk.riskLevel = '저위험군';
-                                else newRisk.riskLevel = '위험 없음';
-                                updateField('pressureUlcerRisk', newRisk);
-                              }
-                            }}
-                          >
-                            {item.options[score - 1]}
-                          </td>
-                        ))}
+            <div className="bg-white p-6 border border-gray-300 rounded-sm shadow-sm">
+              <table className="w-full border-collapse border border-gray-400 text-[13px]">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-400 p-2 w-1/4">항목</th>
+                    <th className="border border-gray-400 p-2">평가 내용</th>
+                    <th className="border border-gray-400 p-2 w-20">점수</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isBraden ? (
+                    [
+                      { label: '감각지각', options: ['전혀 없음(1)', '매우 제한(2)', '약간 제한(3)', '제한 없음(4)'] },
+                      { label: '습기', options: ['항상 젖어있음(1)', '자주 젖어있음(2)', '가끔 젖어있음(3)', '거의 젖지 않음(4)'] },
+                      { label: '활동상태', options: ['침상에 누워있음(1)', '의자에 앉아있음(2)', '가끔 걸음(3)', '자주 걸음(4)'] },
+                      { label: '기동력', options: ['전혀 움직이지 못함(1)', '매우 제한(2)', '약간 제한(3)', '제한 없음(4)'] },
+                      { label: '영양상태', options: ['매우 불량(1)', '부족(2)', '적당(3)', '우수(4)'] },
+                      { label: '마찰과 응전력', options: ['문제 있음(1)', '잠재적 문제(2)', '문제 없음(3)'] },
+                    ].map((row, i) => (
+                      <tr key={i}>
+                        <td className="border border-gray-400 p-2 font-bold bg-gray-50">{row.label}</td>
+                        <td className="border border-gray-400 p-2">
+                          <select className="w-full outline-none bg-transparent">
+                            {row.options.map(opt => <option key={opt}>{opt}</option>)}
+                          </select>
+                        </td>
+                        <td className="border border-gray-400 p-2 text-center font-bold">1</td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+                    ))
+                  ) : (
+                    [
+                      { label: '낙상 과거력', options: ['없음(0)', '있음(25)'] },
+                      { label: '이차 진단', options: ['없음(0)', '있음(15)'] },
+                      { label: '보행 보조기구', options: ['없음/침상안정/휠체어(0)', '목발/지팡이/보행기(15)', '가구(30)'] },
+                      { label: '정맥 수액 주입', options: ['없음(0)', '있음(20)'] },
+                      { label: '걸음걸이', options: ['정상/침상안정/휠체어(0)', '허약함(10)', '장애가 있음(20)'] },
+                      { label: '의식상태', options: ['자신의 능력을 잘 앎(0)', '자신의 능력을 과대평가하거나 잊음(15)'] },
+                    ].map((row, i) => (
+                      <tr key={i}>
+                        <td className="border border-gray-400 p-2 font-bold bg-gray-50">{row.label}</td>
+                        <td className="border border-gray-400 p-2">
+                          <select className="w-full outline-none bg-transparent">
+                            {row.options.map(opt => <option key={opt}>{opt}</option>)}
+                          </select>
+                        </td>
+                        <td className="border border-gray-400 p-2 text-center font-bold">0</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-blue-50 font-bold">
+                    <td colSpan={2} className="border border-gray-400 p-3 text-right">총점</td>
+                    <td className="border border-gray-400 p-3 text-center text-blue-700 text-lg">
+                      {isBraden ? '6' : '0'}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
 
-            {/* Fall Risk Assessment (Morse Fall Scale) */}
-            <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex justify-between items-center mb-6 border-b pb-4">
-                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                  <span className="bg-blue-100 text-blue-700 p-1.5 rounded">📉</span>
-                  낙상위험도 평가도구 (Morse Fall Scale)
-                </h3>
-                <div className="flex items-center gap-4">
-                  <div className="text-sm font-medium px-3 py-1 bg-gray-100 rounded-full">
-                    총점: <span className="text-red-600 font-bold">{formData.fallRisk.totalScore}</span>점
-                  </div>
-                  <div className={`text-sm font-bold px-3 py-1 rounded-full ${
-                    formData.fallRisk.totalScore >= 45 ? 'bg-red-100 text-red-700' :
-                    formData.fallRisk.totalScore >= 25 ? 'bg-orange-100 text-orange-700' :
-                    'bg-green-100 text-green-700'
-                  }`}>
-                    위험도: {formData.fallRisk.riskLevel}
-                  </div>
+            <div className="bg-blue-50 p-4 border border-blue-200 rounded-sm">
+              <h4 className="font-bold text-blue-800 mb-2">평가 결과 및 간호 중재</h4>
+              <p className="text-sm text-blue-700">
+                {isBraden 
+                  ? '현재 욕창 고위험군입니다. 2시간마다 체위변경을 시행하고 피부 상태를 면밀히 관찰하십시오.' 
+                  : '현재 낙상 저위험군입니다. 사이드레일을 항상 올리고 호출벨 사용법을 다시 교육하십시오.'}
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button className="px-8 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 shadow-md">평가 저장</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const renderNRS = () => {
+      return (
+        <div className="flex-1 flex flex-col p-8 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
+          <div className="max-w-4xl mx-auto w-full space-y-8">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">통증평가 도구 (NRS)</h2>
+            </div>
+
+            <div className="bg-gray-50 p-8 border border-gray-300 rounded-sm">
+              <div className="flex justify-between items-end mb-4">
+                <span className="text-sm font-bold">통증 없음 (0점)</span>
+                <span className="text-sm font-bold">극심한 통증 (10점)</span>
+              </div>
+              <div className="relative h-12 flex items-center mb-8">
+                <div className="absolute inset-0 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 rounded-full opacity-20"></div>
+                <div className="w-full flex justify-between px-2 relative z-10">
+                  {[0,1,2,3,4,5,6,7,8,9,10].map(score => (
+                    <button 
+                      key={score}
+                      onClick={() => updateField('nrsPain', { ...formData.nrsPain, score })}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all border-2 ${
+                        formData.nrsPain.score === score 
+                          ? 'bg-blue-600 text-white border-blue-800 scale-125 shadow-lg' 
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                      }`}
+                    >
+                      {score}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {[
-                  { key: 'history', label: '1. 낙상 과거력 (최근 3개월 이내)', options: [{ label: '없음', score: 0 }, { label: '있음', score: 25 }] },
-                  { key: 'secondaryDiagnosis', label: '2. 이차 진단 (진단명 2개 이상)', options: [{ label: '없음', score: 0 }, { label: '있음', score: 15 }] },
-                  { key: 'ambulatoryAid', label: '3. 보행 보조기구', options: [{ label: '없음/침상안정/휠체어/간호사도움', score: 0 }, { label: '지팡이/보행기', score: 15 }, { label: '가구 잡고 보행', score: 30 }] },
-                  { key: 'ivTherapy', label: '4. 정맥수액 주입/헤파린 락', options: [{ label: '없음', score: 0 }, { label: '있음', score: 20 }] },
-                  { key: 'gait', label: '5. 걸음걸이', options: [{ label: '정상/침상안정/휠체어', score: 0 }, { label: '허약함', score: 10 }, { label: '장애 있음', score: 20 }] },
-                  { key: 'mentalStatus', label: '6. 정신상태', options: [{ label: '자신의 능력을 잘 앎', score: 0 }, { label: '자신의 능력을 과대평가하거나 잊음', score: 15 }] },
-                ].map((item) => (
-                  <div key={item.key} className="border border-gray-200 rounded-sm overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-2 font-bold text-[14px] border-b border-gray-200">{item.label}</div>
-                    <div className="flex flex-wrap gap-2 p-3">
-                      {item.options.map((opt) => (
-                        <button
-                          key={opt.score}
-                          className={`px-4 py-2 rounded border text-[13px] transition-all ${
-                            formData.fallRisk[item.key] === opt.score 
-                              ? 'bg-blue-600 border-blue-600 text-white font-bold shadow-md' 
-                              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
-                          onClick={() => {
-                            const newRisk = { ...formData.fallRisk, [item.key]: opt.score };
-                            const total = Object.entries(newRisk)
-                              .filter(([k]) => k !== 'totalScore' && k !== 'riskLevel')
-                              .reduce((sum, [, v]) => sum + (v as number), 0);
-                            newRisk.totalScore = total;
-                            if (total >= 45) newRisk.riskLevel = '고위험군';
-                            else if (total >= 25) newRisk.riskLevel = '중위험군';
-                            else newRisk.riskLevel = '저위험군';
-                            updateField('fallRisk', newRisk);
-                          }}
-                        >
-                          {opt.label} ({opt.score}점)
-                        </button>
-                      ))}
-                    </div>
+              <div className="grid grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <UnderlineInput label="통증 부위" value={formData.nrsPain.location} onChange={(v: string) => updateField('nrsPain', { ...formData.nrsPain, location: v })} />
+                  <div className="flex items-center gap-4 text-[13px]">
+                    <span className="text-gray-600 w-24">통증 양상</span>
+                    <select 
+                      className="flex-1 border-b border-gray-400 focus:border-blue-500 outline-none bg-transparent py-1"
+                      value={formData.nrsPain.character}
+                      onChange={(e) => updateField('nrsPain', { ...formData.nrsPain, character: e.target.value })}
+                    >
+                      <option>쑤심</option>
+                      <option>찌름</option>
+                      <option>타는듯함</option>
+                      <option>둔함</option>
+                      <option>박동성</option>
+                      <option>압박감</option>
+                    </select>
                   </div>
-                ))}
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 text-[13px]">
+                    <span className="text-gray-600 w-24">통증 빈도</span>
+                    <select 
+                      className="flex-1 border-b border-gray-400 focus:border-blue-500 outline-none bg-transparent py-1"
+                      value={formData.nrsPain.frequency}
+                      onChange={(e) => updateField('nrsPain', { ...formData.nrsPain, frequency: e.target.value })}
+                    >
+                      <option>지속적</option>
+                      <option>간헐적</option>
+                      <option>돌발성</option>
+                    </select>
+                  </div>
+                  <UnderlineInput label="조절 요인" value={formData.nrsPain.factors} onChange={(v: string) => updateField('nrsPain', { ...formData.nrsPain, factors: v })} />
+                </div>
               </div>
-            </section>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button className="px-8 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 shadow-md">통증 평가 저장</button>
+            </div>
           </div>
         </div>
       );
@@ -4100,89 +4197,381 @@ export default function App() {
 
     const renderSubTabContent = () => {
       switch (formData.nursingSubTab) {
+        case '입원간호 기록지':
+          return renderAdmissionNursingRecord();
         case '간호 기록지':
           return (
-            <div className="flex-1 flex overflow-hidden">
-              {/* Left Column: Prescription */}
-              <div className="flex-1 flex flex-col border-r border-gray-300 overflow-hidden">
-                <div className="px-4 py-3 font-bold text-[15px] text-gray-800">처방 내역</div>
-                <div className="flex-1 p-6 overflow-y-auto text-[13px] leading-relaxed">
-                  <div className="text-gray-400 mb-6 font-medium">처방일시 2023-07-27</div>
-                  
-                  <div className="space-y-6">
-                    <section>
-                      <div className="font-bold mb-2">※사례개요</div>
-                      <p>환자는 노인이며, 낙상 직후 어지럼증을 호소하였으며, 강한 자극에 대한 위축 반응, 이마 (또는 다리)에 외상은 없으나 흉통(4점/10점만점)이 있는 상태이다.</p>
-                      <p>V/S: BT 37.0, HR 90회, RR 20회, BP 130/90mmHg</p>
-                    </section>
+            <div className="flex-1 flex flex-col bg-white overflow-hidden font-['Gulim','굴림',sans-serif]">
+              <div className="flex-1 flex overflow-hidden">
+                {/* Left: Prescription/Medication (Integrated) */}
+                <div className="w-1/3 border-r border-gray-300 flex flex-col overflow-hidden">
+                  <div className="bg-[#eef2f5] px-3 py-1.5 border-b border-gray-300 font-bold text-sm flex justify-between items-center">
+                    <span>처방/투약 내역</span>
+                    <button className="text-[11px] bg-white border border-gray-300 px-2 py-0.5 rounded hover:bg-gray-50">전체보기</button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                    {formData.prescriptions && formData.prescriptions.length > 0 ? (
+                      formData.prescriptions.map((p: any, i: number) => (
+                        <div key={i} className="p-2 border border-gray-200 rounded bg-gray-50 text-[12px]">
+                          <div className="flex justify-between font-bold text-blue-800">
+                            <span>{p.name}</span>
+                            <span>{p.dosage}</span>
+                          </div>
+                          <div className="text-gray-500 mt-1">{p.route} | {p.frequency}</div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-10 text-gray-400 text-xs italic">처방 내역이 없습니다.</div>
+                    )}
+                  </div>
+                </div>
 
-                    <section>
-                      <div className="font-bold mb-2">※환자개요</div>
-                      <div className="space-y-1">
-                        <p>1. 주호소(Chief complaint): 흉통</p>
-                        <p>2. 입원경로(History of present illness): 평소에 고혈압, 협심증으로 약물 치료 중이었으나, 3달전부터 등산시 5-10분 가량의 흉통이 3-4차례 반복되어 심도자 검사 위해 외래 통해 입원함.</p>
-                        <p>3. 사회력(Social history): (은퇴 전) 화물차 운전기사</p>
-                        <p>4. 과거질병력(Past medical history): 고혈압, 협심증</p>
-                        <p>5. 과거수술력(Past Surgical history & date): 없음</p>
-                        <p>6. 가족력(Family medical history): 부 - 고혈압, 심근경색, 모 - 없음</p>
-                        <p>7. 알러지(Allergies): 무</p>
-                        <p>8. 면역상태(Immunization): 특이사항 없음</p>
-                        <p>9. 약물(Medication): 고혈압, 협심증 치료제, 이뇨제</p>
-                        <p>10. 1차 진단명(Primary diagnosis): 협심증</p>
-                      </div>
-                    </section>
-
-                    <section>
-                      <div className="font-bold mb-2">※의사처방</div>
-                      <div className="space-y-1">
-                        <p>1) Dilatrend Tab 6.25mg 1Tab Bid</p>
-                        <p>2) Sigmart Tab 5mg 1Tab Tid</p>
-                        <p>3) Lasix Tab 40mg 1Tab Bid</p>
-                        <p>   Aldactone 25mg 1Tab Bid</p>
-                        <p>4) 0.9% NS 1L/Bag 1Bag 45cc/hr</p>
-                      </div>
-                    </section>
-
-                    <div className="pt-8 text-[11px] text-gray-400 italic border-t border-gray-100">
-                      해당 시나리오는 한국간호과학회에서 공개한 시뮬레이션 시나리오입니다.
-                    </div>
+                {/* Right: Nursing Record List */}
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="bg-[#eef2f5] px-3 py-1.5 border-b border-gray-300 font-bold text-sm flex justify-between items-center">
+                    <span>간호기록 내역</span>
+                    <button 
+                      onClick={() => setNursingIsWriting(true)}
+                      className="bg-blue-600 text-white px-3 py-0.5 rounded text-[12px] hover:bg-blue-700 flex items-center gap-1"
+                    >
+                      <Edit size={12} /> 기록작성
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {formData.nursingNarrativeNotes && formData.nursingNarrativeNotes.length > 0 ? (
+                      formData.nursingNarrativeNotes.map((note: any, i: number) => (
+                        <div key={i} className="border border-gray-300 rounded-sm bg-white shadow-sm overflow-hidden">
+                          <div className="bg-gray-100 px-3 py-1 border-b border-gray-200 flex justify-between items-center text-[11px] font-bold">
+                            <span className="text-blue-900">{note.date} {note.time}</span>
+                            <span className="text-gray-600">작성자: {note.author || 'Nightingale'}</span>
+                          </div>
+                          <div className="p-3 text-[13px] leading-relaxed whitespace-pre-wrap">
+                            {note.content}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-20 text-gray-400 italic">저장된 간호기록이 없습니다.</div>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Right Column: Nursing Record */}
-              <div className="flex-1 flex flex-col overflow-hidden bg-[#f9fbfb]">
-                <div className="px-4 py-3 font-bold text-[15px] text-gray-800 flex justify-between items-center">
-                  <span>간호 기록 내역</span>
-                  <button 
-                    onClick={() => setNursingIsWriting(!nursingIsWriting)}
-                    className="text-xs bg-[#1a4d3c] text-white px-3 py-1 rounded hover:opacity-90 transition-opacity"
-                  >
-                    {nursingIsWriting ? '기록 보기' : '기록 작성'}
-                  </button>
-                </div>
-                <div className="flex-1 p-6 overflow-y-auto text-[13px]">
-                  {nursingIsWriting ? (
-                    <NursingWriter onSave={(data: any) => {
-                      const content = data.narrative || data.darData.d || data.soapieData.s || data.nandaData.diagnosis;
-                      if (content) {
-                        updateField('nursingNote', content);
-                        setNursingIsWriting(false);
-                      }
-                    }} />
-                  ) : (
-                    <div className="whitespace-pre-wrap leading-relaxed">
-                      {formData.nursingNote || '작성된 간호기록이 없습니다.'}
+              {/* Writing Modal/Overlay */}
+              {nursingIsWriting && (
+                <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-10">
+                  <div className="w-full max-w-4xl h-[80vh] bg-white rounded-lg shadow-2xl overflow-hidden flex flex-col">
+                    <div className="bg-blue-900 text-white px-4 py-2 flex justify-between items-center">
+                      <span className="font-bold">간호기록 작성</span>
+                      <button onClick={() => setNursingIsWriting(false)} className="hover:bg-white/20 p-1 rounded">✕</button>
                     </div>
-                  )}
+                    <div className="flex-1 overflow-hidden">
+                      <NursingWriter onSave={(data: any) => {
+                        const newNote = {
+                          date: new Date().toISOString().split('T')[0],
+                          time: data.time,
+                          content: data.activeTab === '서술기록' ? data.narrative : 
+                                   data.activeTab === '특기사항' ? data.specialNotes :
+                                   JSON.stringify(data), // Simplified for now
+                          author: 'Nightingale'
+                        };
+                        const updatedNotes = [...(formData.nursingNarrativeNotes || []), newNote];
+                        updateField('nursingNarrativeNotes', updatedNotes);
+                        setNursingIsWriting(false);
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        case '투약 기록지':
+          return (
+            <div className="flex-1 flex flex-col p-8 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
+              <div className="max-w-6xl mx-auto w-full space-y-6">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">투약 기록지</h2>
+                </div>
+                <div className="border border-gray-300 rounded-sm overflow-hidden">
+                  <table className="w-full border-collapse text-[13px]">
+                    <thead>
+                      <tr className="bg-gray-100 border-b border-gray-300">
+                        <th className="border-r border-gray-300 p-2 w-32">투약일시</th>
+                        <th className="border-r border-gray-300 p-2 w-48">약품명</th>
+                        <th className="border-r border-gray-300 p-2 w-24">용량</th>
+                        <th className="border-r border-gray-300 p-2 w-24">경로</th>
+                        <th className="border-r border-gray-300 p-2 w-24">횟수</th>
+                        <th className="border-r border-gray-300 p-2">상태</th>
+                        <th className="p-2 w-24">서명</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formData.medicationRecords && formData.medicationRecords.length > 0 ? (
+                        formData.medicationRecords.map((m: any, i: number) => (
+                          <tr key={i} className="border-b border-gray-200">
+                            <td className="border-r border-gray-300 p-2 text-center">{m.dateTime}</td>
+                            <td className="border-r border-gray-300 p-2 font-bold text-blue-800">{m.name}</td>
+                            <td className="border-r border-gray-300 p-2 text-center">{m.dosage}</td>
+                            <td className="border-r border-gray-300 p-2 text-center">{m.route}</td>
+                            <td className="border-r border-gray-300 p-2 text-center">{m.frequency}</td>
+                            <td className="border-r border-gray-300 p-2 text-center">
+                              <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px]">투약완료</span>
+                            </td>
+                            <td className="p-2 text-center italic text-gray-500">Nightingale</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={7} className="p-10 text-center text-gray-400 italic">투약 기록이 없습니다.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
           );
-        case '입원간호 기록지':
-          return renderAdmissionNursingRecord();
-        case '환자평가/환자안전':
+        case '영상검사 기록지':
+          return (
+            <div className="flex-1 flex flex-col p-8 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
+              <div className="max-w-6xl mx-auto w-full space-y-8">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">영상검사 기록지</h2>
+                </div>
+
+                <div className="border border-gray-300 rounded-sm overflow-hidden">
+                  <table className="w-full border-collapse text-[13px]">
+                    <thead>
+                      <tr className="bg-gray-100 border-b border-gray-300">
+                        <th className="border-r border-gray-300 p-2 w-32">검사일시</th>
+                        <th className="border-r border-gray-300 p-2 w-48">검사명(국문)</th>
+                        <th className="border-r border-gray-300 p-2 w-48">검사명(영문)</th>
+                        <th className="border-r border-gray-300 p-2 w-24">결과</th>
+                        <th className="border-r border-gray-300 p-2">비고</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formData.imagingRecordItems && formData.imagingRecordItems.length > 0 ? (
+                        formData.imagingRecordItems.map((item: any, idx: number) => (
+                          <tr key={idx} className="border-b border-gray-200">
+                            <td className="border-r border-gray-300 p-2 text-center">{item.date}</td>
+                            <td className="border-r border-gray-300 p-2">{item.nameKo}</td>
+                            <td className="border-r border-gray-300 p-2">{item.nameEn}</td>
+                            <td className="border-r border-gray-300 p-2 text-center">{item.result}</td>
+                            <td className="p-2">{item.note}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="p-10 text-center text-gray-400 italic">검사 기록이 없습니다.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-10 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer group">
+                  <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Upload className="text-gray-400" size={32} />
+                  </div>
+                  <span className="text-gray-500 font-medium">검사 영상 업로드</span>
+                  <span className="text-xs text-gray-400 mt-1">JPG, PNG, DICOM 파일 지원</span>
+                </div>
+
+                {/* Sample Image Display */}
+                <div className="mt-10 space-y-4">
+                  <h3 className="font-bold text-lg border-l-4 border-blue-600 pl-3">검사 영상 확인</h3>
+                  <div className="bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center relative group">
+                    <img 
+                      src="https://picsum.photos/seed/xray/1200/800" 
+                      alt="X-Ray Sample" 
+                      className="max-w-full max-h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute bottom-4 left-4 bg-black/60 text-white px-3 py-1 rounded text-xs backdrop-blur-sm">
+                      Chest PA / 2023-07-27 10:30
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        case '욕창도평가도구':
+        case '낙상도평가도구':
           return renderPatientAssessment();
+        case 'NRS':
+          return renderNRS();
+        case '퇴원간호 기록지':
+          return (
+            <div className="flex-1 flex flex-col p-8 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
+              <div className="max-w-4xl mx-auto w-full space-y-8">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">퇴원간호 기록지</h2>
+                </div>
+
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <UnderlineInput label="퇴원일시" value={formData.dischargeDate} onChange={(v: string) => updateField('dischargeDate', v)} />
+                    <div className="flex items-center gap-4 text-[13px]">
+                      <span className="text-gray-600 w-24">퇴원형태</span>
+                      <select 
+                        className="flex-1 border-b border-gray-400 focus:border-blue-500 outline-none bg-transparent py-1"
+                        value={formData.dischargeType || '자택'}
+                        onChange={(e) => updateField('dischargeType', e.target.value)}
+                      >
+                        <option>자택</option>
+                        <option>타병원 전원</option>
+                        <option>무단이탈</option>
+                        <option>사망</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <UnderlineInput label="퇴원예약일" value={formData.dischargeFollowUpDate} onChange={(v: string) => updateField('dischargeFollowUpDate', v)} />
+                    <UnderlineInput label="퇴원약" value={formData.dischargeMedication} onChange={(v: string) => updateField('dischargeMedication', v)} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block font-bold text-sm border-l-4 border-blue-600 pl-2">퇴원 교육 내용</label>
+                  <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded border border-gray-200">
+                    {[
+                      { label: '식이요법', key: 'dietEdu' as keyof Patient },
+                      { label: '운동/활동', key: 'exerciseEdu' as keyof Patient },
+                      { label: '투약안내', key: 'medEdu' as keyof Patient },
+                      { label: '상처관리', key: 'woundEdu' as keyof Patient },
+                      { label: '응급시 대처', key: 'emergencyEdu' as keyof Patient },
+                      { label: '기타', key: 'otherEdu' as keyof Patient }
+                    ].map(item => (
+                      <label key={item.key} className="flex items-center gap-2 text-[13px] cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={formData[item.key] as boolean} 
+                          onChange={(e) => updateField(item.key, e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        {item.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block font-bold text-sm border-l-4 border-blue-600 pl-2">퇴원시 환자 상태 및 간호 경과</label>
+                  <textarea 
+                    value={formData.dischargeProgress}
+                    onChange={(e) => updateField('dischargeProgress', e.target.value)}
+                    className="w-full border border-gray-300 p-3 rounded-sm focus:border-blue-500 outline-none text-[13px] resize-none"
+                    rows={6}
+                    placeholder="퇴원 시점의 환자 상태를 상세히 기록하세요."
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button className="px-6 py-2 bg-gray-200 font-bold rounded hover:bg-gray-300 text-sm">임시저장</button>
+                  <button className="px-6 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 text-sm">퇴원기록 저장</button>
+                </div>
+              </div>
+            </div>
+          );
+        case '식이/영양 기록지':
+          return (
+            <div className="flex-1 flex flex-col p-8 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
+              <div className="max-w-5xl mx-auto w-full space-y-8">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">식이/영양 기록지</h2>
+                </div>
+
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="bg-blue-50 p-4 rounded border border-blue-100 flex flex-col items-center justify-center">
+                    <span className="text-xs text-blue-600 font-bold mb-1">현재 식이</span>
+                    <span className="text-xl font-black text-blue-900">{formData.currentDiet || '일반식'}</span>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded border border-green-100 flex flex-col items-center justify-center">
+                    <span className="text-xs text-green-600 font-bold mb-1">금식 여부</span>
+                    <span className="text-xl font-black text-green-900">{formData.isFasting ? '금식중 (NPO)' : '식사 가능'}</span>
+                  </div>
+                  <div className="bg-orange-50 p-4 rounded border border-orange-100 flex flex-col items-center justify-center">
+                    <span className="text-xs text-orange-600 font-bold mb-1">특이사항</span>
+                    <span className="text-sm font-bold text-orange-900">{formData.dietNote || '없음'}</span>
+                  </div>
+                </div>
+
+                <div className="border border-gray-300 rounded-sm overflow-hidden">
+                  <table className="w-full border-collapse text-[13px]">
+                    <thead>
+                      <tr className="bg-gray-100 border-b border-gray-300">
+                        <th className="border-r border-gray-300 p-3 w-32">날짜</th>
+                        <th className="border-r border-gray-300 p-3 w-32">구분</th>
+                        <th className="border-r border-gray-300 p-3 w-48">식이 종류</th>
+                        <th className="border-r border-gray-300 p-3 w-32">섭취량</th>
+                        <th className="p-3">비고</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formData.dietRecords && formData.dietRecords.length > 0 ? (
+                        formData.dietRecords.map((record: any, idx: number) => (
+                          <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
+                            <td className="border-r border-gray-300 p-3 text-center">{record.date}</td>
+                            <td className="border-r border-gray-300 p-3 text-center font-bold">{record.type}</td>
+                            <td className="border-r border-gray-300 p-3">{record.dietName}</td>
+                            <td className="border-r border-gray-300 p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                                record.amount === 'Full' ? 'bg-green-100 text-green-800' : 
+                                record.amount === '1/2' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {record.amount}
+                              </span>
+                            </td>
+                            <td className="p-3 text-gray-600">{record.note}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="p-10 text-center text-gray-400 italic">식이 기록이 없습니다.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                  <h3 className="font-bold mb-4 flex items-center gap-2">
+                    <span className="w-2 h-6 bg-blue-600 rounded-full"></span>
+                    신규 식이 기록 입력
+                  </h3>
+                  <div className="grid grid-cols-4 gap-4 items-end">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-500">구분</label>
+                      <select className="w-full border border-gray-300 p-2 rounded bg-white text-sm">
+                        <option>아침</option>
+                        <option>점심</option>
+                        <option>저녁</option>
+                        <option>간식</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-500">섭취량</label>
+                      <select className="w-full border border-gray-300 p-2 rounded bg-white text-sm">
+                        <option>Full</option>
+                        <option>3/4</option>
+                        <option>1/2</option>
+                        <option>1/4</option>
+                        <option>NPO</option>
+                      </select>
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <label className="text-xs font-bold text-gray-500">비고</label>
+                      <input type="text" className="w-full border border-gray-300 p-2 rounded bg-white text-sm" placeholder="특이사항 입력" />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <button className="bg-blue-600 text-white px-6 py-2 rounded font-bold text-sm hover:bg-blue-700 transition-colors">기록 추가</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
         default:
           return (
             <div className="flex-1 flex items-center justify-center text-gray-400 bg-gray-50">
@@ -4201,18 +4590,73 @@ export default function App() {
         <div className="w-[220px] bg-[#1a4d3c] flex flex-col shrink-0 overflow-y-auto">
           <div className="flex flex-col py-2">
             {NURSING_SIDEBAR_ITEMS.map(item => (
-              <button
-                key={item.id}
-                className={`flex items-center gap-3 px-4 py-2.5 text-white hover:bg-white/10 transition-colors text-[13px] text-left ${formData.nursingSubTab === item.label ? 'bg-white/20 font-bold' : ''}`}
-                onClick={() => {
-                  updateField('nursingSubTab', item.label);
-                  setNursingIsWriting(false);
-                }}
-              >
-                <span className="text-base w-5 text-center">{item.icon}</span>
-                <span className="flex-1">{item.label}</span>
-                {item.hasSub && <ChevronDown size={14} className="opacity-50" />}
-              </button>
+              <div key={item.id}>
+                <button
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-white hover:bg-white/10 transition-colors text-[13px] text-left ${formData.nursingSubTab === item.label ? 'bg-white/20 font-bold' : ''}`}
+                  onClick={() => {
+                    if (item.hasSub) {
+                      setNursingSidebarOpen(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+                    } else {
+                      updateField('nursingSubTab', item.label);
+                      setNursingIsWriting(false);
+                    }
+                  }}
+                >
+                  <span className="text-base w-5 text-center">{item.icon}</span>
+                  <span className="flex-1">{item.label}</span>
+                  {item.hasSub && (
+                    <ChevronDown 
+                      size={14} 
+                      className={`opacity-50 transition-transform ${nursingSidebarOpen[item.id] ? 'rotate-180' : ''}`} 
+                    />
+                  )}
+                </button>
+                {item.hasSub && nursingSidebarOpen[item.id] && item.subItems && (
+                  <div className="bg-black/10 py-1">
+                    {item.subItems.map(sub => (
+                      <div key={sub.id}>
+                        <button
+                          className={`w-full flex items-center gap-3 pl-10 pr-4 py-2 text-white/80 hover:bg-white/10 transition-colors text-[12px] text-left ${formData.nursingSubTab === sub.label ? 'bg-white/20 font-bold text-white' : ''}`}
+                          onClick={() => {
+                            if (sub.hasSub) {
+                              setNursingSidebarOpen(prev => ({ ...prev, [sub.id]: !prev[sub.id] }));
+                            } else {
+                              updateField('nursingSubTab', sub.label);
+                              setNursingIsWriting(false);
+                            }
+                          }}
+                        >
+                          <span className="text-sm w-4 text-center">{sub.icon}</span>
+                          <span className="flex-1">{sub.label}</span>
+                          {sub.hasSub && (
+                            <ChevronDown 
+                              size={12} 
+                              className={`opacity-50 transition-transform ${nursingSidebarOpen[sub.id] ? 'rotate-180' : ''}`} 
+                            />
+                          )}
+                        </button>
+                        {sub.hasSub && nursingSidebarOpen[sub.id] && sub.subItems && (
+                          <div className="bg-black/5 py-1">
+                            {sub.subItems.map(ss => (
+                              <button
+                                key={ss.id}
+                                className={`w-full flex items-center gap-3 pl-14 pr-4 py-1.5 text-white/60 hover:bg-white/10 transition-colors text-[11px] text-left ${formData.nursingSubTab === ss.label ? 'bg-white/20 font-bold text-white' : ''}`}
+                                onClick={() => {
+                                  updateField('nursingSubTab', ss.label);
+                                  setNursingIsWriting(false);
+                                }}
+                              >
+                                <span className="text-xs w-4 text-center">{ss.icon}</span>
+                                <span className="flex-1">{ss.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
           
@@ -4233,59 +4677,35 @@ export default function App() {
         <div className="flex-1 flex flex-col overflow-hidden bg-white">
           {/* Top Patient Info Header */}
           <div className="bg-[#f2f7f7] p-4 border-b border-gray-300 grid grid-cols-4 gap-x-12 gap-y-2 text-[13px]">
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">등록번호</span>
-               <span className="font-bold">{formData.chartNo || '9770007'}</span>
-             </div>
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">키</span>
-               <span className="font-bold">{formData.height || '170'}cm</span>
-             </div>
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">진료과</span>
-               <span className="font-bold">{formData.dept || '심장내과'}</span>
-             </div>
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">주진단코드</span>
-               <span className="font-bold">{formData.mainDxCode || 'I20.9'}</span>
-             </div>
+             <UnderlineInput label="등록번호" value={formData.chartNo} onChange={(v: string) => updateField('chartNo', v)} />
+             <UnderlineInput label="키" value={formData.height} onChange={(v: string) => updateField('height', v)} />
+             <UnderlineInput label="진료과" value={formData.dept} onChange={(v: string) => updateField('dept', v)} />
+             <UnderlineInput label="주진단코드" value={formData.mainDxCode} onChange={(v: string) => updateField('mainDxCode', v)} />
              
              <div className="flex items-start gap-4">
                <span className="text-gray-600 w-16">이름</span>
-               <div className="flex flex-col">
-                 <span className="font-bold">{formData.name || '홍길동'}</span>
+               <div className="flex flex-col flex-1">
+                 <input 
+                   type="text" 
+                   value={formData.name} 
+                   onChange={(e) => updateField('name', e.target.value)}
+                   className="font-bold border-b border-gray-400 focus:border-blue-500 outline-none bg-transparent"
+                   spellCheck={false}
+                 />
                  <span className="text-[11px] text-gray-500">(낙상고위험 환자)</span>
                </div>
              </div>
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">체중</span>
-               <span className="font-bold">{formData.weight || '88'}kg</span>
-             </div>
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">병동</span>
-               <span className="font-bold">{formData.ward || '일반병동'}</span>
-             </div>
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">주진단명</span>
-               <span className="font-bold">{formData.mainDxName || '상세불명의 협심증'}</span>
-             </div>
+             <UnderlineInput label="체중" value={formData.weight} onChange={(v: string) => updateField('weight', v)} />
+             <UnderlineInput label="병동" value={formData.ward} onChange={(v: string) => updateField('ward', v)} />
+             <UnderlineInput label="주진단명" value={formData.mainDxName} onChange={(v: string) => updateField('mainDxName', v)} />
 
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">나이</span>
-               <span className="font-bold">{formData.age || '72'}</span>
-             </div>
+             <UnderlineInput label="나이" value={formData.age} onChange={(v: string) => updateField('age', v)} />
              <div className="flex items-center gap-4">
                <span className="text-gray-600 w-16">HOD</span>
-               <span className="font-bold">{calculateDays(formData.admissionDate, true) || '3'}</span>
+               <span className="font-bold">{calculateDays(formData.admissionDate, true)}</span>
              </div>
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">병실</span>
-               <span className="font-bold">{formData.room || '일반병실'}</span>
-             </div>
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">부진단코드</span>
-               <span className="font-bold">{formData.subDxCode || '-'}</span>
-             </div>
+             <UnderlineInput label="병실" value={formData.room} onChange={(v: string) => updateField('room', v)} />
+             <UnderlineInput label="부진단코드" value={formData.subDxCode} onChange={(v: string) => updateField('subDxCode', v)} />
 
              <div className="flex items-center gap-4">
                <span className="text-gray-600 w-16">성별</span>
@@ -4293,26 +4713,14 @@ export default function App() {
              </div>
              <div className="flex items-center gap-4">
                <span className="text-gray-600 w-16">POD</span>
-               <span className="font-bold">{calculateDays(formData.surgeryDate, false) || '0'}</span>
+               <span className="font-bold">{calculateDays(formData.surgeryDate, false)}</span>
              </div>
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">담당간호사</span>
-               <span className="font-bold">{formData.assignedNurse || 'Nightingale'}</span>
-             </div>
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">부진단명</span>
-               <span className="font-bold">{formData.subDxName || '-'}</span>
-             </div>
+             <UnderlineInput label="담당교수" value={formData.assignedProfessor} onChange={(v: string) => updateField('assignedProfessor', v)} />
+             <UnderlineInput label="부진단명" value={formData.subDxName} onChange={(v: string) => updateField('subDxName', v)} />
 
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">혈액형</span>
-               <span className="font-bold">{formData.bloodType || 'O(+)'}</span>
-             </div>
+             <UnderlineInput label="혈액형" value={formData.bloodType} onChange={(v: string) => updateField('bloodType', v)} />
              <div className="flex items-center gap-4"></div>
-             <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">담당교수</span>
-               <span className="font-bold">{formData.assignedProfessor || '이영진'}</span>
-             </div>
+             <div className="flex items-center gap-4"></div>
              <div className="flex items-center gap-4"></div>
           </div>
 
@@ -4487,35 +4895,15 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-1">
-            {activeTopMenu === '간호' ? (
-              <>
-                {(['간호기록', '투약기록', '처치기록', '기록작성', '간호계획', '특수기록'] as NursingSubTab[]).map(subTab => (
-                  <TabButton 
-                    key={subTab}
-                    label={subTab} 
-                    count={0} 
-                    active={formData.nursingSubTab === subTab} 
-                    onClick={() => {
-                      setActiveTab('nursing');
-                      updateField('nursingSubTab', subTab);
-                    }} 
-                    theme={currentTheme} 
-                  />
-                ))}
-              </>
-            ) : (
-              <>
-                <TabButton label="응급기록" count={tabCounts.er} active={activeTab === 'er'} onClick={() => setActiveTab('er')} theme={currentTheme} />
-                <TabButton label="입원결과" count={tabCounts.admission} active={activeTab === 'admission'} onClick={() => setActiveTab('admission')} theme={currentTheme} />
-                <TabButton label="수술처치" count={tabCounts.surgery} active={activeTab === 'surgery'} onClick={() => setActiveTab('surgery')} theme={currentTheme} />
-                <TabButton label="협진기록" count={tabCounts.consult} active={activeTab === 'consult'} onClick={() => setActiveTab('consult')} theme={currentTheme} />
-                <TabButton label="퇴원요약" count={tabCounts.discharge} active={activeTab === 'discharge'} onClick={() => setActiveTab('discharge')} theme={currentTheme} />
-                <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} theme={currentTheme} />
-                <TabButton label="기타기록" count={tabCounts.other_record} active={activeTab === 'other_record'} onClick={() => setActiveTab('other_record')} theme={currentTheme} />
-                <TabButton label="타병원기록" count={tabCounts.other_hospital} active={activeTab === 'other_hospital'} onClick={() => setActiveTab('other_hospital')} theme={currentTheme} />
-                <TabButton label="처방" count={tabCounts.prescription} active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} theme={currentTheme} />
-              </>
-            )}
+            <TabButton label="응급기록" count={tabCounts.er} active={activeTab === 'er'} onClick={() => setActiveTab('er')} theme={currentTheme} />
+            <TabButton label="입원결과" count={tabCounts.admission} active={activeTab === 'admission'} onClick={() => setActiveTab('admission')} theme={currentTheme} />
+            <TabButton label="수술처치" count={tabCounts.surgery} active={activeTab === 'surgery'} onClick={() => setActiveTab('surgery')} theme={currentTheme} />
+            <TabButton label="협진기록" count={tabCounts.consult} active={activeTab === 'consult'} onClick={() => setActiveTab('consult')} theme={currentTheme} />
+            <TabButton label="퇴원요약" count={tabCounts.discharge} active={activeTab === 'discharge'} onClick={() => setActiveTab('discharge')} theme={currentTheme} />
+            <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} theme={currentTheme} />
+            <TabButton label="기타기록" count={tabCounts.other_record} active={activeTab === 'other_record'} onClick={() => setActiveTab('other_record')} theme={currentTheme} />
+            <TabButton label="타병원기록" count={tabCounts.other_hospital} active={activeTab === 'other_hospital'} onClick={() => setActiveTab('other_hospital')} theme={currentTheme} />
+            <TabButton label="처방" count={tabCounts.prescription} active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} theme={currentTheme} />
           </div>
 
           <div className="flex items-center gap-2">
