@@ -62,7 +62,21 @@ import {
   ExternalLink,
   AlertTriangle,
   UserX,
-  ShieldAlert
+  ShieldAlert,
+  ClipboardList,
+  Pill,
+  FlaskConical,
+  Image as ImageIcon,
+  Stethoscope,
+  Users,
+  Star,
+  TrendingUp,
+  History,
+  Apple,
+  Activity,
+  Droplet,
+  HeartHandshake,
+  List
 } from 'lucide-react';
 import { db } from './firebase';
 import { 
@@ -83,7 +97,7 @@ declare global {
   }
 }
 
-export type TabType = 'admission' | 'surgery' | 'consult' | 'discharge' | 'lab' | 'other_record' | 'other_hospital' | 'prescription' | 'er' | 'nursing' | 'none';
+export type TabType = 'admission' | 'surgery' | 'consult' | 'discharge' | 'lab' | 'other_record' | 'other_hospital' | 'prescription' | 'er' | 'nursing' | 'doctor_prescription' | 'support_dept' | 'none';
 export type NursingSubTab = string;
 
 export interface SoapBlock {
@@ -2852,6 +2866,74 @@ export default function App() {
     );
   };
 
+  const renderDoctorPrescriptionDashboard = () => {
+    const items = [
+      { title: 'General Order', icon: ClipboardList, color: 'bg-blue-500' },
+      { title: 'Medication Instruction', icon: Pill, color: 'bg-green-500' },
+      { title: 'Lab / Imaging Plan', icon: FlaskConical, color: 'bg-purple-500' },
+      { title: 'Treatment Plan', icon: Stethoscope, color: 'bg-red-500' },
+      { title: 'Consult Order', icon: Users, color: 'bg-indigo-500' },
+      { title: 'Special Order', icon: Star, color: 'bg-yellow-500' },
+      { title: 'Modification based on progress', icon: TrendingUp, color: 'bg-orange-500' },
+      { title: 'Doctor\'s Order History', icon: History, color: 'bg-gray-500' },
+    ];
+
+    return (
+      <div className="flex-1 p-8 bg-gray-100 overflow-y-auto">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl font-black mb-8 border-b-4 border-black pb-2 flex items-center gap-2">
+            <ClipboardList size={32} /> 의사처방 (Doctor's Prescription)
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {items.map((item, idx) => (
+              <div key={idx} className="bg-white border-4 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all cursor-pointer group">
+                <div className={`${item.color} w-12 h-12 rounded-full flex items-center justify-center mb-4 border-2 border-black group-hover:scale-110 transition-transform`}>
+                  <item.icon className="text-white" size={24} />
+                </div>
+                <h3 className="font-black text-lg mb-2">{item.title}</h3>
+                <p className="text-sm text-gray-600 font-bold">처방 및 지시사항을 관리합니다.</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSupportDeptDashboard = () => {
+    const items = [
+      { title: 'Nutrition Team', icon: Apple, color: 'bg-red-400' },
+      { title: 'Rehabilitation Team', icon: Activity, color: 'bg-blue-400' },
+      { title: 'Pharmacy', icon: Pill, color: 'bg-green-400' },
+      { title: 'Lab', icon: FlaskConical, color: 'bg-purple-400' },
+      { title: 'Blood Transfusion', icon: Droplet, color: 'bg-red-600' },
+      { title: 'Social Work Team', icon: HeartHandshake, color: 'bg-pink-400' },
+      { title: 'Support Request List', icon: List, color: 'bg-indigo-400' },
+      { title: 'Support Request History', icon: History, color: 'bg-gray-400' },
+    ];
+
+    return (
+      <div className="flex-1 p-8 bg-gray-100 overflow-y-auto">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl font-black mb-8 border-b-4 border-black pb-2 flex items-center gap-2">
+            <Users size={32} /> 지원부서 (Support Department)
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {items.map((item, idx) => (
+              <div key={idx} className="bg-white border-4 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all cursor-pointer group">
+                <div className={`${item.color} w-12 h-12 rounded-full flex items-center justify-center mb-4 border-2 border-black group-hover:scale-110 transition-transform`}>
+                  <item.icon className="text-white" size={24} />
+                </div>
+                <h3 className="font-black text-lg mb-2">{item.title}</h3>
+                <p className="text-sm text-gray-600 font-bold">부서별 지원 요청 및 협업을 관리합니다.</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     if (activeTab === 'none') {
       return (
@@ -2861,6 +2943,10 @@ export default function App() {
     }
 
     switch (activeTab) {
+      case 'doctor_prescription':
+        return renderDoctorPrescriptionDashboard();
+      case 'support_dept':
+        return renderSupportDeptDashboard();
       case 'admission':
         return (
           <div className="flex-1 flex gap-10 p-4 bg-white overflow-hidden">
@@ -5060,12 +5146,12 @@ export default function App() {
         <div className="flex items-center justify-start gap-2 px-4 py-1.5 border-b border-gray-300 bg-[#f0f0f0]">
           <button 
             onClick={() => {
-              setActiveTopMenu('웹사이트');
-              window.open('https://total-emr.vercel.app/', '_blank');
+              setActiveTopMenu('의사처방');
+              setActiveTab('doctor_prescription');
             }}
-            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '웹사이트' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '의사처방' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
-            웹사이트
+            의사처방
           </button>
           <button 
             onClick={() => {
@@ -5087,12 +5173,12 @@ export default function App() {
           </button>
           <button 
             onClick={() => {
-              setActiveTopMenu('드라이브');
-              window.open('https://drive.google.com/drive/folders/1glFfxZVQzXt4XeUdLagr32rjpvrYf01e?usp=sharing', '_blank');
+              setActiveTopMenu('지원부서');
+              setActiveTab('support_dept');
             }}
-            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '드라이브' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '지원부서' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
-            드라이브
+            지원부서
           </button>
           <button 
             onClick={() => {
@@ -5299,10 +5385,13 @@ export default function App() {
                     onClick={() => {
                       if (activeTab === 'other_record') return;
                       setSelectedPatientId(patient.id);
-                      if (activeTopMenu !== 'E.M.R') {
+                      if (activeTopMenu !== 'E.M.R' && activeTopMenu !== '의사처방' && activeTopMenu !== '지원부서') {
                         setShowPatientModal(true);
                       }
                       if (activeTopMenu === '간호') setActiveTab('nursing');
+                      else if (activeTopMenu === '의사처방') setActiveTab('doctor_prescription');
+                      else if (activeTopMenu === '지원부서') setActiveTab('support_dept');
+                      else if (activeTopMenu === 'E.M.R') setActiveTab('admission');
                       else setActiveTab('admission');
                     }}
                     disabled={activeTab === 'other_record'}
