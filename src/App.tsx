@@ -4924,7 +4924,7 @@ export default function App() {
               </div>
             </div>
           );
-        case 'report-writing':
+        case '보고서 작성':
           return (
             <div className="flex-1 flex flex-col p-8 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
               <div className="max-w-4xl mx-auto w-full space-y-8">
