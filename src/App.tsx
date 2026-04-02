@@ -79,7 +79,7 @@ declare global {
 }
 
 export type TabType = 'admission' | 'surgery' | 'consult' | 'discharge' | 'lab' | 'other_record' | 'other_hospital' | 'prescription' | 'er' | 'nursing' | 'none';
-export type NursingSubTab = '간호기록' | '투약기록' | '처치기록' | '기록작성' | '간호계획' | '특수기록';
+export type NursingSubTab = string;
 
 export interface SoapBlock {
   s: string;
@@ -248,6 +248,9 @@ export interface Patient {
   // New Nursing Fields
   nursingSubTab: NursingSubTab;
   nursingNote: string;
+  assignedNurse: string;
+  assignedProfessor: string;
+  ward: string;
   nursingSoapNote: string;
   nursingSoapBlocks: SoapBlock[];
   nursingExam: string;
@@ -759,8 +762,11 @@ const INITIAL_FORM_DATA: Patient = {
   otherHospitalRecord: '',
   nursingCategory: '낙상기록지',
   nursingRecords: {},
-  nursingSubTab: '간호기록',
+  nursingSubTab: '간호 기록지',
   nursingNote: '',
+  assignedNurse: '',
+  assignedProfessor: '',
+  ward: '',
   nursingSoapNote: '',
   nursingSoapBlocks: [],
   nursingExam: '',
@@ -1058,6 +1064,7 @@ export default function App() {
   const [printType, setPrintType] = useState<TabType | null>(null);
   const lastSyncedIdRef = useRef<string | null>(null);
 
+  const [nursingIsWriting, setNursingIsWriting] = useState(false);
   const [patientListWidth, setPatientListWidth] = useState(320);
   const [rightSidebarWidth, setRightSidebarWidth] = useState(384);
   const [rightSidebarTopHeight, setRightSidebarTopHeight] = useState(400);
@@ -3759,457 +3766,262 @@ export default function App() {
   };
 
   const renderNursingContent = () => {
-    const NURSING_SUB_TABS: NursingSubTab[] = ['간호기록', '투약기록', '처치기록', '기록작성', '간호계획', '특수기록'];
+    const NURSING_SIDEBAR_ITEMS = [
+      { id: 'e-cardex', label: 'e-CARDEX', icon: '📋' },
+      { id: 'handover', label: '간호 인수인계', icon: '🤝' },
+      { id: 'admission-record', label: '입원간호 기록지', icon: '📝' },
+      { id: 'discharge-record', label: '퇴원간호 기록지', icon: '📄' },
+      { id: 'prescription-record', label: '처방 기록지', icon: '💊' },
+      { id: 'nursing-record', label: '간호 기록지', icon: '✍️' },
+      { id: 'medication-record', label: '투약 기록지', icon: '💉' },
+      { id: 'imaging-record', label: '영상검사 기록지', icon: '🩻' },
+      { id: 'lab-record', label: '임상병리검사 기록지', icon: '🧪' },
+      { id: 'observation-record', label: '임상관찰 기록지', icon: '🩺' },
+      { id: 'blood-sugar-record', label: '혈당 기록지', icon: '🩸' },
+      { id: 'patient-assessment', label: '환자평가/환자안전', icon: '👤', hasSub: true },
+      { id: 'pain-assessment', label: '통증평가도구', icon: '😫' },
+      { id: 'mental-health', label: '정신건강 평가도구', icon: '🧠' },
+      { id: 'special-part', label: '특수파트 기록지', icon: '🏥' },
+      { id: 'diet-nutrition', label: '식이/영양 기록지', icon: '🍎' },
+      { id: 'consent', label: '동의서', icon: '✍️' },
+      { id: 'infant-checkup', label: '영유아 건강검진 문진', icon: '👶' },
+    ];
 
-    const currentNursingRecord = (formData.nursingRecords?.[formData.nursingCategory]) || {
-      occurTime: '',
-      occurPlace: '',
-      eventType: '',
-      action: '',
-      reporter: '',
-      patientChange: '',
-      detail: '',
-    };
+    const NURSING_BOTTOM_ITEMS = [
+      { id: 'informatics', label: '간호정보학', icon: '💻' },
+      { id: 'drug-calc', label: '약물계산기', icon: '🧮' },
+      { id: 'checklist', label: '간호기록체크리스트', icon: '✅' },
+      { id: 'schedule', label: '간호사 근무 스케줄표', icon: '📅' },
+    ];
 
-    const updateNursingField = (field: keyof NursingRecord, value: string) => {
-      const newRecords = {
-        ...(formData.nursingRecords || {}),
-        [formData.nursingCategory]: {
-          ...currentNursingRecord,
-          [field]: value
-        }
-      };
-      updateField('nursingRecords', newRecords);
+    const calculateDays = (dateStr: string, isHod: boolean) => {
+      if (!dateStr) return '0';
+      try {
+        const d = new Date(dateStr);
+        const today = new Date();
+        const diff = Math.floor((today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+        return diff >= 0 ? diff.toString() : '0';
+      } catch (e) {
+        return '0';
+      }
     };
 
     const renderSubTabContent = () => {
       switch (formData.nursingSubTab) {
-        case '간호기록':
+        case '간호 기록지':
           return (
-            <NursingDashboard patient={formData} />
-          );
-        case '투약기록':
-          const meds = formData.medicationRows || [Array(8).fill('')];
-          const medChecked = formData.medicationChecked || [false];
-          const updateMedRow = (rowIdx: number, colIdx: number, val: string) => {
-            const newMeds = [...meds];
-            newMeds[rowIdx] = [...newMeds[rowIdx]];
-            newMeds[rowIdx][colIdx] = val;
-            updateField('medicationRows', newMeds);
-          };
-          const toggleMedChecked = (idx: number) => {
-            const newChecked = [...medChecked];
-            newChecked[idx] = !newChecked[idx];
-            updateField('medicationChecked', newChecked);
-          };
-          const addMedRow = () => {
-            updateField('medicationRows', [...meds, Array(8).fill('')]);
-            updateField('medicationChecked', [...medChecked, false]);
-          };
-          const removeMedRow = (idx: number) => {
-            if (meds.length <= 1) return;
-            const newMeds = meds.filter((_, i) => i !== idx);
-            const newChecked = medChecked.filter((_, i) => i !== idx);
-            updateField('medicationRows', newMeds);
-            updateField('medicationChecked', newChecked);
-          };
+            <div className="flex-1 flex overflow-hidden">
+              {/* Left Column: Prescription */}
+              <div className="flex-1 flex flex-col border-r border-gray-300 overflow-hidden">
+                <div className="px-4 py-3 font-bold text-[15px] text-gray-800">처방 내역</div>
+                <div className="flex-1 p-6 overflow-y-auto text-[13px] leading-relaxed">
+                  <div className="text-gray-400 mb-6 font-medium">처방일시 2023-07-27</div>
+                  
+                  <div className="space-y-6">
+                    <section>
+                      <div className="font-bold mb-2">※사례개요</div>
+                      <p>환자는 노인이며, 낙상 직후 어지럼증을 호소하였으며, 강한 자극에 대한 위축 반응, 이마 (또는 다리)에 외상은 없으나 흉통(4점/10점만점)이 있는 상태이다.</p>
+                      <p>V/S: BT 37.0, HR 90회, RR 20회, BP 130/90mmHg</p>
+                    </section>
 
-          return (
-            <div className="flex-1 border-2 border-black bg-white flex flex-col overflow-hidden">
-              <div className="overflow-x-auto overflow-y-auto flex-1">
-                <table className="w-full border-collapse min-w-[800px]">
-                  <thead className="sticky top-0 z-10">
-                    <tr style={{ backgroundColor: currentTheme.color }} className="text-white font-bold text-sm">
-                      <th className="border-r border-b border-black p-2 w-24">투여시간</th>
-                      <th className="border-r border-b border-black p-2 w-24">투여일</th>
-                      <th className="border-r border-b border-black p-2">약품명</th>
-                      <th className="border-r border-b border-black p-2 w-20">용량</th>
-                      <th className="border-r border-b border-black p-2 w-20">경로</th>
-                      <th className="border-r border-b border-black p-2 w-24">처방자</th>
-                      <th className="border-r border-b border-black p-2 w-32">투약여부</th>
-                      <th className="border-r border-b border-black p-2">기타기록</th>
-                      <th className="border-b border-black p-2 w-12"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {meds.map((row, rowIdx) => (
-                      <tr key={rowIdx} className="border-b border-black hover:bg-gray-50">
-                        {row.map((cell, colIdx) => (
-                          <td key={colIdx} className="border-r border-black p-0">
-                            {colIdx === 6 ? (
-                              <div className="flex items-center gap-2 p-1">
-                                <div 
-                                  onClick={() => toggleMedChecked(rowIdx)}
-                                  className="w-6 h-6 border-2 border-black flex items-center justify-center cursor-pointer bg-white shrink-0"
-                                >
-                                  {medChecked[rowIdx] && <div className="w-4 h-4 bg-black"></div>}
-                                </div>
-                                <input 
-                                  type="text"
-                                  value={cell}
-                                  onChange={(e) => updateMedRow(rowIdx, colIdx, e.target.value)}
-                                  className="flex-1 p-1 focus:outline-none text-sm"
-                                />
-                              </div>
-                            ) : (
-                              <input 
-                                type="text"
-                                value={cell}
-                                onChange={(e) => updateMedRow(rowIdx, colIdx, e.target.value)}
-                                className="w-full p-2 focus:outline-none text-sm text-center"
-                              />
-                            )}
-                          </td>
-                        ))}
-                        <td className="p-1 text-center">
-                          <button onClick={() => removeMedRow(rowIdx)} className="text-red-500 hover:text-red-700 text-xs font-bold">X</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="p-2 border-t border-black bg-gray-100 flex justify-center">
-                <button 
-                  onClick={addMedRow}
-                  className="bg-blue-600 text-white px-4 py-1 rounded text-sm font-bold hover:bg-blue-700"
-                >
-                  + 투약기록 추가
-                </button>
-              </div>
-            </div>
-          );
-        case '처치기록':
-          return (
-            <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
-              {['드레싱', '카테터', '산소치료', '검사'].map(section => (
-                <div key={section} className="border-2 border-black bg-white flex flex-col">
-                  <div className="bg-gray-300 p-2 border-b-2 border-black">
-                    <span className="bg-white border-2 border-black px-8 py-1 rounded-xl font-bold text-2xl">{section}</span>
-                  </div>
-                  <table className="w-full border-collapse">
-                    <tbody>
-                      {[
-                        { id: 'date', label: '시행일자' },
-                        { id: 'time', label: '시행시간' },
-                        { id: 'status', label: '시행여부' },
-                        { id: 'note', label: '기타기록' },
-                      ].map(row => (
-                        <tr key={row.id} className="border-b-2 border-black last:border-b-0">
-                          <td 
-                            style={{ backgroundColor: currentTheme.color }}
-                            className="w-48 border-r-2 border-black p-2 text-center font-bold text-xl text-white"
-                          >
-                            {row.label}
-                          </td>
-                          <td className="p-0">
-                            <input 
-                              type="text"
-                              value={(formData.treatmentData[section] as any)[row.id] || ''}
-                              onChange={(e) => updateField('treatmentData', {
-                                ...formData.treatmentData,
-                                [section]: { ...formData.treatmentData[section], [row.id]: e.target.value }
-                              })}
-                              className="w-full p-2 focus:outline-none text-xl"
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ))}
-            </div>
-          );
-        case '기록작성':
-          return (
-            <div className="flex h-full gap-4 overflow-hidden">
-              <div className="flex-1 flex flex-col gap-4 overflow-y-auto border-r-2 border-black pr-4">
-                <div className="border-2 border-black p-4 bg-white">
-                  <h2 className="font-bold text-lg mb-2">처방 내역</h2>
-                  <div className="whitespace-pre-wrap text-sm">{formData.erOrder || '처방 내역이 없습니다.'}</div>
-                </div>
-                <div className="border-2 border-black p-4 bg-white">
-                  <h2 className="font-bold text-lg mb-2">간호 기록 내역</h2>
-                  <div className="whitespace-pre-wrap text-sm">{formData.nursingNote || '작성된 간호기록이 없습니다.'}</div>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                <NursingWriter patient={formData} onSave={(data) => updateField('nursingNote', data)} />
-              </div>
-            </div>
-          );
-        case '간호계획':
-          return (
-            <div className="flex-1 border-2 border-black bg-white flex overflow-hidden">
-              <div className="flex-1 flex flex-col border-r-2 border-black">
-                <div 
-                  style={{ backgroundColor: currentTheme.color }}
-                  className="text-white py-2 text-center font-bold text-2xl border-b-2 border-black"
-                >
-                  간호진단
-                </div>
-                <AutoHeightTextarea 
-                  value={formData.nursingPlan.diagnosis}
-                  onChange={(e: any) => updateField('nursingPlan', { ...formData.nursingPlan, diagnosis: e.target.value })}
-                  className="flex-1 p-4 text-lg focus:outline-none"
-                />
-              </div>
-              <div className="flex-1 flex flex-col border-r-2 border-black">
-                <div 
-                  style={{ backgroundColor: currentTheme.color }}
-                  className="text-white py-2 text-center font-bold text-2xl border-b-2 border-black"
-                >
-                  향후계획
-                </div>
-                <AutoHeightTextarea 
-                  value={formData.nursingPlan.plan}
-                  onChange={(e: any) => updateField('nursingPlan', { ...formData.nursingPlan, plan: e.target.value })}
-                  className="flex-1 p-4 text-lg focus:outline-none"
-                />
-              </div>
-              <div className="flex-1 flex flex-col">
-                <div 
-                  style={{ backgroundColor: currentTheme.color }}
-                  className="text-white py-2 text-center font-bold text-2xl border-b-2 border-black"
-                >
-                  평가
-                </div>
-                <AutoHeightTextarea 
-                  value={formData.nursingPlan.evaluation}
-                  onChange={(e: any) => updateField('nursingPlan', { ...formData.nursingPlan, evaluation: e.target.value })}
-                  className="flex-1 p-4 text-lg focus:outline-none"
-                />
-              </div>
-            </div>
-          );
-        case '특수기록':
-          return (
-            <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
-              <div className="border-2 border-black bg-white flex flex-col">
-                <div 
-                  style={{ backgroundColor: currentTheme.color }}
-                  className="p-2 border-b-2 border-black"
-                >
-                  <span className="bg-white border-2 border-black px-8 py-1 rounded-xl font-bold text-2xl">수술 간호 기록</span>
-                </div>
-                <div className="flex gap-4 p-4">
-                  <div className="flex-1 border-2 border-black relative">
-                    <div 
-                      style={{ backgroundColor: currentTheme.color }}
-                      className="absolute top-2 left-2 border-2 border-black px-4 py-1 rounded-xl font-bold text-2xl text-white"
-                    >
-                      전
+                    <section>
+                      <div className="font-bold mb-2">※환자개요</div>
+                      <div className="space-y-1">
+                        <p>1. 주호소(Chief complaint): 흉통</p>
+                        <p>2. 입원경로(History of present illness): 평소에 고혈압, 협심증으로 약물 치료 중이었으나, 3달전부터 등산시 5-10분 가량의 흉통이 3-4차례 반복되어 심도자 검사 위해 외래 통해 입원함.</p>
+                        <p>3. 사회력(Social history): (은퇴 전) 화물차 운전기사</p>
+                        <p>4. 과거질병력(Past medical history): 고혈압, 협심증</p>
+                        <p>5. 과거수술력(Past Surgical history & date): 없음</p>
+                        <p>6. 가족력(Family medical history): 부 - 고혈압, 심근경색, 모 - 없음</p>
+                        <p>7. 알러지(Allergies): 무</p>
+                        <p>8. 면역상태(Immunization): 특이사항 없음</p>
+                        <p>9. 약물(Medication): 고혈압, 협심증 치료제, 이뇨제</p>
+                        <p>10. 1차 진단명(Primary diagnosis): 협심증</p>
+                      </div>
+                    </section>
+
+                    <section>
+                      <div className="font-bold mb-2">※의사처방</div>
+                      <div className="space-y-1">
+                        <p>1) Dilatrend Tab 6.25mg 1Tab Bid</p>
+                        <p>2) Sigmart Tab 5mg 1Tab Tid</p>
+                        <p>3) Lasix Tab 40mg 1Tab Bid</p>
+                        <p>   Aldactone 25mg 1Tab Bid</p>
+                        <p>4) 0.9% NS 1L/Bag 1Bag 45cc/hr</p>
+                      </div>
+                    </section>
+
+                    <div className="pt-8 text-[11px] text-gray-400 italic border-t border-gray-100">
+                      해당 시나리오는 한국간호과학회에서 공개한 시뮬레이션 시나리오입니다.
                     </div>
-                    <AutoHeightTextarea 
-                      value={formData.specialRecord.before}
-                      onChange={(e: any) => updateField('specialRecord', { ...formData.specialRecord, before: e.target.value })}
-                      className="w-full p-4 pt-16 text-lg focus:outline-none"
-                      minHeight="300px"
-                    />
                   </div>
-                  <div className="flex-1 border-2 border-black relative">
-                    <div 
-                      style={{ backgroundColor: currentTheme.color }}
-                      className="absolute top-2 left-2 border-2 border-black px-4 py-1 rounded-xl font-bold text-2xl text-white"
-                    >
-                      후
+                </div>
+              </div>
+
+              {/* Right Column: Nursing Record */}
+              <div className="flex-1 flex flex-col overflow-hidden bg-[#f9fbfb]">
+                <div className="px-4 py-3 font-bold text-[15px] text-gray-800 flex justify-between items-center">
+                  <span>간호 기록 내역</span>
+                  <button 
+                    onClick={() => setNursingIsWriting(!nursingIsWriting)}
+                    className="text-xs bg-[#1a4d3c] text-white px-3 py-1 rounded hover:opacity-90 transition-opacity"
+                  >
+                    {nursingIsWriting ? '기록 보기' : '기록 작성'}
+                  </button>
+                </div>
+                <div className="flex-1 p-6 overflow-y-auto text-[13px]">
+                  {nursingIsWriting ? (
+                    <NursingWriter onSave={(data: any) => {
+                      const content = data.narrative || data.darData.d || data.soapieData.s || data.nandaData.diagnosis;
+                      if (content) {
+                        updateField('nursingNote', content);
+                        setNursingIsWriting(false);
+                      }
+                    }} />
+                  ) : (
+                    <div className="whitespace-pre-wrap leading-relaxed">
+                      {formData.nursingNote || '작성된 간호기록이 없습니다.'}
                     </div>
-                    <AutoHeightTextarea 
-                      value={formData.specialRecord.after}
-                      onChange={(e: any) => updateField('specialRecord', { ...formData.specialRecord, after: e.target.value })}
-                      className="w-full p-4 pt-16 text-lg focus:outline-none"
-                      minHeight="300px"
-                    />
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
           );
         default:
-          return null;
+          return (
+            <div className="flex-1 flex items-center justify-center text-gray-400 bg-gray-50">
+              <div className="text-center">
+                <div className="text-4xl mb-2">🚧</div>
+                <div className="text-sm font-medium">{formData.nursingSubTab} 컨텐츠 준비 중입니다.</div>
+              </div>
+            </div>
+          );
       }
     };
 
     return (
-      <div className="flex-1 flex flex-col bg-white overflow-hidden">
-        <div className="flex-1 flex gap-10 p-4 overflow-hidden">
-          {/* Center Column */}
-          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-            {renderSubTabContent()}
+      <div className="flex-1 flex bg-[#D0D0D0] overflow-hidden font-['Gulim','굴림',sans-serif]">
+        {/* Left Sidebar */}
+        <div className="w-[220px] bg-[#1a4d3c] flex flex-col shrink-0 overflow-y-auto">
+          <div className="flex flex-col py-2">
+            {NURSING_SIDEBAR_ITEMS.map(item => (
+              <button
+                key={item.id}
+                className={`flex items-center gap-3 px-4 py-2.5 text-white hover:bg-white/10 transition-colors text-[13px] text-left ${formData.nursingSubTab === item.label ? 'bg-white/20 font-bold' : ''}`}
+                onClick={() => {
+                  updateField('nursingSubTab', item.label);
+                  setNursingIsWriting(false);
+                }}
+              >
+                <span className="text-base w-5 text-center">{item.icon}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.hasSub && <ChevronDown size={14} className="opacity-50" />}
+              </button>
+            ))}
+          </div>
+          
+          <div className="mt-auto border-t border-white/10 pt-4 pb-6 flex flex-col">
+             {NURSING_BOTTOM_ITEMS.map(item => (
+               <button
+                 key={item.id}
+                 className="flex items-center gap-3 px-4 py-2 text-white/80 hover:bg-white/10 transition-colors text-[12px] text-left"
+               >
+                 <span className="text-sm w-5 text-center">{item.icon}</span>
+                 <span>{item.label}</span>
+               </button>
+             ))}
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-white">
+          {/* Top Patient Info Header */}
+          <div className="bg-[#f2f7f7] p-4 border-b border-gray-300 grid grid-cols-4 gap-x-12 gap-y-2 text-[13px]">
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">등록번호</span>
+               <span className="font-bold">{formData.chartNo || '9770007'}</span>
+             </div>
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">키</span>
+               <span className="font-bold">{formData.height || '170'}cm</span>
+             </div>
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">진료과</span>
+               <span className="font-bold">{formData.dept || '심장내과'}</span>
+             </div>
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">주진단코드</span>
+               <span className="font-bold">{formData.mainDxCode || 'I20.9'}</span>
+             </div>
+             
+             <div className="flex items-start gap-4">
+               <span className="text-gray-600 w-16">이름</span>
+               <div className="flex flex-col">
+                 <span className="font-bold">{formData.name || '홍길동'}</span>
+                 <span className="text-[11px] text-gray-500">(낙상고위험 환자)</span>
+               </div>
+             </div>
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">체중</span>
+               <span className="font-bold">{formData.weight || '88'}kg</span>
+             </div>
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">병동</span>
+               <span className="font-bold">{formData.ward || '일반병동'}</span>
+             </div>
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">주진단명</span>
+               <span className="font-bold">{formData.mainDxName || '상세불명의 협심증'}</span>
+             </div>
+
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">나이</span>
+               <span className="font-bold">{formData.age || '72'}</span>
+             </div>
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">HOD</span>
+               <span className="font-bold">{calculateDays(formData.admissionDate, true) || '3'}</span>
+             </div>
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">병실</span>
+               <span className="font-bold">{formData.room || '일반병실'}</span>
+             </div>
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">부진단코드</span>
+               <span className="font-bold">{formData.subDxCode || '-'}</span>
+             </div>
+
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">성별</span>
+               <span className="font-bold">{formData.gender === 'M' ? '남자' : '여자'}</span>
+             </div>
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">POD</span>
+               <span className="font-bold">{calculateDays(formData.surgeryDate, false) || '0'}</span>
+             </div>
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">담당간호사</span>
+               <span className="font-bold">{formData.assignedNurse || 'Nightingale'}</span>
+             </div>
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">부진단명</span>
+               <span className="font-bold">{formData.subDxName || '-'}</span>
+             </div>
+
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">혈액형</span>
+               <span className="font-bold">{formData.bloodType || 'O(+)'}</span>
+             </div>
+             <div className="flex items-center gap-4"></div>
+             <div className="flex items-center gap-4">
+               <span className="text-gray-600 w-16">담당교수</span>
+               <span className="font-bold">{formData.assignedProfessor || '이영진(아주대학교)'}</span>
+             </div>
+             <div className="flex items-center gap-4"></div>
           </div>
 
-          {/* Right Sidebar: 간호기록 작성 & 환자기본정보 */}
-          <div className="w-[450px] border-2 border-black flex flex-col shrink-0 bg-white overflow-hidden">
-            <div className="flex-1 overflow-y-auto">
-              <NursingWriter onSave={(data) => console.log('Saving nursing record:', data)} />
-              
-              <div className="mt-4">
-                <div className="bg-[#999] text-white px-3 py-1 font-bold text-lg mb-2">환자기본정보</div>
-                <div className="p-4 flex flex-col gap-4">
-                  <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} labelWidth="w-24" />
-                  <InputField label="병실" value={formData.room} onChange={(v) => updateField('room', v)} labelWidth="w-24" />
-                  <InputField label="전문의" value={formData.doctor} onChange={(v) => updateField('doctor', v)} labelWidth="w-24" />
-                  <InputField label="성명" value={formData.name} onChange={(v) => updateField('name', v)} labelWidth="w-24" />
-                  <InputField label="나이" value={formData.age} onChange={(v) => updateField('age', v)} labelWidth="w-24" />
-                  <InputField label="거주지" value={formData.address} onChange={(v) => updateField('address', v)} labelWidth="w-24" />
-                  <InputField label="Dx" value={formData.dx} onChange={(v) => updateField('dx', v)} labelWidth="w-24" />
-                  <InputField label="C.C" value={formData.cc} onChange={(v) => updateField('cc', v)} labelWidth="w-24" />
-                  <div className="flex items-center gap-2 text-sm font-bold">
-                    <span className="w-24">On Set</span>
-                    <div className="flex items-center gap-1">
-                      <select 
-                        value={formData.onsetYear} 
-                        onChange={(e) => updateField('onsetYear', e.target.value)}
-                        className="border-2 border-black px-1"
-                      >
-                        {Array.from({ length: 2101 - 1900 }, (_, i) => 1900 + i).map(y => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select> <span>년</span>
-                      <select 
-                        value={formData.onsetMonth} 
-                        onChange={(e) => updateField('onsetMonth', e.target.value)}
-                        className="border-2 border-black px-1"
-                      >
-                        {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select> <span>월</span>
-                      <select 
-                        value={formData.onsetDay} 
-                        onChange={(e) => updateField('onsetDay', e.target.value)}
-                        className="border-2 border-black px-1"
-                      >
-                        {Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(d => (
-                          <option key={d} value={d}>{d}</option>
-                        ))}
-                      </select> <span>일</span>
-                    </div>
-                  </div>
-                  <InputField label="혈액형" value={formData.bloodType} onChange={(v) => updateField('bloodType', v)} labelWidth="w-24" />
-                  <InputField label="진료과" value={formData.dept} onChange={(v) => updateField('dept', v)} labelWidth="w-24" />
-                  <div className="flex items-center gap-2 text-sm font-bold">
-                    <span className="w-24">생년월일</span>
-                    <div className="flex items-center gap-1">
-                      <input type="text" value={formData.dobYear} onChange={(e) => updateField('dobYear', e.target.value)} className="w-16 border-2 border-black px-1 text-center" />년
-                      <input type="text" value={formData.dobMonth} onChange={(e) => updateField('dobMonth', e.target.value)} className="w-10 border-2 border-black px-1 text-center" />월
-                      <input type="text" value={formData.dobDay} onChange={(e) => updateField('dobDay', e.target.value)} className="w-10 border-2 border-black px-1 text-center" />일
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm font-bold">
-                    <span className="w-24">성별</span>
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name="nursing_gender" checked={formData.gender === 'M'} onChange={() => updateField('gender', 'M')} /> 남
-                    </label>
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name="nursing_gender" checked={formData.gender === 'F'} onChange={() => updateField('gender', 'F')} /> 여
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm font-bold">
-                    <span className="w-24">키/체중</span>
-                    <div className="flex items-center gap-1">
-                      <input type="text" value={formData.height} onChange={(e) => updateField('height', e.target.value)} className="w-12 border-2 border-black px-1 text-center" />cm /
-                      <input type="text" value={formData.weight} onChange={(e) => updateField('weight', e.target.value)} className="w-12 border-2 border-black px-1 text-center" />kg
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm font-bold">
-                    <span className="w-24">V/S</span>
-                    <div className="flex flex-wrap gap-2">
-                      <div className="flex items-center gap-1 text-xs">BP <input type="text" value={formData.bpSys} onChange={(e) => updateField('bpSys', e.target.value)} className="w-10 border-2 border-black px-1 text-center" />/ <input type="text" value={formData.bpDia} onChange={(e) => updateField('bpDia', e.target.value)} className="w-10 border-2 border-black px-1 text-center" /></div>
-                      <div className="flex items-center gap-1 text-xs">HR <input type="text" value={formData.hr} onChange={(e) => updateField('hr', e.target.value)} className="w-10 border-2 border-black px-1 text-center" /></div>
-                      <div className="flex items-center gap-1 text-xs">RR <input type="text" value={formData.rr} onChange={(e) => updateField('rr', e.target.value)} className="w-10 border-2 border-black px-1 text-center" /></div>
-                      <div className="flex items-center gap-1 text-xs">BT <input type="text" value={formData.bt} onChange={(e) => updateField('bt', e.target.value)} className="w-10 border-2 border-black px-1 text-center" /></div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-24 font-bold text-sm">주진단코드 -</span>
-                      <div className="flex gap-1 flex-1">
-                        <select 
-                          value={(formData.mainDxCode || '').charAt(0)} 
-                          onChange={(e) => {
-                            const letter = e.target.value;
-                            const number = (formData.mainDxCode || '').slice(1) || '00';
-                            const newCode = letter + number;
-                            updateField('mainDxCode', newCode);
-                            const dx = DX_CODES.find(d => d.code === newCode);
-                            if (dx) updateField('mainDxName', dx.name);
-                          }}
-                          className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
-                        >
-                          <option value="">선택</option>
-                          {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
-                        </select>
-                        <select 
-                          value={(formData.mainDxCode || '').slice(1)} 
-                          onChange={(e) => {
-                            const letter = (formData.mainDxCode || '').charAt(0) || 'A';
-                            const number = e.target.value;
-                            const newCode = letter + number;
-                            updateField('mainDxCode', newCode);
-                            const dx = DX_CODES.find(d => d.code === newCode);
-                            if (dx) updateField('mainDxName', dx.name);
-                          }}
-                          className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
-                        >
-                          <option value="">선택</option>
-                          {Array.from({ length: 99 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(n => <option key={n} value={n}>{n}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-24 font-bold text-sm">주진단명 -</span>
-                      <input type="text" value={formData.mainDxName} onChange={(e) => updateField('mainDxName', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none text-sm" />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-24 font-bold text-sm">부진단코드 -</span>
-                      <div className="flex gap-1 flex-1">
-                        <select 
-                          value={(formData.subDxCode || '').charAt(0)} 
-                          onChange={(e) => {
-                            const letter = e.target.value;
-                            const number = (formData.subDxCode || '').slice(1) || '00';
-                            const newCode = letter + number;
-                            updateField('subDxCode', newCode);
-                            const dx = DX_CODES.find(d => d.code === newCode);
-                            if (dx) updateField('subDxName', dx.name);
-                          }}
-                          className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
-                        >
-                          <option value="">선택</option>
-                          {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
-                        </select>
-                        <select 
-                          value={(formData.subDxCode || '').slice(1)} 
-                          onChange={(e) => {
-                            const letter = (formData.subDxCode || '').charAt(0) || 'A';
-                            const number = e.target.value;
-                            const newCode = letter + number;
-                            updateField('subDxCode', newCode);
-                            const dx = DX_CODES.find(d => d.code === newCode);
-                            if (dx) updateField('subDxName', dx.name);
-                          }}
-                          className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
-                        >
-                          <option value="">선택</option>
-                          {Array.from({ length: 99 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(n => <option key={n} value={n}>{n}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-24 font-bold text-sm">부진단명 -</span>
-                      <input type="text" value={formData.subDxName} onChange={(e) => updateField('subDxName', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none text-sm" />
-                    </div>
-                  </div>
-                  <InputField label="HOD" value={calculateDays(formData.admissionDate, true)} readOnly labelWidth="w-24" />
-                  <InputField label="POD" value={calculateDays(formData.surgeryDate, false)} readOnly labelWidth="w-24" />
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Two Column Content */}
+          {renderSubTabContent()}
         </div>
       </div>
     );
