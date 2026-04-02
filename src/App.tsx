@@ -59,7 +59,10 @@ import {
   ChevronsLeft,
   ChevronsRight,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  AlertTriangle,
+  UserX,
+  ShieldAlert
 } from 'lucide-react';
 import { db } from './firebase';
 import { 
@@ -119,6 +122,13 @@ export interface ImagingRecordItem {
   result: string;
   note: string;
   images: string[];
+}
+
+export interface ClinicalPathologyRecord {
+  id: string;
+  time: string;
+  nameKo: string;
+  nameEn: string;
 }
 
 export interface OtherRecordItem {
@@ -267,6 +277,7 @@ export interface Patient {
   nursingNarrativeNotes: NursingNarrativeNote[];
   nursingStructuredRecords: { date: string, time: string, type: string, content: string, medicationStatus: string, author: string }[];
   nursingPrescriptionNote: string;
+  clinicalPathologyRecords: ClinicalPathologyRecord[];
   imagingRecordItems: ImagingRecordItem[];
   // New Nursing Fields
   nursingSubTab: NursingSubTab;
@@ -865,6 +876,9 @@ const INITIAL_FORM_DATA: Patient = {
   nursingNarrativeNotes: [],
   nursingStructuredRecords: [],
   nursingPrescriptionNote: '',
+  clinicalPathologyRecords: [
+    { id: '1', time: '09:00 AM', nameKo: '경피적혈액산소포화도측정[1일당]', nameEn: 'Percutaneous Blood O2 Saturation Monitoring' }
+  ],
   imagingRecordItems: [],
   nursingSubTab: '간호 기록지',
   nursingNote: '',
@@ -1170,6 +1184,9 @@ export default function App() {
 
   const [nursingIsWriting, setNursingIsWriting] = useState(false);
   const [newNursingRecord, setNewNursingRecord] = useState({ type: '', content: '', medicationStatus: '' });
+  const [newMedicationRecord, setNewMedicationRecord] = useState({ dateTime: '', name: '', dosage: '', route: '', frequency: '', status: '투약완료' });
+  const [newDietRecord, setNewDietRecord] = useState({ date: '', type: '아침', dietName: '', amount: 'Full', note: '' });
+  const [newPathologyRecord, setNewPathologyRecord] = useState({ time: '', nameKo: '', nameEn: '' });
   const [nursingSidebarOpen, setNursingSidebarOpen] = useState<Record<string, boolean>>({
     'patient-assessment': true,
     'pain-assessment': false
@@ -1833,7 +1850,7 @@ export default function App() {
 
       <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} />
       <InputField label="병실" value={formData.room} onChange={(v) => updateField('room', v)} />
-      <InputField label="전문의" value={formData.doctor} onChange={(v) => updateField('doctor', v)} />
+      <InputField label="전문의" value={formData.assignedProfessor} onChange={(v) => updateField('assignedProfessor', v)} />
       <InputField label="성명" value={formData.name} onChange={(v) => updateField('name', v)} />
       <InputField label="나이" value={formData.age} onChange={(v) => updateField('age', v)} />
       <InputField label="거주지" value={formData.address} onChange={(v) => updateField('address', v)} />
@@ -3880,6 +3897,7 @@ export default function App() {
       { id: 'nursing-record', label: '간호 기록지', icon: '✍️' },
       { id: 'medication-record', label: '투약 기록지', icon: '💉' },
       { id: 'imaging-record', label: '영상검사 기록지', icon: '🩻' },
+      { id: 'clinical-pathology', label: '임상병리검사', icon: '🧪' },
       { 
         id: 'patient-assessment-record', 
         label: '환자평가 기록지', 
@@ -4223,109 +4241,63 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Right: Nursing Record Table */}
+                {/* Right: Nursing Record List (Reverted to Narrative) */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                   <div className="bg-[#eef2f5] px-3 py-1.5 border-b border-gray-300 font-bold text-sm flex justify-between items-center">
                     <span>간호기록 내역</span>
-                  </div>
-                  
-                  {/* Add Record Row */}
-                  <div className="p-3 border-b border-gray-300 bg-gray-50 flex gap-2 items-end">
-                    <div className="flex-1 space-y-1">
-                      <label className="text-[11px] font-bold text-gray-600">기록종류</label>
-                      <input 
-                        type="text"
-                        className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
-                        placeholder="예: 서술기록, 특기사항"
-                        value={newNursingRecord.type}
-                        onChange={(e) => setNewNursingRecord({...newNursingRecord, type: e.target.value})}
-                      />
-                    </div>
-                    <div className="flex-[3] space-y-1">
-                      <label className="text-[11px] font-bold text-gray-600">내용</label>
-                      <input 
-                        type="text"
-                        className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
-                        placeholder="기록 내용을 입력하세요."
-                        value={newNursingRecord.content}
-                        onChange={(e) => setNewNursingRecord({...newNursingRecord, content: e.target.value})}
-                      />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <label className="text-[11px] font-bold text-gray-600">투약여부</label>
-                      <select 
-                        className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
-                        value={newNursingRecord.medicationStatus}
-                        onChange={(e) => setNewNursingRecord({...newNursingRecord, medicationStatus: e.target.value})}
-                      >
-                        <option value="">-</option>
-                        <option value="완료">완료</option>
-                        <option value="미시행">미시행</option>
-                        <option value="거부">거부</option>
-                      </select>
-                    </div>
                     <button 
-                      onClick={() => {
-                        if (!newNursingRecord.type || !newNursingRecord.content) return;
-                        const newEntry = {
-                          date: new Date().toISOString().split('T')[0],
-                          time: new Date().toTimeString().split(' ')[0].substring(0, 5),
-                          type: newNursingRecord.type,
-                          content: newNursingRecord.content,
-                          medicationStatus: newNursingRecord.medicationStatus,
-                          author: 'Nightingale'
-                        };
-                        const updatedRecords = [...(formData.nursingStructuredRecords || []), newEntry];
-                        updateField('nursingStructuredRecords', updatedRecords);
-                        setNewNursingRecord({ type: '', content: '', medicationStatus: '' });
-                      }}
-                      className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm font-bold hover:bg-blue-700"
+                      onClick={() => setNursingIsWriting(true)}
+                      className="bg-blue-600 text-white px-3 py-0.5 rounded text-[12px] hover:bg-blue-700 flex items-center gap-1"
                     >
-                      추가
+                      <Edit size={12} /> 기록작성
                     </button>
                   </div>
-
-                  <div className="flex-1 overflow-y-auto">
-                    <table className="w-full border-collapse text-[13px]">
-                      <thead className="sticky top-0 bg-gray-100 z-10">
-                        <tr className="border-b border-gray-300">
-                          <th className="p-2 border-r border-gray-300 w-32">일시</th>
-                          <th className="p-2 border-r border-gray-300 w-32">기록종류</th>
-                          <th className="p-2 border-r border-gray-300">내용</th>
-                          <th className="p-2 border-r border-gray-300 w-24">투약여부</th>
-                          <th className="p-2 w-24">작성자</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.nursingStructuredRecords && formData.nursingStructuredRecords.length > 0 ? (
-                          formData.nursingStructuredRecords.map((record: any, i: number) => (
-                            <tr key={i} className="border-b border-gray-200 hover:bg-gray-50">
-                              <td className="p-2 border-r border-gray-300 text-center text-gray-600">{record.date} {record.time}</td>
-                              <td className="p-2 border-r border-gray-300 text-center font-bold">{record.type}</td>
-                              <td className="p-2 border-r border-gray-300 whitespace-pre-wrap">{record.content}</td>
-                              <td className="p-2 border-r border-gray-300 text-center">
-                                {record.medicationStatus && (
-                                  <span className={`px-2 py-0.5 rounded-full text-[11px] ${
-                                    record.medicationStatus === '완료' ? 'bg-green-100 text-green-800' : 
-                                    record.medicationStatus === '미시행' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                                  }`}>
-                                    {record.medicationStatus}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="p-2 text-center text-gray-500 italic">{record.author}</td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={5} className="p-20 text-center text-gray-400 italic">저장된 간호기록이 없습니다.</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {formData.nursingNarrativeNotes && formData.nursingNarrativeNotes.length > 0 ? (
+                      formData.nursingNarrativeNotes.map((note: any, i: number) => (
+                        <div key={i} className="border border-gray-300 rounded-sm bg-white shadow-sm overflow-hidden">
+                          <div className="bg-gray-100 px-3 py-1 border-b border-gray-200 flex justify-between items-center text-[11px] font-bold">
+                            <span className="text-blue-900">{note.date} {note.time}</span>
+                            <span className="text-gray-600">작성자: {note.author || 'Nightingale'}</span>
+                          </div>
+                          <div className="p-3 text-[13px] leading-relaxed whitespace-pre-wrap">
+                            {note.content}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-20 text-gray-400 italic">저장된 간호기록이 없습니다.</div>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* Writing Modal/Overlay */}
+              {nursingIsWriting && (
+                <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-10">
+                  <div className="w-full max-w-4xl h-[80vh] bg-white rounded-lg shadow-2xl overflow-hidden flex flex-col">
+                    <div className="bg-blue-900 text-white px-4 py-2 flex justify-between items-center">
+                      <span className="font-bold">간호기록 작성</span>
+                      <button onClick={() => setNursingIsWriting(false)} className="hover:bg-white/20 p-1 rounded">✕</button>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <NursingWriter onSave={(data: any) => {
+                        const newNote = {
+                          date: new Date().toISOString().split('T')[0],
+                          time: data.time,
+                          content: data.activeTab === '서술기록' ? data.narrative : 
+                                   data.activeTab === '특기사항' ? data.specialNotes :
+                                   JSON.stringify(data),
+                          author: 'Nightingale'
+                        };
+                        const updatedNotes = [...(formData.nursingNarrativeNotes || []), newNote];
+                        updateField('nursingNarrativeNotes', updatedNotes);
+                        setNursingIsWriting(false);
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           );
         case '투약 기록지':
@@ -4335,6 +4307,71 @@ export default function App() {
                 <div className="text-center mb-6">
                   <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">투약 기록지</h2>
                 </div>
+
+                <div className="p-3 border border-gray-300 bg-gray-50 flex gap-2 items-end rounded-sm">
+                  <div className="flex-1 space-y-1">
+                    <label className="text-[11px] font-bold text-gray-600">투약일시</label>
+                    <input 
+                      type="text"
+                      className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                      placeholder="예: 2023-07-27 10:30"
+                      value={newMedicationRecord.dateTime}
+                      onChange={(e) => setNewMedicationRecord({...newMedicationRecord, dateTime: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex-[2] space-y-1">
+                    <label className="text-[11px] font-bold text-gray-600">약품명</label>
+                    <input 
+                      type="text"
+                      className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                      placeholder="약품명 입력"
+                      value={newMedicationRecord.name}
+                      onChange={(e) => setNewMedicationRecord({...newMedicationRecord, name: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <label className="text-[11px] font-bold text-gray-600">용량</label>
+                    <input 
+                      type="text"
+                      className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                      placeholder="용량"
+                      value={newMedicationRecord.dosage}
+                      onChange={(e) => setNewMedicationRecord({...newMedicationRecord, dosage: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <label className="text-[11px] font-bold text-gray-600">경로</label>
+                    <input 
+                      type="text"
+                      className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                      placeholder="경로"
+                      value={newMedicationRecord.route}
+                      onChange={(e) => setNewMedicationRecord({...newMedicationRecord, route: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <label className="text-[11px] font-bold text-gray-600">횟수</label>
+                    <input 
+                      type="text"
+                      className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                      placeholder="횟수"
+                      value={newMedicationRecord.frequency}
+                      onChange={(e) => setNewMedicationRecord({...newMedicationRecord, frequency: e.target.value})}
+                    />
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if (!newMedicationRecord.name) return;
+                      const updatedRecords = [...(formData.medicationRecords || []), { ...newMedicationRecord }];
+                      updateField('medicationRecords', updatedRecords);
+                      setNewMedicationRecord({ dateTime: '', name: '', dosage: '', route: '', frequency: '', status: '투약완료' });
+                    }}
+                    className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm font-bold hover:bg-blue-700"
+                  >
+                    추가
+                  </button>
+                </div>
+
                 <div className="border border-gray-300 rounded-sm overflow-hidden">
                   <table className="w-full border-collapse text-[13px]">
                     <thead>
@@ -4358,7 +4395,7 @@ export default function App() {
                             <td className="border-r border-gray-300 p-2 text-center">{m.route}</td>
                             <td className="border-r border-gray-300 p-2 text-center">{m.frequency}</td>
                             <td className="border-r border-gray-300 p-2 text-center">
-                              <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px]">투약완료</span>
+                              <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px]">{m.status}</span>
                             </td>
                             <td className="p-2 text-center italic text-gray-500">Nightingale</td>
                           </tr>
@@ -4439,6 +4476,102 @@ export default function App() {
               </div>
             </div>
           );
+        case '임상병리검사':
+          return (
+            <div className="flex-1 flex flex-col p-8 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
+              <div className="max-w-6xl mx-auto w-full space-y-8">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">임상병리검사</h2>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-[#f5f5f5] px-4 py-2 font-bold text-sm border-l-4 border-gray-500">
+                    검사 내역
+                  </div>
+                  
+                  {/* Add Row */}
+                  <div className="p-3 border border-gray-300 bg-gray-50 flex gap-2 items-end rounded-sm">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-[11px] font-bold text-gray-600">검사시간</label>
+                      <input 
+                        type="text"
+                        className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                        placeholder="예: 09:00 AM"
+                        value={newPathologyRecord.time}
+                        onChange={(e) => setNewPathologyRecord({...newPathologyRecord, time: e.target.value})}
+                      />
+                    </div>
+                    <div className="flex-[2] space-y-1">
+                      <label className="text-[11px] font-bold text-gray-600">검사명(한글)</label>
+                      <input 
+                        type="text"
+                        className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                        placeholder="한글 검사명"
+                        value={newPathologyRecord.nameKo}
+                        onChange={(e) => setNewPathologyRecord({...newPathologyRecord, nameKo: e.target.value})}
+                      />
+                    </div>
+                    <div className="flex-[2] space-y-1">
+                      <label className="text-[11px] font-bold text-gray-600">검사명(영문)</label>
+                      <input 
+                        type="text"
+                        className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                        placeholder="영문 검사명"
+                        value={newPathologyRecord.nameEn}
+                        onChange={(e) => setNewPathologyRecord({...newPathologyRecord, nameEn: e.target.value})}
+                      />
+                    </div>
+                    <button 
+                      onClick={() => {
+                        if (!newPathologyRecord.time || !newPathologyRecord.nameKo) return;
+                        const newEntry = {
+                          id: ((formData.clinicalPathologyRecords?.length || 0) + 1).toString(),
+                          time: newPathologyRecord.time,
+                          nameKo: newPathologyRecord.nameKo,
+                          nameEn: newPathologyRecord.nameEn
+                        };
+                        const updatedRecords = [...(formData.clinicalPathologyRecords || []), newEntry];
+                        updateField('clinicalPathologyRecords', updatedRecords);
+                        setNewPathologyRecord({ time: '', nameKo: '', nameEn: '' });
+                      }}
+                      className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm font-bold hover:bg-blue-700"
+                    >
+                      추가
+                    </button>
+                  </div>
+
+                  <div className="border border-gray-300 rounded-sm overflow-hidden">
+                    <table className="w-full border-collapse text-[13px]">
+                      <thead>
+                        <tr className="bg-white border-b border-gray-300">
+                          <th className="p-3 text-left w-24">검사번호</th>
+                          <th className="p-3 text-left w-32">검사시간</th>
+                          <th className="p-3 text-left w-64">검사명(한글)</th>
+                          <th className="p-3 text-left">검사명(영문)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {formData.clinicalPathologyRecords && formData.clinicalPathologyRecords.length > 0 ? (
+                          formData.clinicalPathologyRecords.map((record: any, idx: number) => (
+                            <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
+                              <td className="p-3">{record.id}</td>
+                              <td className="p-3">{record.time}</td>
+                              <td className="p-3">{record.nameKo}</td>
+                              <td className="p-3">{record.nameEn}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={4} className="p-20 text-center text-gray-400 italic">검사 내역이 없습니다.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
         case '욕창도평가도구':
         case '낙상도평가도구':
           return renderPatientAssessment();
@@ -4514,6 +4647,30 @@ export default function App() {
                   <button className="px-6 py-2 bg-gray-200 font-bold rounded hover:bg-gray-300 text-sm">임시저장</button>
                   <button className="px-6 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 text-sm">퇴원기록 저장</button>
                 </div>
+
+                <div className="mt-8 pt-8 border-t border-gray-300 space-y-4">
+                  <label className="block font-bold text-lg border-l-4 border-red-600 pl-3">보고서 작성</label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <button className="p-4 border-2 border-gray-300 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all flex flex-col items-center gap-2 group">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-red-100">
+                        <AlertTriangle className="text-gray-400 group-hover:text-red-600" />
+                      </div>
+                      <span className="font-bold text-sm">낙상보고서</span>
+                    </button>
+                    <button className="p-4 border-2 border-gray-300 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition-all flex flex-col items-center gap-2 group">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-orange-100">
+                        <UserX className="text-gray-400 group-hover:text-orange-600" />
+                      </div>
+                      <span className="font-bold text-sm">도주보고서</span>
+                    </button>
+                    <button className="p-4 border-2 border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all flex flex-col items-center gap-2 group">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-purple-100">
+                        <ShieldAlert className="text-gray-400 group-hover:text-purple-600" />
+                      </div>
+                      <span className="font-bold text-sm">욕창보고서</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           );
@@ -4538,6 +4695,65 @@ export default function App() {
                     <span className="text-xs text-orange-600 font-bold mb-1">특이사항</span>
                     <span className="text-sm font-bold text-orange-900">{formData.dietNote || '없음'}</span>
                   </div>
+                </div>
+
+                <div className="p-3 border border-gray-300 bg-gray-50 flex gap-2 items-end rounded-sm">
+                  <div className="flex-1 space-y-1">
+                    <label className="text-[11px] font-bold text-gray-600">날짜</label>
+                    <input 
+                      type="text"
+                      className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                      placeholder="예: 2023-07-27"
+                      value={newDietRecord.date}
+                      onChange={(e) => setNewDietRecord({...newDietRecord, date: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <label className="text-[11px] font-bold text-gray-600">구분</label>
+                    <select 
+                      className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                      value={newDietRecord.type}
+                      onChange={(e) => setNewDietRecord({...newDietRecord, type: e.target.value})}
+                    >
+                      <option value="아침">아침</option>
+                      <option value="점심">점심</option>
+                      <option value="저녁">저녁</option>
+                      <option value="간식">간식</option>
+                    </select>
+                  </div>
+                  <div className="flex-[2] space-y-1">
+                    <label className="text-[11px] font-bold text-gray-600">식이 종류</label>
+                    <input 
+                      type="text"
+                      className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                      placeholder="식이 종류 입력"
+                      value={newDietRecord.dietName}
+                      onChange={(e) => setNewDietRecord({...newDietRecord, dietName: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <label className="text-[11px] font-bold text-gray-600">섭취량</label>
+                    <select 
+                      className="w-full border border-gray-300 p-1.5 text-sm focus:outline-none focus:border-blue-500"
+                      value={newDietRecord.amount}
+                      onChange={(e) => setNewDietRecord({...newDietRecord, amount: e.target.value})}
+                    >
+                      <option value="Full">Full</option>
+                      <option value="1/2">1/2</option>
+                      <option value="None">None</option>
+                    </select>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if (!newDietRecord.dietName) return;
+                      const updatedRecords = [...(formData.dietRecords || []), { ...newDietRecord }];
+                      updateField('dietRecords', updatedRecords);
+                      setNewDietRecord({ date: '', type: '아침', dietName: '', amount: 'Full', note: '' });
+                    }}
+                    className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm font-bold hover:bg-blue-700"
+                  >
+                    추가
+                  </button>
                 </div>
 
                 <div className="border border-gray-300 rounded-sm overflow-hidden">
@@ -4735,7 +4951,7 @@ export default function App() {
                    className="font-bold border-b border-gray-400 focus:border-blue-500 outline-none bg-transparent"
                    spellCheck={false}
                  />
-                 <span className="text-[11px] text-gray-500">(낙상고위험 환자)</span>
+
                </div>
              </div>
              <UnderlineInput label="체중" value={formData.weight} onChange={(v: string) => updateField('weight', v)} />
