@@ -360,6 +360,10 @@ export interface Patient {
   erTreatmentRecord: string;
   erFinalResult: string;
   
+  recentOrders: { date: string, type: string, content: string, status: string }[];
+  supportRequests: { date: string, dept: string, content: string, status: string }[];
+  reports: { type: string, date: string, location: string, details: string, actions: string }[];
+
   // New Patient Assessment Fields
   admissionPath?: string;
   admissionMethod?: string;
@@ -938,7 +942,10 @@ const INITIAL_FORM_DATA: Patient = {
   allergy: '',
   erOrder: '',
   erTreatmentRecord: '',
-  erFinalResult: ''
+  erFinalResult: '',
+  recentOrders: [],
+  supportRequests: [],
+  reports: []
 };
 
 const ACCOUNTS: Record<string, { pw: string, name: string }> = {
@@ -1197,10 +1204,14 @@ export default function App() {
   const lastSyncedIdRef = useRef<string | null>(null);
 
   const [nursingIsWriting, setNursingIsWriting] = useState(false);
+  const [activeOrderForm, setActiveOrderForm] = useState<string | null>(null);
+  const [activeSupportRequestForm, setActiveSupportRequestForm] = useState<string | null>(null);
+  const [activeReportType, setActiveReportType] = useState<'fall' | 'absconding' | 'pressure-ulcer' | null>(null);
   const [newNursingRecord, setNewNursingRecord] = useState({ type: '', content: '', medicationStatus: '' });
   const [newMedicationRecord, setNewMedicationRecord] = useState({ dateTime: '', name: '', dosage: '', route: '', frequency: '', status: '투약완료' });
   const [newDietRecord, setNewDietRecord] = useState({ date: '', type: '아침', dietName: '', amount: 'Full', note: '' });
   const [newPathologyRecord, setNewPathologyRecord] = useState({ time: '', nameKo: '', nameEn: '' });
+  const [newReport, setNewReport] = useState({ date: '', location: '', details: '', actions: '' });
   const [nursingSidebarOpen, setNursingSidebarOpen] = useState<Record<string, boolean>>({
     'patient-assessment': true,
     'pain-assessment': false
@@ -1353,6 +1364,9 @@ export default function App() {
           }),
           nursingPlan: typeof data.nursingPlan === 'string' ? JSON.parse(data.nursingPlan) : (data.nursingPlan || { diagnosis: '', plan: '', evaluation: '' }),
           specialRecord: typeof data.specialRecord === 'string' ? JSON.parse(data.specialRecord) : (data.specialRecord || { before: '', after: '' }),
+          recentOrders: typeof data.recentOrders === 'string' ? JSON.parse(data.recentOrders) : (data.recentOrders || []),
+          supportRequests: typeof data.supportRequests === 'string' ? JSON.parse(data.supportRequests) : (data.supportRequests || []),
+          reports: typeof data.reports === 'string' ? JSON.parse(data.reports) : (data.reports || []),
         } as Patient);
       });
       setPatients(patientsData);
@@ -1488,9 +1502,10 @@ export default function App() {
     [searchQuery, patients, filterByAll, filterByName, filterByDept, selectedDeptFilter, patientTab]
   );
 
-  const handleSave = async () => {
+  const handleSave = async (overrideData?: Partial<Patient>) => {
     if (isSaving) return;
-    if (!formData.name && !formData.chartNo) {
+    const dataToSave = { ...formData, ...overrideData };
+    if (!dataToSave.name && !dataToSave.chartNo) {
       return;
     }
 
@@ -1510,40 +1525,43 @@ export default function App() {
         return cleaned ? cleaned + timestamp : "";
       };
 
-      const newPrescriptionNotes = { ...formData.prescriptionNotes };
+      const newPrescriptionNotes = { ...dataToSave.prescriptionNotes };
       Object.keys(newPrescriptionNotes).forEach(key => {
         newPrescriptionNotes[key] = appendTimestamp(newPrescriptionNotes[key]);
       });
 
       const patientData = { 
-        ...formData, 
+        ...dataToSave, 
         id,
-        labRows: JSON.stringify(formData.labRows),
-        regimenRows: JSON.stringify(formData.regimenRows),
-        imagingPhotos: JSON.stringify(formData.imagingPhotos || []),
-        diagnosticPhotos: JSON.stringify(formData.diagnosticPhotos || []),
-        soapNote: appendTimestamp(formData.soapNote),
-        soapBlocks: JSON.stringify(formData.soapBlocks),
-        exam: appendTimestamp(formData.exam),
-        erLabNote: appendTimestamp(formData.erLabNote),
-        erSoapNote: appendTimestamp(formData.erSoapNote),
-        erSoapBlocks: JSON.stringify(formData.erSoapBlocks),
-        erExam: appendTimestamp(formData.erExam),
-        imagingNote: appendTimestamp(formData.imagingNote),
-        diagnosticNote: appendTimestamp(formData.diagnosticNote),
+        labRows: JSON.stringify(dataToSave.labRows),
+        regimenRows: JSON.stringify(dataToSave.regimenRows),
+        imagingPhotos: JSON.stringify(dataToSave.imagingPhotos || []),
+        diagnosticPhotos: JSON.stringify(dataToSave.diagnosticPhotos || []),
+        soapNote: appendTimestamp(dataToSave.soapNote),
+        soapBlocks: JSON.stringify(dataToSave.soapBlocks),
+        exam: appendTimestamp(dataToSave.exam),
+        erLabNote: appendTimestamp(dataToSave.erLabNote),
+        erSoapNote: appendTimestamp(dataToSave.erSoapNote),
+        erSoapBlocks: JSON.stringify(dataToSave.erSoapBlocks),
+        erExam: appendTimestamp(dataToSave.erExam),
+        imagingNote: appendTimestamp(dataToSave.imagingNote),
+        diagnosticNote: appendTimestamp(dataToSave.diagnosticNote),
         prescriptionNotes: newPrescriptionNotes,
-        surgerySoapBlocks: JSON.stringify(formData.surgerySoapBlocks),
-        consultSoapBlocks: JSON.stringify(formData.consultSoapBlocks),
-        dischargeSoapBlocks: JSON.stringify(formData.dischargeSoapBlocks),
-        otherRecordSoapBlocks: JSON.stringify(formData.otherRecordSoapBlocks),
-        nursingRecords: JSON.stringify(formData.nursingRecords || {}),
-        nursingSoapBlocks: JSON.stringify(formData.nursingSoapBlocks || []),
-        medicationRows: JSON.stringify(formData.medicationRows || []),
-        treatmentData: JSON.stringify(formData.treatmentData || {}),
-        nursingPlan: JSON.stringify(formData.nursingPlan || {}),
-        specialRecord: JSON.stringify(formData.specialRecord || {}),
-        nursingNote: appendTimestamp(formData.nursingNote),
-        nursingExam: appendTimestamp(formData.nursingExam),
+        surgerySoapBlocks: JSON.stringify(dataToSave.surgerySoapBlocks),
+        consultSoapBlocks: JSON.stringify(dataToSave.consultSoapBlocks),
+        dischargeSoapBlocks: JSON.stringify(dataToSave.dischargeSoapBlocks),
+        otherRecordSoapBlocks: JSON.stringify(dataToSave.otherRecordSoapBlocks),
+        nursingRecords: JSON.stringify(dataToSave.nursingRecords || {}),
+        nursingSoapBlocks: JSON.stringify(dataToSave.nursingSoapBlocks || []),
+        medicationRows: JSON.stringify(dataToSave.medicationRows || []),
+        treatmentData: JSON.stringify(dataToSave.treatmentData || {}),
+        nursingPlan: JSON.stringify(dataToSave.nursingPlan || {}),
+        specialRecord: JSON.stringify(dataToSave.specialRecord || {}),
+        recentOrders: JSON.stringify(dataToSave.recentOrders || []),
+        supportRequests: JSON.stringify(dataToSave.supportRequests || []),
+        reports: JSON.stringify(dataToSave.reports || []),
+        nursingNote: appendTimestamp(dataToSave.nursingNote),
+        nursingExam: appendTimestamp(dataToSave.nursingExam),
       };
       
       // Update local state immediately to prevent sync issues and provide instant feedback
@@ -2825,7 +2843,7 @@ export default function App() {
             </div>
             <div className="flex flex-col justify-end pl-4">
               <button 
-                onClick={handleSave}
+                onClick={() => handleSave()}
                 style={{ backgroundColor: currentTheme.color }}
                 className="px-6 py-2 text-white font-bold border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all whitespace-nowrap"
               >
@@ -2868,32 +2886,110 @@ export default function App() {
 
   const renderDoctorPrescriptionDashboard = () => {
     const items = [
-      { title: 'General Order', icon: ClipboardList, color: 'bg-blue-500' },
-      { title: 'Medication Instruction', icon: Pill, color: 'bg-green-500' },
-      { title: 'Lab / Imaging Plan', icon: FlaskConical, color: 'bg-purple-500' },
-      { title: 'Treatment Plan', icon: Stethoscope, color: 'bg-red-500' },
-      { title: 'Consult Order', icon: Users, color: 'bg-indigo-500' },
-      { title: 'Special Order', icon: Star, color: 'bg-yellow-500' },
-      { title: 'Modification based on progress', icon: TrendingUp, color: 'bg-orange-500' },
-      { title: 'Doctor\'s Order History', icon: History, color: 'bg-gray-500' },
+      { id: 'general', title: 'General Order', icon: ClipboardList, color: 'bg-blue-500' },
+      { id: 'medication', title: 'Medication Instruction', icon: Pill, color: 'bg-green-500' },
+      { id: 'lab', title: 'Lab / Imaging Plan', icon: FlaskConical, color: 'bg-purple-500' },
+      { id: 'treatment', title: 'Treatment Plan', icon: Stethoscope, color: 'bg-red-500' },
+      { id: 'consult', title: 'Consult Order', icon: Users, color: 'bg-indigo-500' },
+      { id: 'special', title: 'Special Order', icon: Star, color: 'bg-yellow-500' },
+      { id: 'modification', title: 'Modification based on progress', icon: TrendingUp, color: 'bg-orange-500' },
+      { id: 'history', title: 'Doctor\'s Order History', icon: History, color: 'bg-gray-500' },
     ];
 
     return (
-      <div className="flex-1 p-8 bg-gray-100 overflow-y-auto">
+      <div className="flex-1 p-8 bg-gray-100 overflow-y-auto font-['Gulim','굴림',sans-serif]">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl font-black mb-8 border-b-4 border-black pb-2 flex items-center gap-2">
             <ClipboardList size={32} /> 의사처방 (Doctor's Prescription)
           </h2>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {items.map((item, idx) => (
-              <div key={idx} className="bg-white border-4 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all cursor-pointer group">
-                <div className={`${item.color} w-12 h-12 rounded-full flex items-center justify-center mb-4 border-2 border-black group-hover:scale-110 transition-transform`}>
-                  <item.icon className="text-white" size={24} />
+            {items.map((item) => (
+              <div key={item.id} className="bg-white border-4 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all flex flex-col h-full">
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`${item.color} w-12 h-12 rounded-full flex items-center justify-center border-2 border-black`}>
+                    <item.icon className="text-white" size={24} />
+                  </div>
+                  {item.id !== 'history' && (
+                    <button 
+                      onClick={() => setActiveOrderForm(item.id)}
+                      className="bg-black text-white p-1 hover:bg-gray-800 transition-colors"
+                    >
+                      <Plus size={20} />
+                    </button>
+                  )}
                 </div>
                 <h3 className="font-black text-lg mb-2">{item.title}</h3>
-                <p className="text-sm text-gray-600 font-bold">처방 및 지시사항을 관리합니다.</p>
+                <p className="text-sm text-gray-600 font-bold mb-4 flex-1">처방 및 지시사항을 관리합니다.</p>
+                
+                {activeOrderForm === item.id && (
+                  <div className="mt-4 pt-4 border-t-2 border-black space-y-3">
+                    <textarea 
+                      id={`order-input-${item.id}`}
+                      className="w-full border-2 border-black p-2 text-xs focus:outline-none" 
+                      rows={3} 
+                      placeholder="처방 내용을 입력하세요..."
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setActiveOrderForm(null)} className="text-[11px] font-bold underline">취소</button>
+                      <button 
+                        onClick={() => {
+                          const el = document.getElementById(`order-input-${item.id}`) as HTMLTextAreaElement;
+                          if (el && el.value.trim()) {
+                            const newOrder = {
+                              date: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+                              type: item.title,
+                              content: el.value.trim(),
+                              status: 'Active'
+                            };
+                            const newOrdersList = [newOrder, ...(formData.recentOrders || [])];
+                            updateField('recentOrders', newOrdersList);
+                            handleSave({ recentOrders: newOrdersList });
+                            el.value = '';
+                            setActiveOrderForm(null);
+                          }
+                        }}
+                        className="bg-black text-white px-3 py-1 text-[11px] font-bold"
+                      >
+                        처방 추가
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
+          </div>
+
+          <div className="mt-12 bg-white border-4 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
+            <h3 className="font-black text-xl mb-4 border-b-2 border-black pb-2">최근 처방 내역 (Recent Orders)</h3>
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-gray-100 border-b-2 border-black">
+                  <th className="p-2 text-left border-r-2 border-black">일시</th>
+                  <th className="p-2 text-left border-r-2 border-black">구분</th>
+                  <th className="p-2 text-left border-r-2 border-black">처방 내용</th>
+                  <th className="p-2 text-left">상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {formData.recentOrders && formData.recentOrders.length > 0 ? (
+                  formData.recentOrders.map((order, idx) => (
+                    <tr key={idx} className="border-b border-gray-300">
+                      <td className="p-2 border-r-2 border-black">{order.date}</td>
+                      <td className="p-2 border-r-2 border-black">{order.type}</td>
+                      <td className="p-2 border-r-2 border-black font-bold">{order.content}</td>
+                      <td className="p-2">
+                        <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-[11px] font-bold">{order.status}</span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="p-4 text-center text-gray-500">최근 처방 내역이 없습니다.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -2902,32 +2998,110 @@ export default function App() {
 
   const renderSupportDeptDashboard = () => {
     const items = [
-      { title: 'Nutrition Team', icon: Apple, color: 'bg-red-400' },
-      { title: 'Rehabilitation Team', icon: Activity, color: 'bg-blue-400' },
-      { title: 'Pharmacy', icon: Pill, color: 'bg-green-400' },
-      { title: 'Lab', icon: FlaskConical, color: 'bg-purple-400' },
-      { title: 'Blood Transfusion', icon: Droplet, color: 'bg-red-600' },
-      { title: 'Social Work Team', icon: HeartHandshake, color: 'bg-pink-400' },
-      { title: 'Support Request List', icon: List, color: 'bg-indigo-400' },
-      { title: 'Support Request History', icon: History, color: 'bg-gray-400' },
+      { id: 'nutrition', title: 'Nutrition Team', icon: Apple, color: 'bg-red-400' },
+      { id: 'rehab', title: 'Rehabilitation Team', icon: Activity, color: 'bg-blue-400' },
+      { id: 'pharmacy', title: 'Pharmacy', icon: Pill, color: 'bg-green-400' },
+      { id: 'lab', title: 'Lab', icon: FlaskConical, color: 'bg-purple-400' },
+      { id: 'blood', title: 'Blood Transfusion', icon: Droplet, color: 'bg-red-600' },
+      { id: 'social', title: 'Social Work Team', icon: HeartHandshake, color: 'bg-pink-400' },
+      { id: 'list', title: 'Support Request List', icon: List, color: 'bg-indigo-400' },
+      { id: 'history', title: 'Support Request History', icon: History, color: 'bg-gray-400' },
     ];
 
     return (
-      <div className="flex-1 p-8 bg-gray-100 overflow-y-auto">
+      <div className="flex-1 p-8 bg-gray-100 overflow-y-auto font-['Gulim','굴림',sans-serif]">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl font-black mb-8 border-b-4 border-black pb-2 flex items-center gap-2">
             <Users size={32} /> 지원부서 (Support Department)
           </h2>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {items.map((item, idx) => (
-              <div key={idx} className="bg-white border-4 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all cursor-pointer group">
-                <div className={`${item.color} w-12 h-12 rounded-full flex items-center justify-center mb-4 border-2 border-black group-hover:scale-110 transition-transform`}>
-                  <item.icon className="text-white" size={24} />
+            {items.map((item) => (
+              <div key={item.id} className="bg-white border-4 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all flex flex-col h-full">
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`${item.color} w-12 h-12 rounded-full flex items-center justify-center border-2 border-black`}>
+                    <item.icon className="text-white" size={24} />
+                  </div>
+                  {item.id !== 'list' && item.id !== 'history' && (
+                    <button 
+                      onClick={() => setActiveSupportRequestForm(item.id)}
+                      className="bg-black text-white p-1 hover:bg-gray-800 transition-colors"
+                    >
+                      <Plus size={20} />
+                    </button>
+                  )}
                 </div>
                 <h3 className="font-black text-lg mb-2">{item.title}</h3>
-                <p className="text-sm text-gray-600 font-bold">부서별 지원 요청 및 협업을 관리합니다.</p>
+                <p className="text-sm text-gray-600 font-bold mb-4 flex-1">부서별 지원 요청 및 협업을 관리합니다.</p>
+                
+                {activeSupportRequestForm === item.id && (
+                  <div className="mt-4 pt-4 border-t-2 border-black space-y-3">
+                    <textarea 
+                      id={`support-input-${item.id}`}
+                      className="w-full border-2 border-black p-2 text-xs focus:outline-none" 
+                      rows={3} 
+                      placeholder="요청 내용을 입력하세요..."
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setActiveSupportRequestForm(null)} className="text-[11px] font-bold underline">취소</button>
+                      <button 
+                        onClick={() => {
+                          const el = document.getElementById(`support-input-${item.id}`) as HTMLTextAreaElement;
+                          if (el && el.value.trim()) {
+                            const newReq = {
+                              date: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+                              dept: item.title,
+                              content: el.value.trim(),
+                              status: 'Requested'
+                            };
+                            const newRequestsList = [newReq, ...(formData.supportRequests || [])];
+                            updateField('supportRequests', newRequestsList);
+                            handleSave({ supportRequests: newRequestsList });
+                            el.value = '';
+                            setActiveSupportRequestForm(null);
+                          }
+                        }}
+                        className="bg-black text-white px-3 py-1 text-[11px] font-bold"
+                      >
+                        요청 보내기
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
+          </div>
+
+          <div className="mt-12 bg-white border-4 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
+            <h3 className="font-black text-xl mb-4 border-b-2 border-black pb-2">지원 요청 목록 (Request List)</h3>
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-gray-100 border-b-2 border-black">
+                  <th className="p-2 text-left border-r-2 border-black">요청일시</th>
+                  <th className="p-2 text-left border-r-2 border-black">부서</th>
+                  <th className="p-2 text-left border-r-2 border-black">요청 내용</th>
+                  <th className="p-2 text-left">진행상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {formData.supportRequests && formData.supportRequests.length > 0 ? (
+                  formData.supportRequests.map((req, idx) => (
+                    <tr key={idx} className="border-b border-gray-300">
+                      <td className="p-2 border-r-2 border-black">{req.date}</td>
+                      <td className="p-2 border-r-2 border-black">{req.dept}</td>
+                      <td className="p-2 border-r-2 border-black font-bold">{req.content}</td>
+                      <td className="p-2">
+                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[11px] font-bold">{req.status}</span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="p-4 text-center text-gray-500">지원 요청 내역이 없습니다.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -3573,7 +3747,7 @@ export default function App() {
                           추가
                         </button>
                         <button 
-                          onClick={handleSave}
+                          onClick={() => handleSave()}
                           className="bg-[#00A86B] text-white px-6 py-2 rounded font-bold hover:opacity-90 transition-opacity border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                         >
                           저장
@@ -4013,6 +4187,7 @@ export default function App() {
       },
       { id: 'diet-nutrition', label: '식이/영양 기록지', icon: '🍎' },
       { id: 'discharge-record', label: '퇴원간호 기록지', icon: '📄' },
+      { id: 'report-writing', label: '보고서 작성', icon: '📋' },
     ];
 
     const NURSING_BOTTOM_ITEMS: any[] = [];
@@ -4730,33 +4905,123 @@ export default function App() {
                 </div>
 
                 <div className="flex justify-end gap-3">
-                  <button className="px-6 py-2 bg-gray-200 font-bold rounded hover:bg-gray-300 text-sm">임시저장</button>
-                  <button className="px-6 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 text-sm">퇴원기록 저장</button>
+                  <button onClick={() => handleSave()} className="px-6 py-2 bg-gray-200 font-bold rounded hover:bg-gray-300 text-sm">임시저장</button>
+                  <button onClick={() => handleSave()} className="px-6 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 text-sm">퇴원기록 저장</button>
+                </div>
+              </div>
+            </div>
+          );
+        case 'report-writing':
+          return (
+            <div className="flex-1 flex flex-col p-8 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
+              <div className="max-w-4xl mx-auto w-full space-y-8">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">보고서 작성</h2>
                 </div>
 
-                <div className="mt-8 pt-8 border-t border-gray-300 space-y-4">
-                  <label className="block font-bold text-lg border-l-4 border-red-600 pl-3">보고서 작성</label>
-                  <div className="grid grid-cols-3 gap-4">
-                    <button className="p-4 border-2 border-gray-300 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all flex flex-col items-center gap-2 group">
-                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-red-100">
-                        <AlertTriangle className="text-gray-400 group-hover:text-red-600" />
-                      </div>
-                      <span className="font-bold text-sm">낙상보고서</span>
-                    </button>
-                    <button className="p-4 border-2 border-gray-300 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition-all flex flex-col items-center gap-2 group">
-                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-orange-100">
-                        <UserX className="text-gray-400 group-hover:text-orange-600" />
-                      </div>
-                      <span className="font-bold text-sm">도주보고서</span>
-                    </button>
-                    <button className="p-4 border-2 border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all flex flex-col items-center gap-2 group">
-                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-purple-100">
-                        <ShieldAlert className="text-gray-400 group-hover:text-purple-600" />
-                      </div>
-                      <span className="font-bold text-sm">욕창보고서</span>
-                    </button>
-                  </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <button 
+                    onClick={() => setActiveReportType('fall')}
+                    className={`p-4 border-2 rounded-lg transition-all flex flex-col items-center gap-2 group ${activeReportType === 'fall' ? 'border-red-600 bg-red-50' : 'border-gray-300 hover:border-red-500 hover:bg-red-50'}`}
+                  >
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${activeReportType === 'fall' ? 'bg-red-100' : 'bg-gray-100 group-hover:bg-red-100'}`}>
+                      <AlertTriangle className={activeReportType === 'fall' ? 'text-red-600' : 'text-gray-400 group-hover:text-red-600'} />
+                    </div>
+                    <span className="font-bold text-sm">낙상보고서</span>
+                  </button>
+                  <button 
+                    onClick={() => setActiveReportType('absconding')}
+                    className={`p-4 border-2 rounded-lg transition-all flex flex-col items-center gap-2 group ${activeReportType === 'absconding' ? 'border-orange-600 bg-orange-50' : 'border-gray-300 hover:border-orange-500 hover:bg-orange-50'}`}
+                  >
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${activeReportType === 'absconding' ? 'bg-orange-100' : 'bg-gray-100 group-hover:bg-orange-100'}`}>
+                      <UserX className={activeReportType === 'absconding' ? 'text-orange-600' : 'text-gray-400 group-hover:text-orange-600'} />
+                    </div>
+                    <span className="font-bold text-sm">도주보고서</span>
+                  </button>
+                  <button 
+                    onClick={() => setActiveReportType('pressure-ulcer')}
+                    className={`p-4 border-2 rounded-lg transition-all flex flex-col items-center gap-2 group ${activeReportType === 'pressure-ulcer' ? 'border-purple-600 bg-purple-50' : 'border-gray-300 hover:border-purple-500 hover:bg-purple-50'}`}
+                  >
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${activeReportType === 'pressure-ulcer' ? 'bg-purple-100' : 'bg-gray-100 group-hover:bg-purple-100'}`}>
+                      <ShieldAlert className={activeReportType === 'pressure-ulcer' ? 'text-purple-600' : 'text-gray-400 group-hover:text-purple-600'} />
+                    </div>
+                    <span className="font-bold text-sm">욕창보고서</span>
+                  </button>
                 </div>
+
+                {activeReportType && (
+                  <div className="mt-8 p-6 border-2 border-black bg-gray-50 space-y-6">
+                    <h3 className="text-lg font-black border-b-2 border-black pb-2">
+                      {activeReportType === 'fall' ? '낙상 보고서 작성' : activeReportType === 'absconding' ? '도주 보고서 작성' : '욕창 보고서 작성'}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <UnderlineInput label="발생일시" placeholder="YYYY-MM-DD HH:mm" value={newReport.date} onChange={(v: string) => setNewReport({...newReport, date: v})} />
+                      <UnderlineInput label="발생장소" placeholder="예: 병실, 화장실, 복도" value={newReport.location} onChange={(v: string) => setNewReport({...newReport, location: v})} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block font-bold text-sm">상세 경위</label>
+                      <textarea 
+                        className="w-full border-2 border-black p-3 focus:outline-none text-sm" 
+                        rows={5} 
+                        placeholder="사건의 상세 내용을 입력하세요."
+                        value={newReport.details}
+                        onChange={(e) => setNewReport({...newReport, details: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block font-bold text-sm">조치 사항</label>
+                      <textarea 
+                        className="w-full border-2 border-black p-3 focus:outline-none text-sm" 
+                        rows={3} 
+                        placeholder="사건 발생 후 취해진 조치를 입력하세요."
+                        value={newReport.actions}
+                        onChange={(e) => setNewReport({...newReport, actions: e.target.value})}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-3">
+                      <button 
+                        onClick={() => {
+                          if (!newReport.date || !newReport.details) return;
+                          const report = {
+                            type: activeReportType === 'fall' ? '낙상' : activeReportType === 'absconding' ? '도주' : '욕창',
+                            ...newReport
+                          };
+                          const newReportsList = [report, ...(formData.reports || [])];
+                          updateField('reports', newReportsList);
+                          handleSave({ reports: newReportsList });
+                          setNewReport({ date: '', location: '', details: '', actions: '' });
+                          setActiveReportType(null);
+                          alert('보고서가 제출되었습니다.');
+                        }}
+                        className="px-6 py-2 bg-black text-white font-bold hover:bg-gray-800 transition-colors"
+                      >
+                        보고서 제출
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Display submitted reports */}
+                {formData.reports && formData.reports.length > 0 && (
+                  <div className="mt-8 space-y-4">
+                    <h3 className="text-lg font-black border-b-2 border-black pb-2">제출된 보고서 내역</h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      {formData.reports.map((report, idx) => (
+                        <div key={idx} className="border border-gray-300 p-4 rounded bg-gray-50">
+                          <div className="flex justify-between items-center mb-2 border-b border-gray-200 pb-2">
+                            <span className="font-bold text-blue-800">[{report.type}보고서]</span>
+                            <span className="text-sm text-gray-600">{report.date}</span>
+                          </div>
+                          <div className="text-sm space-y-1">
+                            <p><span className="font-bold">발생장소:</span> {report.location}</p>
+                            <p><span className="font-bold">상세경위:</span> {report.details}</p>
+                            <p><span className="font-bold">조치사항:</span> {report.actions}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -5226,7 +5491,7 @@ export default function App() {
             <HeaderButton 
               icon={Save} 
               label={isSaving ? "저장 중..." : "저장"} 
-              onClick={handleSave} 
+              onClick={() => handleSave()} 
               color={isSaving ? "text-gray-400" : "text-black"} 
               borderColor="border-transparent"
               disabled={isSaving}
@@ -5465,13 +5730,13 @@ export default function App() {
             <LogOut size={16} /> 로그아웃
           </button>
           <button 
-            onClick={handleSave}
+            onClick={() => handleSave()}
             className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
           >
             <Save size={16} /> 저장
           </button>
           <button 
-            onClick={handleSave}
+            onClick={() => handleSave()}
             className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
           >
             <Edit size={16} /> 수정
