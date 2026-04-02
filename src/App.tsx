@@ -1211,7 +1211,7 @@ export default function App() {
   const [newMedicationRecord, setNewMedicationRecord] = useState({ dateTime: '', name: '', dosage: '', route: '', frequency: '', status: '투약완료' });
   const [newDietRecord, setNewDietRecord] = useState({ date: '', type: '아침', dietName: '', amount: 'Full', note: '' });
   const [newPathologyRecord, setNewPathologyRecord] = useState({ time: '', nameKo: '', nameEn: '' });
-  const [newReport, setNewReport] = useState({ date: '', location: '', details: '', actions: '' });
+  const [newReport, setNewReport] = useState({ type: '낙상', reportDate: '', author: '', date: '', location: '', details: '', actions: '', content: '' });
   const [nursingSidebarOpen, setNursingSidebarOpen] = useState<Record<string, boolean>>({
     'patient-assessment': true,
     'pain-assessment': false
@@ -3117,6 +3117,19 @@ export default function App() {
     }
 
     switch (activeTab) {
+      case 'consent_form':
+        return (
+          <div className="flex-1 flex flex-col p-8 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
+            <div className="max-w-4xl mx-auto w-full space-y-8">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">활성창</h2>
+              </div>
+              <div className="border border-gray-300 p-12 text-center text-gray-500 bg-gray-50 rounded-lg shadow-sm">
+                <p className="text-lg font-bold">활성창 화면입니다.</p>
+              </div>
+            </div>
+          </div>
+        );
       case 'doctor_prescription':
         return renderDoctorPrescriptionDashboard();
       case 'support_dept':
@@ -4919,87 +4932,98 @@ export default function App() {
                   <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">보고서 작성</h2>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <button 
-                    onClick={() => setActiveReportType('fall')}
-                    className={`p-4 border-2 rounded-lg transition-all flex flex-col items-center gap-2 group ${activeReportType === 'fall' ? 'border-red-600 bg-red-50' : 'border-gray-300 hover:border-red-500 hover:bg-red-50'}`}
-                  >
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${activeReportType === 'fall' ? 'bg-red-100' : 'bg-gray-100 group-hover:bg-red-100'}`}>
-                      <AlertTriangle className={activeReportType === 'fall' ? 'text-red-600' : 'text-gray-400 group-hover:text-red-600'} />
-                    </div>
-                    <span className="font-bold text-sm">낙상보고서</span>
-                  </button>
-                  <button 
-                    onClick={() => setActiveReportType('absconding')}
-                    className={`p-4 border-2 rounded-lg transition-all flex flex-col items-center gap-2 group ${activeReportType === 'absconding' ? 'border-orange-600 bg-orange-50' : 'border-gray-300 hover:border-orange-500 hover:bg-orange-50'}`}
-                  >
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${activeReportType === 'absconding' ? 'bg-orange-100' : 'bg-gray-100 group-hover:bg-orange-100'}`}>
-                      <UserX className={activeReportType === 'absconding' ? 'text-orange-600' : 'text-gray-400 group-hover:text-orange-600'} />
-                    </div>
-                    <span className="font-bold text-sm">도주보고서</span>
-                  </button>
-                  <button 
-                    onClick={() => setActiveReportType('pressure-ulcer')}
-                    className={`p-4 border-2 rounded-lg transition-all flex flex-col items-center gap-2 group ${activeReportType === 'pressure-ulcer' ? 'border-purple-600 bg-purple-50' : 'border-gray-300 hover:border-purple-500 hover:bg-purple-50'}`}
-                  >
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${activeReportType === 'pressure-ulcer' ? 'bg-purple-100' : 'bg-gray-100 group-hover:bg-purple-100'}`}>
-                      <ShieldAlert className={activeReportType === 'pressure-ulcer' ? 'text-purple-600' : 'text-gray-400 group-hover:text-purple-600'} />
-                    </div>
-                    <span className="font-bold text-sm">욕창보고서</span>
-                  </button>
+                <div className="grid grid-cols-3 gap-6 mb-6">
+                  <div className="space-y-2">
+                    <label className="block font-bold text-sm text-gray-700">보고서 종류</label>
+                    <select 
+                      className="w-full border-b border-gray-400 p-1 focus:outline-none focus:border-blue-500 text-[13px] bg-transparent"
+                      value={newReport.type}
+                      onChange={(e) => setNewReport({...newReport, type: e.target.value})}
+                    >
+                      <option value="낙상">낙상보고서</option>
+                      <option value="도주">도주보고서</option>
+                      <option value="욕창">욕창보고서</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block font-bold text-sm text-gray-700">작성일</label>
+                    <input
+                      type="text"
+                      className="w-full border-b border-gray-400 p-1 focus:outline-none focus:border-blue-500 text-[13px] bg-transparent"
+                      placeholder="YYYY-MM-DD"
+                      value={newReport.reportDate}
+                      onChange={(e) => setNewReport({...newReport, reportDate: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block font-bold text-sm text-gray-700">작성자</label>
+                    <input
+                      type="text"
+                      className="w-full border-b border-gray-400 p-1 focus:outline-none focus:border-blue-500 text-[13px] bg-transparent"
+                      placeholder="작성자 성명"
+                      value={newReport.author}
+                      onChange={(e) => setNewReport({...newReport, author: e.target.value})}
+                    />
+                  </div>
                 </div>
 
-                {activeReportType && (
-                  <div className="mt-8 p-6 border-2 border-black bg-gray-50 space-y-6">
-                    <h3 className="text-lg font-black border-b-2 border-black pb-2">
-                      {activeReportType === 'fall' ? '낙상 보고서 작성' : activeReportType === 'absconding' ? '도주 보고서 작성' : '욕창 보고서 작성'}
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <UnderlineInput label="발생일시" placeholder="YYYY-MM-DD HH:mm" value={newReport.date} onChange={(v: string) => setNewReport({...newReport, date: v})} />
-                      <UnderlineInput label="발생장소" placeholder="예: 병실, 화장실, 복도" value={newReport.location} onChange={(v: string) => setNewReport({...newReport, location: v})} />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block font-bold text-sm">상세 경위</label>
-                      <textarea 
-                        className="w-full border-2 border-black p-3 focus:outline-none text-sm" 
-                        rows={5} 
-                        placeholder="사건의 상세 내용을 입력하세요."
-                        value={newReport.details}
-                        onChange={(e) => setNewReport({...newReport, details: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block font-bold text-sm">조치 사항</label>
-                      <textarea 
-                        className="w-full border-2 border-black p-3 focus:outline-none text-sm" 
-                        rows={3} 
-                        placeholder="사건 발생 후 취해진 조치를 입력하세요."
-                        value={newReport.actions}
-                        onChange={(e) => setNewReport({...newReport, actions: e.target.value})}
-                      />
-                    </div>
-                    <div className="flex justify-end gap-3">
-                      <button 
-                        onClick={() => {
-                          if (!newReport.date || !newReport.details) return;
-                          const report = {
-                            type: activeReportType === 'fall' ? '낙상' : activeReportType === 'absconding' ? '도주' : '욕창',
-                            ...newReport
-                          };
-                          const newReportsList = [report, ...(formData.reports || [])];
-                          updateField('reports', newReportsList);
-                          handleSave({ reports: newReportsList });
-                          setNewReport({ date: '', location: '', details: '', actions: '' });
-                          setActiveReportType(null);
-                          alert('보고서가 제출되었습니다.');
-                        }}
-                        className="px-6 py-2 bg-black text-white font-bold hover:bg-gray-800 transition-colors"
-                      >
-                        보고서 제출
-                      </button>
-                    </div>
+                <div className="p-6 border-2 border-black bg-gray-50 space-y-6">
+                  <h3 className="text-lg font-black border-b-2 border-black pb-2">
+                    {newReport.type} 보고서 작성
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <UnderlineInput label="발생일시" placeholder="YYYY-MM-DD HH:mm" value={newReport.date} onChange={(v: string) => setNewReport({...newReport, date: v})} />
+                    <UnderlineInput label="발생장소" placeholder="예: 병실, 화장실, 복도" value={newReport.location} onChange={(v: string) => setNewReport({...newReport, location: v})} />
                   </div>
-                )}
+                  <div className="space-y-2">
+                    <label className="block font-bold text-sm">작성내용</label>
+                    <textarea 
+                      className="w-full border-2 border-black p-3 focus:outline-none text-sm" 
+                      rows={5} 
+                      placeholder="보고서 작성 내용을 입력하세요."
+                      value={newReport.content}
+                      onChange={(e) => setNewReport({...newReport, content: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block font-bold text-sm">상세 경위</label>
+                    <textarea 
+                      className="w-full border-2 border-black p-3 focus:outline-none text-sm" 
+                      rows={5} 
+                      placeholder="사건의 상세 내용을 입력하세요."
+                      value={newReport.details}
+                      onChange={(e) => setNewReport({...newReport, details: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block font-bold text-sm">조치 사항</label>
+                    <textarea 
+                      className="w-full border-2 border-black p-3 focus:outline-none text-sm" 
+                      rows={3} 
+                      placeholder="사건 발생 후 취해진 조치를 입력하세요."
+                      value={newReport.actions}
+                      onChange={(e) => setNewReport({...newReport, actions: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <button 
+                      onClick={() => {
+                        if (!newReport.date || !newReport.details || !newReport.content) return;
+                        const report = {
+                          ...newReport
+                        };
+                        const newReportsList = [report, ...(formData.reports || [])];
+                        updateField('reports', newReportsList);
+                        handleSave({ reports: newReportsList });
+                        setNewReport({ type: '낙상', reportDate: '', author: '', date: '', location: '', details: '', actions: '', content: '' });
+                        alert('보고서가 제출되었습니다.');
+                      }}
+                      className="px-6 py-2 bg-black text-white font-bold hover:bg-gray-800 transition-colors"
+                    >
+                      보고서 제출
+                    </button>
+                  </div>
+                </div>
 
                 {/* Display submitted reports */}
                 {formData.reports && formData.reports.length > 0 && (
@@ -5009,11 +5033,15 @@ export default function App() {
                       {formData.reports.map((report, idx) => (
                         <div key={idx} className="border border-gray-300 p-4 rounded bg-gray-50">
                           <div className="flex justify-between items-center mb-2 border-b border-gray-200 pb-2">
-                            <span className="font-bold text-blue-800">[{report.type}보고서]</span>
-                            <span className="text-sm text-gray-600">{report.date}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-blue-800">[{report.type}보고서]</span>
+                              <span className="text-xs text-gray-500">작성일: {report.reportDate || '미상'} | 작성자: {report.author || '미상'}</span>
+                            </div>
+                            <span className="text-sm text-gray-600">발생일시: {report.date}</span>
                           </div>
                           <div className="text-sm space-y-1">
                             <p><span className="font-bold">발생장소:</span> {report.location}</p>
+                            <p><span className="font-bold">작성내용:</span> {report.content}</p>
                             <p><span className="font-bold">상세경위:</span> {report.details}</p>
                             <p><span className="font-bold">조치사항:</span> {report.actions}</p>
                           </div>
@@ -5465,12 +5493,12 @@ export default function App() {
           </button>
           <button 
             onClick={() => {
-              setActiveTopMenu('동의서');
-              window.open('https://www.medcerti.co.kr/medcerti_portal/index.jsp', '_blank');
+              setActiveTopMenu('활성창');
+              setActiveTab('consent_form');
             }}
-            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '동의서' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '활성창' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
-            동의서
+            활성창
           </button>
           <button 
             onClick={() => {
@@ -5650,12 +5678,13 @@ export default function App() {
                     onClick={() => {
                       if (activeTab === 'other_record') return;
                       setSelectedPatientId(patient.id);
-                      if (activeTopMenu !== 'E.M.R' && activeTopMenu !== '의사처방' && activeTopMenu !== '지원부서') {
+                      if (activeTopMenu !== 'E.M.R' && activeTopMenu !== '의사처방' && activeTopMenu !== '지원부서' && activeTopMenu !== '활성창') {
                         setShowPatientModal(true);
                       }
                       if (activeTopMenu === '간호') setActiveTab('nursing');
                       else if (activeTopMenu === '의사처방') setActiveTab('doctor_prescription');
                       else if (activeTopMenu === '지원부서') setActiveTab('support_dept');
+                      else if (activeTopMenu === '활성창') setActiveTab('consent_form');
                       else if (activeTopMenu === 'E.M.R') setActiveTab('admission');
                       else setActiveTab('admission');
                     }}
