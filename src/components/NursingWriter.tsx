@@ -32,9 +32,13 @@ const NursingWriter: React.FC<NursingWriterProps> = ({ onSave }) => {
             {['영역 Domain', '분류 Class', '진단명 Diagnosis'].map(label => (
               <div key={label} className="grid grid-cols-3 gap-2 items-center">
                 <label className="text-xs font-bold">{label}</label>
-                <select className="col-span-2 border border-gray-300 p-1 text-sm">
-                  <option>선택</option>
-                </select>
+                <input 
+                  type="text"
+                  className="col-span-2 border border-gray-300 p-1 text-sm focus:outline-none focus:border-blue-500"
+                  placeholder="입력"
+                  value={nandaData[label === '영역 Domain' ? 'domain' : label === '분류 Class' ? 'class' : 'diagnosis']}
+                  onChange={(e) => setNandaData({...nandaData, [label === '영역 Domain' ? 'domain' : label === '분류 Class' ? 'class' : 'diagnosis']: e.target.value})}
+                />
               </div>
             ))}
             {[
