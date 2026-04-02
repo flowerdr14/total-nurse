@@ -5225,7 +5225,7 @@ export default function App() {
     return (
       <div className="flex-1 flex bg-[#D0D0D0] overflow-hidden font-['Gulim','굴림',sans-serif]">
         {/* Left Sidebar */}
-        <div className="w-[220px] bg-[#1a4d3c] flex flex-col shrink-0 overflow-y-auto">
+        <div className="w-[220px] flex flex-col shrink-0 overflow-y-auto" style={{ backgroundColor: currentTheme.color }}>
           <div className="flex flex-col py-2">
             {NURSING_SIDEBAR_ITEMS.map(item => (
               <div key={item.id}>
@@ -5678,7 +5678,7 @@ export default function App() {
                     onClick={() => {
                       if (activeTab === 'other_record') return;
                       setSelectedPatientId(patient.id);
-                      if (activeTopMenu !== 'E.M.R' && activeTopMenu !== '의사처방' && activeTopMenu !== '지원부서' && activeTopMenu !== '활성창') {
+                      if (activeTopMenu !== 'E.M.R' && activeTopMenu !== '의사처방' && activeTopMenu !== '지원부서' && activeTopMenu !== '활성창' && activeTopMenu !== '간호') {
                         setShowPatientModal(true);
                       }
                       if (activeTopMenu === '간호') setActiveTab('nursing');
