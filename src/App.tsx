@@ -62,6 +62,7 @@ import {
   ExternalLink,
   AlertTriangle,
   UserX,
+  X,
   ShieldAlert,
   ClipboardList,
   Pill,
@@ -293,6 +294,7 @@ export interface Patient {
   nursingPrescriptionNote: string;
   clinicalPathologyRecords: ClinicalPathologyRecord[];
   imagingRecordItems: ImagingRecordItem[];
+  imagingImages: string[];
   // New Nursing Fields
   nursingSubTab: NursingSubTab;
   nursingNote: string;
@@ -898,6 +900,7 @@ const INITIAL_FORM_DATA: Patient = {
     { id: '1', time: '09:00 AM', nameKo: '경피적혈액산소포화도측정[1일당]', nameEn: 'Percutaneous Blood O2 Saturation Monitoring' }
   ],
   imagingRecordItems: [],
+  imagingImages: [],
   nursingSubTab: '간호 기록지',
   nursingNote: '',
   assignedNurse: '',
@@ -4556,12 +4559,19 @@ export default function App() {
                     </div>
                     <div className="flex-1 overflow-hidden">
                       <NursingWriter onSave={(data: any) => {
+                        const formatContent = () => {
+                          const tab = data.activeTab;
+                          if (tab === '서술기록') return `(${tab}) ${data.narrative}`;
+                          if (tab === '특기사항') return `(${tab}) ${data.specialNotes}`;
+                          if (tab === 'NANDA') return `(${tab}) 영역: ${data.nandaData.domain}, 진단명: ${data.nandaData.diagnosis}, 자료: ${data.nandaData.data}, 목표: ${data.nandaData.goal}, 계획: ${data.nandaData.plan}, 수행: ${data.nandaData.interventions}`;
+                          if (tab === 'SOAPIE') return `(${tab}) S: ${data.soapieData.s}, O: ${data.soapieData.o}, A: ${data.soapieData.a}, P: ${data.soapieData.p}, I: ${data.soapieData.i}, E: ${data.soapieData.e}`;
+                          if (tab === 'Focus DAR') return `(${tab}) Focus: ${data.darData.focus}, D: ${data.darData.d}, A: ${data.darData.a}, R: ${data.darData.r}`;
+                          return `(${tab}) ${JSON.stringify(data)}`;
+                        };
                         const newNote = {
                           date: new Date().toISOString().split('T')[0],
                           time: data.time,
-                          content: data.activeTab === '서술기록' ? data.narrative : 
-                                   data.activeTab === '특기사항' ? data.specialNotes :
-                                   JSON.stringify(data),
+                          content: formatContent(),
                           author: 'Nightingale'
                         };
                         const updatedNotes = [...(formData.nursingNarrativeNotes || []), newNote];
@@ -4724,29 +4734,73 @@ export default function App() {
                   </table>
                 </div>
 
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-10 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer group">
+                <label className="border-2 border-dashed border-gray-300 rounded-lg p-10 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer group">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const base64 = event.target?.result as string;
+                          const newImages = [...(formData.imagingImages || []), base64];
+                          updateField('imagingImages', newImages);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }} 
+                  />
                   <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                     <Upload className="text-gray-400" size={32} />
                   </div>
                   <span className="text-gray-500 font-medium">검사 영상 업로드</span>
-                  <span className="text-xs text-gray-400 mt-1">JPG, PNG, DICOM 파일 지원</span>
-                </div>
+                  <span className="text-xs text-gray-400 mt-1">JPG, PNG 파일 지원</span>
+                </label>
 
-                {/* Sample Image Display */}
-                <div className="mt-10 space-y-4">
-                  <h3 className="font-bold text-lg border-l-4 border-blue-600 pl-3">검사 영상 확인</h3>
-                  <div className="bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center relative group">
-                    <img 
-                      src="https://picsum.photos/seed/xray/1200/800" 
-                      alt="X-Ray Sample" 
-                      className="max-w-full max-h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute bottom-4 left-4 bg-black/60 text-white px-3 py-1 rounded text-xs backdrop-blur-sm">
-                      Chest PA / 2023-07-27 10:30
+                {/* Uploaded Images Display */}
+                {formData.imagingImages && formData.imagingImages.length > 0 ? (
+                  <div className="mt-10 space-y-4">
+                    <h3 className="font-bold text-lg border-l-4 border-blue-600 pl-3">업로드된 검사 영상</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      {formData.imagingImages.map((imgSrc, idx) => (
+                        <div key={idx} className="bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center relative group">
+                          <img 
+                            src={imgSrc} 
+                            alt={`Uploaded X-Ray ${idx + 1}`} 
+                            className="max-w-full max-h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity"
+                            referrerPolicy="no-referrer"
+                          />
+                          <button 
+                            className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => {
+                              const newImages = formData.imagingImages.filter((_, i) => i !== idx);
+                              updateField('imagingImages', newImages);
+                            }}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="mt-10 space-y-4">
+                    <h3 className="font-bold text-lg border-l-4 border-blue-600 pl-3">검사 영상 확인 (샘플)</h3>
+                    <div className="bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center relative group">
+                      <img 
+                        src="https://picsum.photos/seed/xray/1200/800" 
+                        alt="X-Ray Sample" 
+                        className="max-w-full max-h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute bottom-4 left-4 bg-black/60 text-white px-3 py-1 rounded text-xs backdrop-blur-sm">
+                        Chest PA / 2023-07-27 10:30
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           );
