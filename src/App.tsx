@@ -4535,7 +4535,7 @@ export default function App() {
                         <div key={i} className="border border-gray-300 rounded-sm bg-white shadow-sm overflow-hidden">
                           <div className="bg-gray-100 px-3 py-1 border-b border-gray-200 flex justify-between items-center text-[11px] font-bold">
                             <span className="text-blue-900">{note.date} {note.time}</span>
-                            <span className="text-gray-600">작성자: {note.author || 'Nightingale'}</span>
+                            <span className="text-gray-600">작성자: {note.author || ACCOUNTS[loginId]?.name || loginId || '간호사'}</span>
                           </div>
                           <div className="p-3 text-[13px] leading-relaxed whitespace-pre-wrap">
                             {note.content}
@@ -4572,7 +4572,7 @@ export default function App() {
                           date: new Date().toISOString().split('T')[0],
                           time: data.time,
                           content: formatContent(),
-                          author: 'Nightingale'
+                          author: ACCOUNTS[loginId]?.name || loginId || '간호사'
                         };
                         const updatedNotes = [...(formData.nursingNarrativeNotes || []), newNote];
                         updateField('nursingNarrativeNotes', updatedNotes);
@@ -4681,7 +4681,7 @@ export default function App() {
                             <td className="border-r border-gray-300 p-2 text-center">
                               <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px]">{m.status}</span>
                             </td>
-                            <td className="p-2 text-center italic text-gray-500">Nightingale</td>
+                            <td className="p-2 text-center italic text-gray-500">{ACCOUNTS[loginId]?.name || loginId || '간호사'}</td>
                           </tr>
                         ))
                       ) : (
@@ -5015,7 +5015,7 @@ export default function App() {
                       type="text"
                       className="w-full border-b border-gray-400 p-1 focus:outline-none focus:border-blue-500 text-[13px] bg-transparent"
                       placeholder="작성자 성명"
-                      value={newReport.author}
+                      value={newReport.author || (ACCOUNTS[loginId]?.name || loginId || '')}
                       onChange={(e) => setNewReport({...newReport, author: e.target.value})}
                     />
                   </div>
@@ -5064,7 +5064,8 @@ export default function App() {
                       onClick={() => {
                         if (!newReport.date || !newReport.details || !newReport.content) return;
                         const report = {
-                          ...newReport
+                          ...newReport,
+                          author: newReport.author || (ACCOUNTS[loginId]?.name || loginId || '간호사')
                         };
                         const newReportsList = [report, ...(formData.reports || [])];
                         updateField('reports', newReportsList);
