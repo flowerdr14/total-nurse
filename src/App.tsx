@@ -62,7 +62,6 @@ import {
   ExternalLink,
   AlertTriangle,
   UserX,
-  X,
   ShieldAlert,
   ClipboardList,
   Pill,
@@ -5596,6 +5595,7 @@ export default function App() {
             <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} theme={currentTheme} />
             <TabButton label="기타기록" count={tabCounts.other_record} active={activeTab === 'other_record'} onClick={() => setActiveTab('other_record')} theme={currentTheme} />
             <TabButton label="타병원기록" count={tabCounts.other_hospital} active={activeTab === 'other_hospital'} onClick={() => setActiveTab('other_hospital')} theme={currentTheme} />
+            <TabButton label="처방" count={tabCounts.prescription} active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} theme={currentTheme} />
           </div>
 
           <div className="flex items-center gap-2">
