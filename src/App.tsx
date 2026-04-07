@@ -40,6 +40,7 @@ class ErrorBoundary extends Component<any, any> {
   }
 }
 import { 
+  Check,
   Save, 
   X, 
   Trash2, 
@@ -1820,6 +1821,17 @@ export default function App() {
   const [certEndDate, setCertEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [showCertApplyModal, setShowCertApplyModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [editingTemplateType, setEditingTemplateType] = useState<string | null>(null);
+  const [previewTemplateType, setPreviewTemplateType] = useState<string | null>(null);
+  const [templateContents, setTemplateContents] = useState<Record<string, string>>({
+    '진단서': '진단서 표준 서식 내용입니다...\n\n환자성명: {{patient_name}}\n등록번호: {{chart_no}}\n진단명: {{diagnosis}}\n발급일: {{apply_date}}\n상세내용: {{content}}\n담당의사: {{doctor_name}}',
+    '입퇴원확인서': '입퇴원 사실 확인서...\n\n환자성명: {{patient_name}}\n등록번호: {{chart_no}}\n입원일: {{admission_date}}\n퇴원일: {{discharge_date}}\n\n위와 같이 입퇴원 사실을 확인합니다.',
+    '수술확인서': '수술 및 처치 확인서...\n\n환자성명: {{patient_name}}\n등록번호: {{chart_no}}\n수술명: {{surgery_name}}\n수술일: {{surgery_date}}\n\n위와 같이 수술 및 처치 사실을 확인합니다.',
+    '소견서': '의사 소견서...\n\n환자성명: {{patient_name}}\n등록번호: {{chart_no}}\n소견: {{content}}\n\n담당의사: {{doctor_name}}',
+    '통원확인서': '통원 치료 확인서...\n\n환자성명: {{patient_name}}\n등록번호: {{chart_no}}\n통원일: {{visit_date}}\n\n위와 같이 통원 치료 사실을 확인합니다.'
+  });
+  const [isActiveWindowOn, setIsActiveWindowOn] = useState(false);
+  const [showActiveWindowMenu, setShowActiveWindowMenu] = useState(false);
   const [newCertData, setNewCertData] = useState({
     patientId: '',
     type: '진단서',
@@ -1866,6 +1878,327 @@ export default function App() {
     });
     return stats;
   }, [allCertificates]);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'APPLY_CERT') {
+        const { patientId, type, purpose, applicant } = event.data.data;
+        applyCertificateFromPopup(patientId, type, purpose, applicant);
+      } else if (event.data.type === 'SAVE_CERT_CONTENT') {
+        const { certId, content } = event.data.data;
+        saveCertContentFromPopup(certId, content);
+      } else if (event.data.type === 'SAVE_TEMPLATE') {
+        const { type, content } = event.data.data;
+        setTemplateContents(prev => ({ ...prev, [type]: content }));
+        alert('템플릿이 저장되었습니다.');
+      } else if (event.data.type === 'OPEN_POPUP') {
+        const { type, data } = event.data.data;
+        handleOpenPopup(type, data);
+      } else if (event.data.type === 'SET_THEME') {
+        const theme = THEME_COLORS.find(t => t.name === event.data.data);
+        if (theme) setCurrentTheme(theme);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [patients, templateContents]);
+
+  const saveCertContentFromPopup = async (certId: string, content: string) => {
+    const patient = patients.find(p => (p.certificates || []).some(c => c.id === certId));
+    if (!patient) return;
+
+    const updatedCerts = (patient.certificates || []).map(c => {
+      if (c.id === certId) return { ...c, content };
+      return c;
+    });
+
+    try {
+      await updateDoc(doc(db, 'patients', patient.id), {
+        certificates: JSON.stringify(updatedCerts)
+      });
+      alert('상세 내용이 저장되었습니다.');
+    } catch (error) {
+      console.error('Error saving certificate content:', error);
+      alert('저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  const applyCertificateFromPopup = async (patientId: string, type: string, purpose: string, applicant: string) => {
+    const patient = patients.find(p => p.id === patientId);
+    if (!patient) return;
+
+    const newCert: CertificateRecord = {
+      id: `C${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+      applyDate: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }).slice(0, 16),
+      patientName: patient.name,
+      type: type as any,
+      purpose: purpose,
+      applicant: applicant,
+      status: '신청 중',
+      expectedDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      issuedDate: '-'
+    };
+
+    const updatedCerts = [...(patient.certificates || []), newCert];
+    
+    try {
+      await updateDoc(doc(db, 'patients', patient.id), {
+        certificates: JSON.stringify(updatedCerts)
+      });
+      alert('제증명이 신청되었습니다.');
+    } catch (error) {
+      console.error('Error applying certificate:', error);
+      alert('신청 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleOpenPopup = (type: string, data?: any) => {
+    if (!isActiveWindowOn) {
+      if (type === 'calculator') setShowCalculator(true);
+      if (type === 'certApply') setShowCertApplyModal(true);
+      if (type === 'templateManagement') setShowTemplateModal(true);
+      if (type === 'certDetail') {
+        setEditingCert(data);
+        setShowCertDetailModal(true);
+      }
+      return;
+    }
+
+    const popup = window.open('', type, 'width=600,height=800');
+    if (!popup) {
+      alert('팝업 차단이 설정되어 있을 수 있습니다. 팝업을 허용해 주세요.');
+      return;
+    }
+
+    if (type === 'calculator') {
+      popup.document.write(`
+        <html>
+          <head>
+            <title>계산기</title>
+            <style>
+              body { font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; background: #f0f0f0; padding: 20px; box-sizing: border-box; }
+              .display { background: white; border: 4px solid black; padding: 20px; text-align: right; font-size: 2em; margin-bottom: 20px; font-family: monospace; height: 60px; display: flex; items-center; justify-content: flex-end; overflow: hidden; }
+              .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; flex: 1; }
+              button { border: 2px solid black; background: white; font-weight: bold; font-size: 1.2em; cursor: pointer; }
+              button:hover { background: #eee; }
+              .op { background: #ffe0b2; }
+              .eq { background: #2196f3; color: white; grid-row: span 2; }
+              .ac { background: #ffcdd2; grid-column: span 2; }
+              .zero { grid-column: span 2; }
+            </style>
+          </head>
+          <body>
+            <div class="display" id="display">0</div>
+            <div class="grid">
+              <button class="ac" onclick="clearDisplay()">AC</button>
+              <button class="op" onclick="setOp('/')">/</button>
+              <button class="op" onclick="setOp('*')">*</button>
+              <button onclick="addDigit('7')">7</button>
+              <button onclick="addDigit('8')">8</button>
+              <button onclick="addDigit('9')">9</button>
+              <button class="op" onclick="setOp('-')">-</button>
+              <button onclick="addDigit('4')">4</button>
+              <button onclick="addDigit('5')">5</button>
+              <button onclick="addDigit('6')">6</button>
+              <button class="op" onclick="setOp('+')">+</button>
+              <button onclick="addDigit('1')">1</button>
+              <button onclick="addDigit('2')">2</button>
+              <button onclick="addDigit('3')">3</button>
+              <button class="eq" onclick="calculate()">=</button>
+              <button class="zero" onclick="addDigit('0')">0</button>
+              <button onclick="addDot()">.</button>
+            </div>
+            <script>
+              let display = '0';
+              let prev = null;
+              let op = null;
+              let reset = false;
+              const el = document.getElementById('display');
+              function update() { el.innerText = display; }
+              function addDigit(d) { if(display === '0' || reset) { display = d; reset = false; } else { display += d; } update(); }
+              function addDot() { if(!display.includes('.')) { display += '.'; update(); } }
+              function clearDisplay() { display = '0'; prev = null; op = null; reset = false; update(); }
+              function setOp(o) { prev = parseFloat(display); op = o; reset = true; }
+              function calculate() {
+                if(prev === null || op === null) return;
+                let curr = parseFloat(display);
+                let res = 0;
+                if(op === '+') res = prev + curr;
+                if(op === '-') res = prev - curr;
+                if(op === '*') res = prev * curr;
+                if(op === '/') res = prev / curr;
+                display = String(res);
+                prev = null;
+                op = null;
+                reset = true;
+                update();
+              }
+            </script>
+          </body>
+        </html>
+      `);
+      popup.document.close();
+    } else if (type === 'certApply') {
+      const patientOptions = patients.map(p => `<option value="${p.id}">${p.name} (${p.chartNo})</option>`).join('');
+      popup.document.write(`
+        <html>
+          <head>
+            <title>제증명 신청</title>
+            <style>
+              body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+              .card { background: white; border: 4px solid black; padding: 20px; box-shadow: 8px 8px 0 0 rgba(0,0,0,1); }
+              h2 { border-bottom: 4px solid black; padding-bottom: 10px; margin-top: 0; }
+              .form-group { margin-bottom: 15px; }
+              label { display: block; font-weight: bold; margin-bottom: 5px; }
+              select, input { width: 100%; border: 2px solid black; padding: 10px; font-weight: bold; box-sizing: border-box; }
+              button { width: 100%; background: #2196f3; color: white; border: 2px solid black; padding: 15px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+              button:hover { background: #1976d2; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h2>제증명 신청</h2>
+              <div class="form-group">
+                <label>환자 선택</label>
+                <select id="patientId">${patientOptions}</select>
+              </div>
+              <div class="form-group">
+                <label>제증명 종류</label>
+                <select id="type">
+                  <option>진단서</option>
+                  <option>입퇴원확인서</option>
+                  <option>수술확인서</option>
+                  <option>소견서</option>
+                  <option>통원확인서</option>
+                  <option>제증명 통합 사본</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>용도</label>
+                <input type="text" id="purpose" value="보험청구">
+              </div>
+              <div class="form-group">
+                <label>요청자</label>
+                <input type="text" id="applicant" value="본인">
+              </div>
+              <button onclick="submit()">신청하기</button>
+            </div>
+            <script>
+              function submit() {
+                const data = {
+                  patientId: document.getElementById('patientId').value,
+                  type: document.getElementById('type').value,
+                  purpose: document.getElementById('purpose').value,
+                  applicant: document.getElementById('applicant').value
+                };
+                window.opener.postMessage({ type: 'APPLY_CERT', data }, '*');
+                window.close();
+              }
+            </script>
+          </body>
+        </html>
+      `);
+      popup.document.close();
+    } else if (type === 'certDetail') {
+      const cert = data as CertificateRecord;
+      popup.document.write(`
+        <html>
+          <head>
+            <title>${cert.type} 상세</title>
+            <style>
+              body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+              .card { background: white; border: 4px solid black; padding: 20px; box-shadow: 8px 8px 0 0 rgba(0,0,0,1); }
+              h2 { border-bottom: 4px solid black; padding-bottom: 10px; margin-top: 0; }
+              .info { margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+              .label { color: #666; font-size: 0.8em; font-weight: bold; }
+              .value { font-weight: bold; }
+              textarea { width: 100%; border: 2px solid black; padding: 10px; font-weight: bold; min-height: 300px; box-sizing: border-box; }
+              button { width: 100%; background: black; color: white; border: 2px solid black; padding: 15px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h2>${cert.type} 상세</h2>
+              <div class="info">
+                <div><div class="label">환자명</div><div class="value">${cert.patientName}</div></div>
+                <div><div class="label">신청일</div><div class="value">${cert.applyDate}</div></div>
+                <div><div class="label">용도</div><div class="value">${cert.purpose}</div></div>
+                <div><div class="label">상태</div><div class="value">${cert.status}</div></div>
+              </div>
+              <textarea id="content" placeholder="상세 내용을 입력하세요...">${cert.content || ''}</textarea>
+              <button onclick="save()">저장하기</button>
+            </div>
+            <script>
+              function save() {
+                const content = document.getElementById('content').value;
+                window.opener.postMessage({ type: 'SAVE_CERT_CONTENT', data: { certId: '${cert.id}', content } }, '*');
+                window.close();
+              }
+            </script>
+          </body>
+        </html>
+      `);
+      popup.document.close();
+    } else if (type === 'templateManagement') {
+      const templateList = Object.entries(templateContents).map(([t, c]) => `
+        <div style="border: 2px solid black; padding: 15px; margin-bottom: 10px; background: white;">
+          <div style="font-weight: black; margin-bottom: 10px;">${t}</div>
+          <textarea id="tpl-${t}" style="width: 100%; height: 150px; border: 1px solid #ccc; padding: 5px;">${c}</textarea>
+          <button onclick="saveTemplate('${t}')" style="margin-top: 10px; width: auto; padding: 5px 15px; background: #333; color: white; border: none; cursor: pointer;">저장</button>
+        </div>
+      `).join('');
+
+      popup.document.write(`
+        <html>
+          <head>
+            <title>템플릿 관리</title>
+            <style>
+              body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+              h2 { border-bottom: 4px solid black; padding-bottom: 10px; }
+            </style>
+          </head>
+          <body>
+            <h2>문서 템플릿 관리</h2>
+            ${templateList}
+            <script>
+              function saveTemplate(type) {
+                const content = document.getElementById('tpl-' + type).value;
+                window.opener.postMessage({ type: 'SAVE_TEMPLATE', data: { type, content } }, '*');
+              }
+            </script>
+          </body>
+        </html>
+      `);
+      popup.document.close();
+    } else if (type === 'settings') {
+      popup.document.write(`
+        <html>
+          <head>
+            <title>환경설정</title>
+            <style>
+              body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+              .card { background: white; border: 2px solid black; padding: 20px; box-shadow: 4px 4px 0 0 rgba(0,0,0,1); }
+              h2 { border-bottom: 4px solid black; padding-bottom: 10px; }
+              .theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+              .theme-btn { border: 2px solid black; padding: 10px; cursor: pointer; font-weight: bold; text-align: center; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h2>환경설정 (Popup Mode)</h2>
+              <p>테마 선택</p>
+              <div class="theme-grid">
+                <div class="theme-btn" style="background: #000080; color: white;" onclick="window.opener.postMessage({type: 'SET_THEME', data: 'Blue'}, '*')">Blue</div>
+                <div class="theme-btn" style="background: #800000; color: white;" onclick="window.opener.postMessage({type: 'SET_THEME', data: 'Red'}, '*')">Red</div>
+                <div class="theme-btn" style="background: #004d40; color: white;" onclick="window.opener.postMessage({type: 'SET_THEME', data: 'Green'}, '*')">Green</div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `);
+      popup.document.close();
+    }
+  };
 
   const handleApplyCertificate = async () => {
     if (!newCertData.patientId) {
@@ -2020,6 +2353,77 @@ export default function App() {
       { type: '통원확인서', title: '통원 치료 확인서', lastUpdated: '2024-01-10' },
     ];
 
+    if (editingTemplateType) {
+      return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[130] p-4">
+          <div className="bg-white border-4 border-black p-6 w-full max-w-2xl shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[80vh]">
+            <div className="flex justify-between items-center mb-6 border-b-4 border-black pb-2">
+              <h2 className="text-xl font-black">{editingTemplateType} 템플릿 편집</h2>
+              <button onClick={() => setEditingTemplateType(null)}><X size={24} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-4">
+              <textarea 
+                value={templateContents[editingTemplateType] || ''}
+                onChange={(e) => setTemplateContents({ ...templateContents, [editingTemplateType]: e.target.value })}
+                className="w-full border-2 border-black p-4 font-bold outline-none min-h-[400px] resize-none"
+                placeholder="템플릿 내용을 입력하세요..."
+              />
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button 
+                onClick={() => setEditingTemplateType(null)}
+                className="px-8 py-2 border-2 border-black font-black hover:bg-gray-100 transition-all"
+              >
+                취소
+              </button>
+              <button 
+                onClick={() => {
+                  alert('템플릿이 저장되었습니다.');
+                  setEditingTemplateType(null);
+                }}
+                className="px-8 py-2 bg-black text-white border-2 border-black font-black hover:bg-gray-800 transition-all"
+              >
+                저장
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (previewTemplateType) {
+      const content = templateContents[previewTemplateType] || '';
+      const previewContent = content
+        .replace(/\{\{patient_name\}\}/g, '홍길동')
+        .replace(/\{\{chart_no\}\}/g, 'P12345')
+        .replace(/\{\{diagnosis\}\}/g, '상세불명의 급성 위염')
+        .replace(/\{\{apply_date\}\}/g, new Date().toLocaleDateString())
+        .replace(/\{\{content\}\}/g, '환자는 복통 및 구토 증상으로 내원하여 정밀 검사 결과 위염으로 진단됨.')
+        .replace(/\{\{doctor_name\}\}/g, '김의사');
+
+      return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[130] p-4">
+          <div className="bg-white border-4 border-black p-6 w-full max-w-2xl shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[80vh]">
+            <div className="flex justify-between items-center mb-6 border-b-4 border-black pb-2">
+              <h2 className="text-xl font-black">{previewTemplateType} 미리보기</h2>
+              <button onClick={() => setPreviewTemplateType(null)}><X size={24} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto bg-gray-50 p-8 border-2 border-black whitespace-pre-wrap font-['Gulim','굴림',sans-serif]">
+              {previewContent}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button 
+                onClick={() => setPreviewTemplateType(null)}
+                className="px-8 py-2 bg-black text-white border-2 border-black font-black hover:bg-gray-800 transition-all"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[120] p-4">
         <div className="bg-white border-4 border-black p-6 w-full max-w-3xl shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[80vh]">
@@ -2044,8 +2448,18 @@ export default function App() {
                     <div className="font-black text-gray-900">{tpl.title}</div>
                   </div>
                   <div className="flex gap-2">
-                    <button className="px-3 py-1 border-2 border-black text-xs font-black hover:bg-gray-100">편집</button>
-                    <button className="px-3 py-1 bg-black text-white border-2 border-black text-xs font-black hover:bg-gray-800">미리보기</button>
+                    <button 
+                      onClick={() => setEditingTemplateType(tpl.type)}
+                      className="px-3 py-1 border-2 border-black text-xs font-black hover:bg-gray-100"
+                    >
+                      편집
+                    </button>
+                    <button 
+                      onClick={() => setPreviewTemplateType(tpl.type)}
+                      className="px-3 py-1 bg-black text-white border-2 border-black text-xs font-black hover:bg-gray-800"
+                    >
+                      미리보기
+                    </button>
                   </div>
                 </div>
               ))}
@@ -2107,13 +2521,13 @@ export default function App() {
           </div>
           <div className="flex gap-2">
             <button 
-              onClick={() => setShowCertApplyModal(true)}
+              onClick={() => handleOpenPopup('certApply')}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-blue-700 transition-all"
             >
               <Plus size={18} /> 제증명 신청
             </button>
             <button 
-              onClick={() => setShowTemplateModal(true)}
+              onClick={() => handleOpenPopup('templateManagement')}
               className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-gray-50 transition-all"
             >
               <Settings size={18} /> 문서 템플릿 관리
@@ -2282,13 +2696,11 @@ export default function App() {
                             if (cert.status === '발급 완료') {
                               handlePrintCertificate(cert);
                             } else {
-                              setEditingCert(cert);
-                              setShowCertDetailModal(true);
+                              handleOpenPopup('certDetail', cert);
                             }
                           }}
                           onDoubleClick={() => {
-                            setEditingCert(cert);
-                            setShowCertDetailModal(true);
+                            handleOpenPopup('certDetail', cert);
                           }}
                           title={cert.status === '발급 완료' ? '클릭하여 출력 / 더블클릭하여 상세' : '클릭하여 상세'}
                           className={`px-4 py-1 rounded font-black text-[10px] border transition-all ${
@@ -3859,18 +4271,7 @@ export default function App() {
 
     switch (activeTab) {
       case 'consent_form':
-        return (
-          <div className="flex-1 flex flex-col p-8 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
-            <div className="max-w-4xl mx-auto w-full space-y-8">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">활성창</h2>
-              </div>
-              <div className="border border-gray-300 p-12 text-center text-gray-500 bg-gray-50 rounded-lg shadow-sm">
-                <p className="text-lg font-bold">활성창 화면입니다.</p>
-              </div>
-            </div>
-          </div>
-        );
+        return null;
       case 'doctor_prescription':
         return renderDoctorPrescriptionDashboard();
       case 'support_dept':
@@ -4489,7 +4890,7 @@ export default function App() {
                       </div>
                       <div className="flex justify-end gap-2 mt-4">
                         <button 
-                          onClick={() => setShowCalculator(true)}
+                          onClick={() => handleOpenPopup('calculator')}
                           className="bg-[#00A86B] text-white px-6 py-2 rounded font-bold hover:opacity-90 transition-opacity border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                         >
                           계산기
@@ -6276,22 +6677,48 @@ export default function App() {
           </button>
           <button 
             onClick={() => {
-              setActiveTopMenu('환경설정');
-              setShowSettings(true);
+              if (isActiveWindowOn) {
+                handleOpenPopup('settings');
+              } else {
+                setActiveTopMenu('환경설정');
+                setShowSettings(true);
+              }
             }}
             className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '환경설정' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
             환경설정
           </button>
-          <button 
-            onClick={() => {
-              setActiveTopMenu('활성창');
-              setActiveTab('consent_form');
-            }}
-            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '활성창' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
-          >
-            활성창
-          </button>
+          <div className="relative">
+            <button 
+              onClick={() => setShowActiveWindowMenu(!showActiveWindowMenu)}
+              className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all flex items-center gap-1 ${isActiveWindowOn ? 'bg-blue-600 text-white' : 'text-black hover:bg-gray-300'}`}
+            >
+              활성창
+              <ChevronDown size={14} />
+            </button>
+            {showActiveWindowMenu && (
+              <div className="absolute top-full left-0 mt-1 bg-white border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] z-[150] w-32 py-1">
+                <button 
+                  onClick={() => {
+                    setIsActiveWindowOn(true);
+                    setShowActiveWindowMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm flex items-center justify-between"
+                >
+                  켜기 {isActiveWindowOn && <Check size={14} className="text-green-600" />}
+                </button>
+                <button 
+                  onClick={() => {
+                    setIsActiveWindowOn(false);
+                    setShowActiveWindowMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm flex items-center justify-between"
+                >
+                  끄기 {!isActiveWindowOn && <Check size={14} className="text-red-600" />}
+                </button>
+              </div>
+            )}
+          </div>
           <button 
             onClick={() => {
               setActiveTopMenu('종료');
