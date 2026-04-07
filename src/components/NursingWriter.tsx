@@ -47,10 +47,10 @@ const NursingWriter: React.FC<NursingWriterProps> = ({ onSave }) => {
               { label: '간호계획 Plan', key: 'plan' },
               { label: '간호수행/중재/이론적 근거 Interventions', key: 'interventions' }
             ].map(field => (
-              <div key={field.key}>
-                <label className="block text-xs font-bold mb-1">{field.label}</label>
+              <div key={field.key} className="grid grid-cols-4 gap-2 items-center">
+                <label className="text-xs font-bold">{field.label}</label>
                 <textarea 
-                  className="w-full h-16 border border-gray-300 p-2 text-sm" 
+                  className="col-span-3 h-7 border border-gray-300 p-1 text-sm focus:outline-none focus:border-blue-500 resize-none" 
                   value={(nandaData as any)[field.key]}
                   onChange={(e) => setNandaData({...nandaData, [field.key]: e.target.value})}
                 />
@@ -69,10 +69,10 @@ const NursingWriter: React.FC<NursingWriterProps> = ({ onSave }) => {
               { label: 'I (Intervention)', key: 'i' },
               { label: 'E (Evaluation)', key: 'e' }
             ].map(field => (
-              <div key={field.key}>
-                <label className="block text-xs font-bold mb-1">{field.label}</label>
+              <div key={field.key} className="grid grid-cols-4 gap-2 items-center">
+                <label className="text-xs font-bold">{field.label}</label>
                 <textarea 
-                  className="w-full h-16 border border-gray-300 p-2 text-sm" 
+                  className="col-span-3 h-7 border border-gray-300 p-1 text-sm focus:outline-none focus:border-blue-500 resize-none" 
                   value={(soapieData as any)[field.key]}
                   onChange={(e) => setSoapieData({...soapieData, [field.key]: e.target.value})}
                 />
@@ -97,10 +97,10 @@ const NursingWriter: React.FC<NursingWriterProps> = ({ onSave }) => {
               { label: 'A (Action)', key: 'a' },
               { label: 'R (Response)', key: 'r' }
             ].map(field => (
-              <div key={field.key}>
-                <label className="block text-xs font-bold mb-1">{field.label}</label>
+              <div key={field.key} className="grid grid-cols-4 gap-2 items-center">
+                <label className="text-xs font-bold">{field.label}</label>
                 <textarea 
-                  className="w-full h-20 border border-gray-300 p-2 text-sm" 
+                  className="col-span-3 h-7 border border-gray-300 p-1 text-sm focus:outline-none focus:border-blue-500 resize-none" 
                   value={(darData as any)[field.key]}
                   onChange={(e) => setDarData({...darData, [field.key]: e.target.value})}
                 />

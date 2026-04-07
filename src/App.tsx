@@ -76,7 +76,12 @@ import {
   Activity,
   Droplet,
   HeartHandshake,
-  List
+  List,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Calendar,
+  Info
 } from 'lucide-react';
 import { db } from './firebase';
 import { 
@@ -84,6 +89,7 @@ import {
   onSnapshot, 
   doc, 
   setDoc, 
+  updateDoc,
   deleteDoc, 
   query, 
   orderBy 
@@ -97,8 +103,21 @@ declare global {
   }
 }
 
-export type TabType = 'admission' | 'surgery' | 'consult' | 'discharge' | 'lab' | 'other_record' | 'other_hospital' | 'prescription' | 'er' | 'nursing' | 'doctor_prescription' | 'support_dept' | 'none';
+export type TabType = 'admission' | 'surgery' | 'consult' | 'discharge' | 'lab' | 'other_record' | 'other_hospital' | 'prescription' | 'er' | 'nursing' | 'doctor_prescription' | 'support_dept' | 'certificate' | 'none';
 export type NursingSubTab = string;
+
+export interface CertificateRecord {
+  id: string;
+  applyDate: string;
+  patientName: string;
+  type: string;
+  purpose: string;
+  applicant: string;
+  status: '신청 중' | '발급 대기' | '발급 완료' | '반려/보안';
+  expectedDate: string;
+  issuedDate: string;
+  content?: string;
+}
 
 export interface SoapBlock {
   s: string;
@@ -364,6 +383,7 @@ export interface Patient {
   recentOrders: { date: string, type: string, content: string, status: string }[];
   supportRequests: { date: string, dept: string, content: string, status: string }[];
   reports: { type: string, date: string, location: string, details: string, actions: string }[];
+  certificates: CertificateRecord[];
 
   // New Patient Assessment Fields
   admissionPath?: string;
@@ -947,7 +967,8 @@ const INITIAL_FORM_DATA: Patient = {
   erFinalResult: '',
   recentOrders: [],
   supportRequests: [],
-  reports: []
+  reports: [],
+  certificates: []
 };
 
 const ACCOUNTS: Record<string, { pw: string, name: string }> = {
@@ -1369,6 +1390,7 @@ export default function App() {
           recentOrders: typeof data.recentOrders === 'string' ? JSON.parse(data.recentOrders) : (data.recentOrders || []),
           supportRequests: typeof data.supportRequests === 'string' ? JSON.parse(data.supportRequests) : (data.supportRequests || []),
           reports: typeof data.reports === 'string' ? JSON.parse(data.reports) : (data.reports || []),
+          certificates: typeof data.certificates === 'string' ? JSON.parse(data.certificates) : (data.certificates || []),
         } as Patient);
       });
       setPatients(patientsData);
@@ -1562,6 +1584,7 @@ export default function App() {
         recentOrders: JSON.stringify(dataToSave.recentOrders || []),
         supportRequests: JSON.stringify(dataToSave.supportRequests || []),
         reports: JSON.stringify(dataToSave.reports || []),
+        certificates: JSON.stringify(dataToSave.certificates || []),
         nursingNote: appendTimestamp(dataToSave.nursingNote),
         nursingExam: appendTimestamp(dataToSave.nursingExam),
       };
@@ -1590,7 +1613,8 @@ export default function App() {
         medicationRows: [...formData.medicationRows],
         treatmentData: { ...formData.treatmentData },
         nursingPlan: { ...formData.nursingPlan },
-        specialRecord: { ...formData.specialRecord }
+        specialRecord: { ...formData.specialRecord },
+        certificates: [...formData.certificates]
       };
       
       setFormData(updatedFormData);
@@ -1788,6 +1812,721 @@ export default function App() {
     updateField('diagnosticPhotos', newPhotos);
   };
 
+  const [certTab, setCertTab] = useState<'all' | 'issued' | 'archived' | 'rejected'>('all');
+  const [certSearchQuery, setCertSearchQuery] = useState('');
+  const [certStatusFilter, setCertStatusFilter] = useState('전체');
+  const [certTypeFilter, setCertTypeFilter] = useState('전체');
+  const [certStartDate, setCertStartDate] = useState(new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0]);
+  const [certEndDate, setCertEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showCertApplyModal, setShowCertApplyModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [newCertData, setNewCertData] = useState({
+    patientId: '',
+    type: '진단서',
+    purpose: '보험청구',
+    applicant: '본인'
+  });
+  const [editingCert, setEditingCert] = useState<CertificateRecord | null>(null);
+  const [showCertDetailModal, setShowCertDetailModal] = useState(false);
+
+  const allCertificates = useMemo(() => {
+    return patients.flatMap(p => (p.certificates || []).map(c => ({ ...c, patientId: p.id, patientName: p.name })));
+  }, [patients]);
+
+  const filteredCertificates = useMemo(() => {
+    return allCertificates.filter(c => {
+      const matchesTab = certTab === 'all' || 
+        (certTab === 'issued' && c.status === '발급 완료') ||
+        (certTab === 'rejected' && c.status === '반려/보안');
+      
+      const matchesSearch = c.patientName.includes(certSearchQuery) || c.id.includes(certSearchQuery);
+      const matchesStatus = certStatusFilter === '전체' || c.status === certStatusFilter;
+      const matchesType = certTypeFilter === '전체' || c.type === certTypeFilter;
+      
+      const certDate = c.applyDate.split(' ')[0];
+      const matchesDate = (!certStartDate || certDate >= certStartDate) && (!certEndDate || certDate <= certEndDate);
+
+      return matchesTab && matchesSearch && matchesStatus && matchesType && matchesDate;
+    }).sort((a, b) => b.applyDate.localeCompare(a.applyDate));
+  }, [allCertificates, certTab, certSearchQuery, certStatusFilter, certTypeFilter, certStartDate, certEndDate]);
+
+  const certStats = useMemo(() => {
+    const stats = {
+      applying: 0,
+      waiting: 0,
+      issued: 0,
+      rejected: 0,
+      total: allCertificates.length
+    };
+    allCertificates.forEach(c => {
+      if (c.status === '신청 중') stats.applying++;
+      else if (c.status === '발급 대기') stats.waiting++;
+      else if (c.status === '발급 완료') stats.issued++;
+      else if (c.status === '반려/보안') stats.rejected++;
+    });
+    return stats;
+  }, [allCertificates]);
+
+  const handleApplyCertificate = async () => {
+    if (!newCertData.patientId) {
+      alert('환자를 선택해주세요.');
+      return;
+    }
+
+    const patient = patients.find(p => p.id === newCertData.patientId);
+    if (!patient) return;
+
+    const newCert: CertificateRecord = {
+      id: `C${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+      applyDate: new Date().toLocaleString('ko-KR'),
+      patientName: patient.name,
+      type: newCertData.type,
+      purpose: newCertData.purpose,
+      applicant: newCertData.applicant,
+      status: '신청 중',
+      expectedDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      issuedDate: '-'
+    };
+
+    const updatedCerts = [...(patient.certificates || []), newCert];
+    
+    try {
+      await updateDoc(doc(db, 'patients', patient.id), {
+        certificates: JSON.stringify(updatedCerts)
+      });
+      setShowCertApplyModal(false);
+      setNewCertData({
+        patientId: '',
+        type: '진단서',
+        purpose: '보험청구',
+        applicant: '본인'
+      });
+      alert('제증명이 신청되었습니다.');
+    } catch (error) {
+      console.error('Error applying certificate:', error);
+      alert('신청 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleUpdateCertStatus = async (certId: string, patientId: string, newStatus: CertificateRecord['status']) => {
+    const patient = patients.find(p => p.id === patientId);
+    if (!patient) return;
+
+    const updatedCerts = (patient.certificates || []).map(c => {
+      if (c.id === certId) {
+        return { 
+          ...c, 
+          status: newStatus,
+          issuedDate: newStatus === '발급 완료' ? new Date().toISOString().slice(0, 10) : '-'
+        };
+      }
+      return c;
+    });
+
+    try {
+      await updateDoc(doc(db, 'patients', patient.id), {
+        certificates: JSON.stringify(updatedCerts)
+      });
+    } catch (error) {
+      console.error('Error updating certificate status:', error);
+    }
+  };
+
+  const handleSaveCertContent = async () => {
+    if (!editingCert) return;
+    
+    // Find patient for this cert
+    const patient = patients.find(p => (p.certificates || []).some(c => c.id === editingCert.id));
+    if (!patient) return;
+
+    const updatedCerts = (patient.certificates || []).map(c => {
+      if (c.id === editingCert.id) {
+        return editingCert;
+      }
+      return c;
+    });
+
+    try {
+      await updateDoc(doc(db, 'patients', patient.id), {
+        certificates: JSON.stringify(updatedCerts)
+      });
+      setShowCertDetailModal(false);
+      setEditingCert(null);
+      alert('상세 내용이 저장되었습니다.');
+    } catch (error) {
+      console.error('Error saving certificate content:', error);
+      alert('저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handlePrintCertificate = (cert: CertificateRecord) => {
+    if (cert.status !== '발급 완료') {
+      alert('발급 완료된 문서만 출력 가능합니다.');
+      return;
+    }
+    // Simulate printing
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>${cert.type} - ${cert.patientName}</title>
+            <style>
+              body { font-family: 'Gulim', sans-serif; padding: 40px; line-height: 1.6; }
+              .header { text-align: center; border-bottom: 2px solid black; padding-bottom: 20px; margin-bottom: 30px; }
+              .title { font-size: 24px; font-weight: bold; }
+              .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+              .info-item { font-size: 14px; }
+              .label { font-weight: bold; color: #666; margin-right: 10px; }
+              .content-box { border: 1px solid #ccc; padding: 20px; min-h: 400px; margin-bottom: 40px; white-space: pre-wrap; }
+              .footer { text-align: center; margin-top: 50px; }
+              .stamp { margin-top: 20px; font-weight: bold; font-size: 18px; }
+              @media print { .no-print { display: none; } }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div class="title">${cert.type}</div>
+            </div>
+            <div class="info-grid">
+              <div class="info-item"><span class="label">환자성명:</span> ${cert.patientName}</div>
+              <div class="info-item"><span class="label">발급번호:</span> ${cert.id}</div>
+              <div class="info-item"><span class="label">신청일자:</span> ${cert.applyDate}</div>
+              <div class="info-item"><span class="label">발급일자:</span> ${cert.issuedDate}</div>
+              <div class="info-item"><span class="label">용도:</span> ${cert.purpose}</div>
+            </div>
+            <div class="content-box">
+              ${cert.content || '상세 내용이 없습니다.'}
+            </div>
+            <div class="footer">
+              <p>위와 같이 증명함</p>
+              <p>${new Date().toLocaleDateString()}</p>
+              <div class="stamp">TOTAL 간호 병원장 (인)</div>
+              <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; cursor: pointer;">인쇄하기</button>
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
+
+  const renderTemplateModal = () => {
+    const templates = [
+      { type: '진단서', title: '표준 진단서 서식', lastUpdated: '2024-04-01' },
+      { type: '입퇴원확인서', title: '입퇴원 사실 확인서', lastUpdated: '2024-03-15' },
+      { type: '수술확인서', title: '수술 및 처치 확인서', lastUpdated: '2024-02-20' },
+      { type: '소견서', title: '의사 소견서 (보험제출용)', lastUpdated: '2024-04-05' },
+      { type: '통원확인서', title: '통원 치료 확인서', lastUpdated: '2024-01-10' },
+    ];
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[120] p-4">
+        <div className="bg-white border-4 border-black p-6 w-full max-w-3xl shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[80vh]">
+          <div className="flex justify-between items-center mb-6 border-b-4 border-black pb-2">
+            <h2 className="text-xl font-black flex items-center gap-2">
+              <Settings size={24} /> 문서 템플릿 관리
+            </h2>
+            <button onClick={() => setShowTemplateModal(false)}><X size={24} /></button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+            <p className="text-sm font-bold text-gray-500 mb-4">각 증명서별 출력 템플릿을 설정하고 관리합니다. 설정된 템플릿은 출력 시 자동으로 적용됩니다.</p>
+            
+            <div className="grid grid-cols-1 gap-3">
+              {templates.map((tpl, idx) => (
+                <div key={idx} className="border-2 border-black p-4 flex items-center justify-between hover:bg-gray-50 transition-all">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="bg-blue-600 text-white text-[10px] px-2 py-0.5 font-black rounded">{tpl.type}</span>
+                      <span className="text-[10px] font-bold text-gray-400">최종 수정: {tpl.lastUpdated}</span>
+                    </div>
+                    <div className="font-black text-gray-900">{tpl.title}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="px-3 py-1 border-2 border-black text-xs font-black hover:bg-gray-100">편집</button>
+                    <button className="px-3 py-1 bg-black text-white border-2 border-black text-xs font-black hover:bg-gray-800">미리보기</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+              <div className="flex items-center gap-2 mb-2 text-yellow-700 font-black">
+                <Info size={18} /> 템플릿 변수 안내
+              </div>
+              <div className="text-xs text-yellow-800 font-bold space-y-1">
+                <p>템플릿 작성 시 아래 변수를 사용하여 환자 정보를 자동으로 채울 수 있습니다:</p>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  <code className="bg-white/50 p-1 rounded">{"{{patient_name}}"}</code>
+                  <code className="bg-white/50 p-1 rounded">{"{{chart_no}}"}</code>
+                  <code className="bg-white/50 p-1 rounded">{"{{diagnosis}}"}</code>
+                  <code className="bg-white/50 p-1 rounded">{"{{apply_date}}"}</code>
+                  <code className="bg-white/50 p-1 rounded">{"{{content}}"}</code>
+                  <code className="bg-white/50 p-1 rounded">{"{{doctor_name}}"}</code>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <button 
+              onClick={() => setShowTemplateModal(false)}
+              className="px-8 py-2 bg-black text-white border-2 border-black font-black hover:bg-gray-800 transition-all"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCertificateManagement = () => {
+    const stats = [
+      { label: '신청 중', count: certStats.applying, icon: <Clock size={24} className="text-blue-500" />, bgColor: 'bg-blue-50' },
+      { label: '발급 대기', count: certStats.waiting, icon: <FileText size={24} className="text-indigo-500" />, bgColor: 'bg-indigo-50' },
+      { label: '발급 완료', count: certStats.issued, icon: <CheckCircle size={24} className="text-green-500" />, bgColor: 'bg-green-50' },
+      { label: '반려/보안', count: certStats.rejected, icon: <AlertCircle size={24} className="text-red-500" />, bgColor: 'bg-red-50' },
+    ];
+
+    const mockCerts: CertificateRecord[] = [
+      { id: 'C240424-001', applyDate: '2024-04-24 10:30', patientName: '홍길동', type: '진단서', purpose: '보험청구', applicant: '본인', status: '신청 중', expectedDate: '2024-04-26', issuedDate: '-' },
+      { id: 'C240424-002', applyDate: '2024-04-24 09:15', patientName: '홍길동', type: '입퇴원확인서', purpose: '회사제출', applicant: '본인', status: '발급 대기', expectedDate: '2024-04-25', issuedDate: '-' },
+      { id: 'C240423-015', applyDate: '2024-04-23 16:40', patientName: '홍길동', type: '수술확인서', purpose: '보험청구', applicant: '보호자(홍영희)', status: '발급 완료', expectedDate: '2024-04-24', issuedDate: '2024-04-24' },
+      { id: 'C240423-014', applyDate: '2024-04-23 11:20', patientName: '홍길동', type: '소견서', purpose: '회사 복귀', applicant: '본인', status: '반려/보안', expectedDate: '-', issuedDate: '-' },
+      { id: 'C240422-030', applyDate: '2024-04-22 15:50', patientName: '홍길동', type: '제증명 통합 사본', purpose: '개인 보관', applicant: '본인', status: '발급 완료', expectedDate: '2024-04-23', issuedDate: '2024-04-23' },
+    ];
+
+    return (
+      <div className="flex-1 flex flex-col bg-[#F4F7FA] p-6 overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 mb-1">제증명 관리</h1>
+            <p className="text-sm text-gray-500 font-medium text-blue-600">환자가 요청한 각종 증명서를 신청, 발급, 조회 및 관리합니다.</p>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setShowCertApplyModal(true)}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-blue-700 transition-all"
+            >
+              <Plus size={18} /> 제증명 신청
+            </button>
+            <button 
+              onClick={() => setShowTemplateModal(true)}
+              className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-gray-50 transition-all"
+            >
+              <Settings size={18} /> 문서 템플릿 관리
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-5 gap-4 mb-8">
+          {stats.map((stat, idx) => (
+            <div key={idx} className={`${stat.bgColor} p-4 rounded-xl border border-white shadow-sm flex items-center gap-4`}>
+              <div className="bg-white p-3 rounded-lg shadow-sm">
+                {stat.icon}
+              </div>
+              <div>
+                <div className="text-xs font-bold text-gray-500 mb-1">{stat.label}</div>
+                <div className="text-xl font-black text-gray-900">{stat.count} <span className="text-sm font-bold text-gray-400">건</span></div>
+              </div>
+            </div>
+          ))}
+          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <FileText size={24} className="text-blue-600" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-gray-500 mb-1">총 발급</div>
+                <div className="text-xl font-black text-blue-600">{certStats.total} <span className="text-sm font-bold text-gray-400">건</span></div>
+              </div>
+            </div>
+            <div className="text-[10px] font-bold text-gray-400 text-right">(2024년 기준)</div>
+          </div>
+        </div>
+
+        <div className="flex gap-6 flex-1 min-h-0">
+          {/* Main List Area */}
+          <div className="flex-1 flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="flex border-b border-gray-200 bg-gray-50">
+              {['신청 목록', '발급 완료', '보관 문서', '반려/보안'].map((tab, idx) => (
+                <button 
+                  key={idx}
+                  onClick={() => setCertTab(['all', 'issued', 'archived', 'rejected'][idx] as any)}
+                  className={`px-8 py-3 text-sm font-bold transition-all border-r border-gray-200 ${
+                    (idx === 0 && certTab === 'all') || 
+                    (idx === 1 && certTab === 'issued') || 
+                    (idx === 2 && certTab === 'archived') || 
+                    (idx === 3 && certTab === 'rejected')
+                    ? 'bg-white text-blue-600 border-t-2 border-t-blue-600' 
+                    : 'text-gray-500 hover:bg-gray-100'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Filters */}
+            <div className="p-4 border-b border-gray-100 flex flex-wrap items-center gap-4 bg-white">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-500">기간</span>
+                <div className="flex items-center gap-1 border border-gray-300 rounded px-2 py-1 bg-white">
+                  <input 
+                    type="date" 
+                    value={certStartDate} 
+                    onChange={(e) => setCertStartDate(e.target.value)}
+                    className="text-xs outline-none font-bold bg-transparent" 
+                  />
+                  <span className="text-gray-400">~</span>
+                  <input 
+                    type="date" 
+                    value={certEndDate} 
+                    onChange={(e) => setCertEndDate(e.target.value)}
+                    className="text-xs outline-none font-bold bg-transparent" 
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-500">상태</span>
+                <select 
+                  value={certStatusFilter}
+                  onChange={(e) => setCertStatusFilter(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-xs font-bold outline-none"
+                >
+                  <option>전체</option>
+                  <option>신청 중</option>
+                  <option>발급 대기</option>
+                  <option>발급 완료</option>
+                  <option>반려/보안</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-500">제증명 종류</span>
+                <select 
+                  value={certTypeFilter}
+                  onChange={(e) => setCertTypeFilter(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-xs font-bold outline-none"
+                >
+                  <option>전체</option>
+                  <option>진단서</option>
+                  <option>입퇴원확인서</option>
+                  <option>수술확인서</option>
+                  <option>소견서</option>
+                  <option>통원확인서</option>
+                </select>
+              </div>
+              <div className="flex-1"></div>
+              <div className="relative w-64">
+                <input 
+                  type="text" 
+                  value={certSearchQuery}
+                  onChange={(e) => setCertSearchQuery(e.target.value)}
+                  placeholder="환자/신청번호 검색" 
+                  className="w-full border border-gray-300 rounded-lg pl-3 pr-10 py-1.5 text-xs font-bold outline-none focus:border-blue-500"
+                />
+                <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="flex-1 overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 bg-gray-50 z-10 border-b border-gray-200">
+                  <tr className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3">신청번호</th>
+                    <th className="px-4 py-3">신청일</th>
+                    <th className="px-4 py-3">환자명</th>
+                    <th className="px-4 py-3">제증명 종류</th>
+                    <th className="px-4 py-3">용도</th>
+                    <th className="px-4 py-3">요청자</th>
+                    <th className="px-4 py-3">상태</th>
+                    <th className="px-4 py-3">발급 예정일</th>
+                    <th className="px-4 py-3">발급일</th>
+                    <th className="px-4 py-3 text-center">작업</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredCertificates.map((cert, idx) => (
+                    <tr key={idx} className="hover:bg-blue-50/30 transition-colors text-xs font-bold text-gray-700">
+                      <td className="px-4 py-4 text-gray-400">{cert.id}</td>
+                      <td className="px-4 py-4">{cert.applyDate}</td>
+                      <td className="px-4 py-4 text-gray-900">{cert.patientName}</td>
+                      <td className="px-4 py-4">{cert.type}</td>
+                      <td className="px-4 py-4">{cert.purpose}</td>
+                      <td className="px-4 py-4">{cert.applicant}</td>
+                      <td className="px-4 py-4">
+                        <select 
+                          value={cert.status}
+                          onChange={(e) => handleUpdateCertStatus(cert.id, (cert as any).patientId, e.target.value as any)}
+                          className={`px-2 py-1 rounded-full text-[10px] font-black outline-none border-none cursor-pointer ${
+                            cert.status === '신청 중' ? 'bg-blue-100 text-blue-600' :
+                            cert.status === '발급 대기' ? 'bg-indigo-100 text-indigo-600' :
+                            cert.status === '발급 완료' ? 'bg-green-100 text-green-600' :
+                            'bg-red-100 text-red-600'
+                          }`}
+                        >
+                          <option value="신청 중">신청 중</option>
+                          <option value="발급 대기">발급 대기</option>
+                          <option value="발급 완료">발급 완료</option>
+                          <option value="반려/보안">반려/보안</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-4">{cert.expectedDate}</td>
+                      <td className="px-4 py-4">{cert.issuedDate}</td>
+                      <td className="px-4 py-4 text-center">
+                        <button 
+                          onClick={() => {
+                            if (cert.status === '발급 완료') {
+                              handlePrintCertificate(cert);
+                            } else {
+                              setEditingCert(cert);
+                              setShowCertDetailModal(true);
+                            }
+                          }}
+                          onDoubleClick={() => {
+                            setEditingCert(cert);
+                            setShowCertDetailModal(true);
+                          }}
+                          title={cert.status === '발급 완료' ? '클릭하여 출력 / 더블클릭하여 상세' : '클릭하여 상세'}
+                          className={`px-4 py-1 rounded font-black text-[10px] border transition-all ${
+                            cert.status === '발급 완료' 
+                            ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' 
+                            : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
+                          }`}
+                        >
+                          {cert.status === '발급 완료' ? '출력' : '상세'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-3 bg-gray-50 text-center border-t border-gray-100">
+              <button className="text-xs font-bold text-gray-400 hover:text-gray-600 flex items-center gap-1 mx-auto">
+                더보기 <ChevronDown size={14} />
+              </button>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="w-64 flex flex-col gap-4">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+              <h3 className="text-sm font-black text-gray-900 mb-4 border-b border-gray-100 pb-2">제증명 종류 안내</h3>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wider">자주 신청하는 제증명</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['진단서', '입퇴원확인서', '수술확인서', '소견서', '통원확인서', '제증명 통합 사본'].map((item, idx) => (
+                      <button key={idx} className="text-[10px] font-bold text-gray-600 bg-gray-50 border border-gray-200 py-1.5 rounded hover:bg-white hover:border-blue-300 transition-all">
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wider">기타 제증명</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['진료비 영수증', '진료비 세부내역서', '건강검진 결과서', '사망진단서', '의무기록 사본', '기타 증명서'].map((item, idx) => (
+                      <button key={idx} className="text-[10px] font-bold text-gray-600 bg-gray-50 border border-gray-200 py-1.5 rounded hover:bg-white hover:border-blue-300 transition-all">
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Sections */}
+        <div className="grid grid-cols-3 gap-6 mt-6">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <h3 className="text-sm font-black text-gray-900 mb-4">제증명 신청 절차</h3>
+            <div className="flex items-center justify-between px-2">
+              {[
+                { step: '01 신청', desc: '제증명 종류 및 용도 선택', icon: <FileText size={20} /> },
+                { step: '02 심사', desc: '의료진 검토 및 승인', icon: <CheckCircle size={20} /> },
+                { step: '03 발급', desc: '원무팀에서 문서 발급', icon: <Printer size={20} /> },
+                { step: '04 수령', desc: '환자/보호자 수령 또는 출력', icon: <Users size={20} /> },
+              ].map((item, idx) => (
+                <div key={idx} className="flex flex-col items-center text-center gap-2 relative">
+                  <div className="bg-blue-50 text-blue-600 p-3 rounded-full shadow-sm">
+                    {item.icon}
+                  </div>
+                  <div className="text-[10px] font-black text-gray-900">{item.step}</div>
+                  <div className="text-[8px] font-bold text-gray-400 leading-tight w-16">{item.desc}</div>
+                  {idx < 3 && <ChevronRight size={14} className="absolute -right-4 top-5 text-gray-300" />}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <h3 className="text-sm font-black text-gray-900 mb-4">알림</h3>
+            <ul className="space-y-2">
+              {[
+                '진단서 발급 시 1~3일 소요됩니다.',
+                '보험 청구용 진단서는 영문 발급이 가능합니다.',
+                '의무기록 사본은 추가 비용이 발생할 수 있습니다.',
+                '문의: 원무팀 02-123-4567 (평일 09:00~17:00)',
+              ].map((text, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-[11px] font-bold text-gray-600">
+                  <div className="w-1 h-1 rounded-full bg-blue-400 mt-1.5 shrink-0"></div>
+                  {text}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <h3 className="text-sm font-black text-gray-900 mb-4">최근 발급 문서</h3>
+            <div className="space-y-2">
+              {allCertificates.filter(c => c.status === '발급 완료').slice(0, 3).map((doc, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold text-gray-400">{doc.issuedDate}</span>
+                    <span className="text-[11px] font-black text-gray-700">{doc.type} ({doc.patientName})</span>
+                  </div>
+                  <button className="text-[10px] font-black text-blue-600 border border-blue-200 px-3 py-1 rounded bg-white hover:bg-blue-50">출력</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Apply Modal */}
+        {showCertApplyModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+            <div className="bg-white border-4 border-black p-6 w-full max-w-md shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+              <div className="flex justify-between items-center mb-6 border-b-4 border-black pb-2">
+                <h2 className="text-xl font-black">제증명 신청</h2>
+                <button onClick={() => setShowCertApplyModal(false)}><X size={24} /></button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-black mb-1">환자 선택</label>
+                  <select 
+                    value={newCertData.patientId}
+                    onChange={(e) => setNewCertData({ ...newCertData, patientId: e.target.value })}
+                    className="w-full border-2 border-black p-2 font-bold outline-none"
+                  >
+                    <option value="">환자를 선택하세요</option>
+                    {patients.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.chartNo})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-black mb-1">제증명 종류</label>
+                  <select 
+                    value={newCertData.type}
+                    onChange={(e) => setNewCertData({ ...newCertData, type: e.target.value })}
+                    className="w-full border-2 border-black p-2 font-bold outline-none"
+                  >
+                    <option>진단서</option>
+                    <option>입퇴원확인서</option>
+                    <option>수술확인서</option>
+                    <option>소견서</option>
+                    <option>통원확인서</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-black mb-1">용도</label>
+                  <input 
+                    type="text" 
+                    value={newCertData.purpose}
+                    onChange={(e) => setNewCertData({ ...newCertData, purpose: e.target.value })}
+                    className="w-full border-2 border-black p-2 font-bold outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-black mb-1">요청자</label>
+                  <input 
+                    type="text" 
+                    value={newCertData.applicant}
+                    onChange={(e) => setNewCertData({ ...newCertData, applicant: e.target.value })}
+                    className="w-full border-2 border-black p-2 font-bold outline-none"
+                  />
+                </div>
+              </div>
+              <div className="mt-8 flex gap-2">
+                <button 
+                  onClick={() => setShowCertApplyModal(false)}
+                  className="flex-1 border-2 border-black py-2 font-black hover:bg-gray-100 transition-colors"
+                >
+                  취소
+                </button>
+                <button 
+                  onClick={handleApplyCertificate}
+                  className="flex-1 bg-blue-600 text-white border-2 border-black py-2 font-black hover:bg-blue-700 transition-colors"
+                >
+                  신청하기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Detail Modal */}
+        {showCertDetailModal && editingCert && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
+            <div className="bg-white border-4 border-black p-6 w-full max-w-2xl shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[90vh]">
+              <div className="flex justify-between items-center mb-6 border-b-4 border-black pb-2">
+                <h2 className="text-xl font-black">{editingCert.type} 상세 내용</h2>
+                <button onClick={() => setShowCertDetailModal(false)}><X size={24} /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 border-2 border-black">
+                  <div className="text-sm font-bold"><span className="text-gray-500 mr-2">환자명:</span> {editingCert.patientName}</div>
+                  <div className="text-sm font-bold"><span className="text-gray-500 mr-2">신청일:</span> {editingCert.applyDate}</div>
+                  <div className="text-sm font-bold"><span className="text-gray-500 mr-2">용도:</span> {editingCert.purpose}</div>
+                  <div className="text-sm font-bold"><span className="text-gray-500 mr-2">상태:</span> {editingCert.status}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-black mb-1">증명서 상세 내용</label>
+                  <textarea 
+                    value={editingCert.content || ''}
+                    onChange={(e) => setEditingCert({ ...editingCert, content: e.target.value })}
+                    placeholder="증명서에 기재될 상세 내용을 입력하세요..."
+                    className="w-full border-2 border-black p-4 font-bold outline-none min-h-[300px] resize-none"
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex gap-2">
+                <button 
+                  onClick={() => setShowCertDetailModal(false)}
+                  className="flex-1 border-2 border-black py-2 font-black hover:bg-gray-100 transition-colors"
+                >
+                  닫기
+                </button>
+                <button 
+                  onClick={handleSaveCertContent}
+                  className="flex-1 bg-white border-2 border-black py-2 font-black hover:bg-gray-100 transition-colors"
+                >
+                  저장하기
+                </button>
+                {editingCert.status === '발급 완료' && (
+                  <button 
+                    onClick={() => handlePrintCertificate(editingCert)}
+                    className="flex-1 bg-black text-white border-2 border-black py-2 font-black hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Printer size={18} /> 출력하기
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Template Modal */}
+        {showTemplateModal && renderTemplateModal()}
+      </div>
+    );
+  };
+
   const renderSoapSection = (blocks: SoapBlock[], noteValue: string, noteField: string, examValue?: string, examField?: string) => (
     <>
       <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
@@ -1814,7 +2553,7 @@ export default function App() {
                           value={block[row.id as keyof SoapBlock]}
                           onChange={(e: any) => updateSoapBlock(idx, row.id as keyof SoapBlock, e.target.value)}
                           className="w-full p-2 focus:outline-none block"
-                          minHeight="64px"
+                          minHeight="30px"
                         />
                       </td>
                     </tr>
@@ -5530,7 +6269,6 @@ export default function App() {
           <button 
             onClick={() => {
               setActiveTopMenu('제증명 관리');
-              window.open('https://www.medcerti.co.kr/medcerti_portal/index.jsp', '_blank');
             }}
             className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '제증명 관리' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
@@ -5568,75 +6306,77 @@ export default function App() {
         </div>
 
         {/* Existing Header Row */}
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <HeaderButton 
-              icon={Save} 
-              label={isSaving ? "저장 중..." : "저장"} 
-              onClick={() => handleSave()} 
-              color={isSaving ? "text-gray-400" : "text-black"} 
-              borderColor="border-transparent"
-              disabled={isSaving}
-            />
-            <HeaderButton icon={Trash2} label="삭제" color="text-black" borderColor="border-transparent" onClick={handleDelete} />
-            <HeaderButton icon={X} label="종료" color="text-black" borderColor="border-transparent" onClick={() => {
-              setSelectedPatientId(null);
-              setFormData(INITIAL_FORM_DATA);
-              setActiveTab('none');
-            }} />
-          </div>
+        {!['의사처방', '간호', '지원부서', '활성창'].includes(activeTopMenu) && (
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <HeaderButton 
+                icon={Save} 
+                label={isSaving ? "저장 중..." : "저장"} 
+                onClick={() => handleSave()} 
+                color={isSaving ? "text-gray-400" : "text-black"} 
+                borderColor="border-transparent"
+                disabled={isSaving}
+              />
+              <HeaderButton icon={Trash2} label="삭제" color="text-black" borderColor="border-transparent" onClick={handleDelete} />
+              <HeaderButton icon={X} label="종료" color="text-black" borderColor="border-transparent" onClick={() => {
+                setSelectedPatientId(null);
+                setFormData(INITIAL_FORM_DATA);
+                setActiveTab('none');
+              }} />
+            </div>
 
-          <div className="flex items-center gap-1">
-            <TabButton label="응급기록" count={tabCounts.er} active={activeTab === 'er'} onClick={() => setActiveTab('er')} theme={currentTheme} />
-            <TabButton label="입원결과" count={tabCounts.admission} active={activeTab === 'admission'} onClick={() => setActiveTab('admission')} theme={currentTheme} />
-            <TabButton label="수술처치" count={tabCounts.surgery} active={activeTab === 'surgery'} onClick={() => setActiveTab('surgery')} theme={currentTheme} />
-            <TabButton label="협진기록" count={tabCounts.consult} active={activeTab === 'consult'} onClick={() => setActiveTab('consult')} theme={currentTheme} />
-            <TabButton label="퇴원요약" count={tabCounts.discharge} active={activeTab === 'discharge'} onClick={() => setActiveTab('discharge')} theme={currentTheme} />
-            <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} theme={currentTheme} />
-            <TabButton label="기타기록" count={tabCounts.other_record} active={activeTab === 'other_record'} onClick={() => setActiveTab('other_record')} theme={currentTheme} />
-            <TabButton label="타병원기록" count={tabCounts.other_hospital} active={activeTab === 'other_hospital'} onClick={() => setActiveTab('other_hospital')} theme={currentTheme} />
-            <TabButton label="처방" count={tabCounts.prescription} active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} theme={currentTheme} />
-          </div>
+            <div className="flex items-center gap-1">
+              <TabButton label="응급기록" count={tabCounts.er} active={activeTab === 'er'} onClick={() => setActiveTab('er')} theme={currentTheme} />
+              <TabButton label="입원결과" count={tabCounts.admission} active={activeTab === 'admission'} onClick={() => setActiveTab('admission')} theme={currentTheme} />
+              <TabButton label="수술처치" count={tabCounts.surgery} active={activeTab === 'surgery'} onClick={() => setActiveTab('surgery')} theme={currentTheme} />
+              <TabButton label="협진기록" count={tabCounts.consult} active={activeTab === 'consult'} onClick={() => setActiveTab('consult')} theme={currentTheme} />
+              <TabButton label="퇴원요약" count={tabCounts.discharge} active={activeTab === 'discharge'} onClick={() => setActiveTab('discharge')} theme={currentTheme} />
+              <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} theme={currentTheme} />
+              <TabButton label="기타기록" count={tabCounts.other_record} active={activeTab === 'other_record'} onClick={() => setActiveTab('other_record')} theme={currentTheme} />
+              <TabButton label="타병원기록" count={tabCounts.other_hospital} active={activeTab === 'other_hospital'} onClick={() => setActiveTab('other_hospital')} theme={currentTheme} />
+              <TabButton label="처방" count={tabCounts.prescription} active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} theme={currentTheme} />
+            </div>
 
-          <div className="flex items-center gap-2">
-          <div className="relative">
-            <HeaderButton icon={Printer} label="출력" onClick={() => setShowPrintMenu(!showPrintMenu)} color="text-black" bgColor="bg-gray-200" />
-            {showPrintMenu && (
-              <div className="absolute top-10 right-0 bg-white border-2 border-black shadow-lg z-50 w-48 py-1 max-h-[400px] overflow-y-auto">
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('admission')}>입원기록지 출력</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('er')}>응급기록지 출력</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('surgery')}>수술처치기록지 출력</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('consult')}>협진의뢰기록지 출력</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('discharge')}>퇴원요약지 출력</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('lab')}>검사결과지 출력</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('other_record')}>기타기록지 출력</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('other_hospital')}>타병원기록지 출력</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('prescription')}>처방기록지 출력</button>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <HeaderButton icon={Printer} label="출력" onClick={() => setShowPrintMenu(!showPrintMenu)} color="text-black" bgColor="bg-gray-200" />
+                {showPrintMenu && (
+                  <div className="absolute top-10 right-0 bg-white border-2 border-black shadow-lg z-50 w-48 py-1 max-h-[400px] overflow-y-auto">
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('admission')}>입원기록지 출력</button>
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('er')}>응급기록지 출력</button>
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('surgery')}>수술처치기록지 출력</button>
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('consult')}>협진의뢰기록지 출력</button>
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('discharge')}>퇴원요약지 출력</button>
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('lab')}>검사결과지 출력</button>
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('other_record')}>기타기록지 출력</button>
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('other_hospital')}>타병원기록지 출력</button>
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 font-bold text-sm" onClick={() => handlePrint('prescription')}>처방기록지 출력</button>
+                  </div>
+                )}
               </div>
-            )}
+              <HeaderButton 
+                label="서식저장" 
+                color="text-white" 
+                bgColor={currentTheme.color} 
+                borderColor={currentTheme.shadow} 
+                onClick={() => window.open('https://drive.google.com/drive/folders/1glFfxZVQzXt4XeUdLagr32rjpvrYf01e?usp=sharing', '_blank')} 
+              />
+              <HeaderButton 
+                label="제증명" 
+                color="text-black" 
+                bgColor="bg-gray-200" 
+                onClick={() => setActiveTopMenu('제증명 관리')} 
+              />
+              <HeaderButton 
+                label="임시저장" 
+                color="text-white" 
+                bgColor={currentTheme.color} 
+                borderColor={currentTheme.shadow} 
+                onClick={() => {}} 
+              />
+            </div>
           </div>
-          <HeaderButton 
-            label="서식저장" 
-            color="text-white" 
-            bgColor={currentTheme.color} 
-            borderColor={currentTheme.shadow} 
-            onClick={() => window.open('https://drive.google.com/drive/folders/1glFfxZVQzXt4XeUdLagr32rjpvrYf01e?usp=sharing', '_blank')} 
-          />
-          <HeaderButton 
-            label="제증명" 
-            color="text-black" 
-            bgColor="bg-gray-200" 
-            onClick={() => window.open('https://www.medcerti.co.kr/medcerti_portal/index.jsp', '_blank')} 
-          />
-          <HeaderButton 
-            label="임시저장" 
-            color="text-white" 
-            bgColor={currentTheme.color} 
-            borderColor={currentTheme.shadow} 
-            onClick={() => {}} 
-          />
-        </div>
-      </div>
+        )}
     </div>
 
       <div className="flex flex-1 overflow-hidden">
@@ -5794,7 +6534,7 @@ export default function App() {
         )}
 
         <div className="flex-1 flex flex-col bg-[#D0D0D0] overflow-hidden">
-          {renderContent()}
+          {activeTopMenu === '제증명 관리' ? renderCertificateManagement() : renderContent()}
         </div>
       </div>
 
