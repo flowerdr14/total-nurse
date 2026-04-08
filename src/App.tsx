@@ -6,6 +6,7 @@
 import React, { useState, useMemo, useEffect, useRef, Component } from 'react';
 import NursingDashboard from './components/NursingDashboard';
 import NursingWriter from './components/NursingWriter';
+import RichEditor from './components/RichEditor';
 
 class ErrorBoundary extends Component<any, any> {
   state = { hasError: false };
@@ -85,6 +86,7 @@ import {
   Info
 } from 'lucide-react';
 import { db } from './firebase';
+
 import { 
   collection, 
   onSnapshot, 
@@ -1229,7 +1231,9 @@ export default function App() {
 
   const [nursingIsWriting, setNursingIsWriting] = useState(false);
   const [activeOrderForm, setActiveOrderForm] = useState<string | null>(null);
+  const [orderInputs, setOrderInputs] = useState<Record<string, string>>({});
   const [activeSupportRequestForm, setActiveSupportRequestForm] = useState<string | null>(null);
+  const [supportInputs, setSupportInputs] = useState<Record<string, string>>({});
   const [activeReportType, setActiveReportType] = useState<'fall' | 'absconding' | 'pressure-ulcer' | null>(null);
   const [newNursingRecord, setNewNursingRecord] = useState({ type: '', content: '', medicationStatus: '' });
   const [newMedicationRecord, setNewMedicationRecord] = useState({ dateTime: '', name: '', dosage: '', route: '', frequency: '', status: '투약완료' });
@@ -2094,6 +2098,37 @@ export default function App() {
                 window.opener.postMessage({ type: 'APPLY_CERT', data }, '*');
                 window.close();
               }
+
+              document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+                  const el = document.activeElement;
+                  if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
+                    e.preventDefault();
+                    const start = el.selectionStart;
+                    const end = el.selectionEnd;
+                    const text = el.value;
+                    const selected = text.substring(start, end);
+                    const before = text.substring(0, start);
+                    const after = text.substring(end);
+                    const isBold = selected.startsWith('<b>') && selected.endsWith('</b>');
+                    let newText, newStart, newEnd;
+                    if (isBold) {
+                      const unwrapped = selected.substring(3, selected.length - 4);
+                      newText = before + unwrapped + after;
+                      newStart = start;
+                      newEnd = start + unwrapped.length;
+                    } else {
+                      const wrapped = '<b>' + selected + '</b>';
+                      newText = before + wrapped + after;
+                      newStart = start;
+                      newEnd = start + wrapped.length;
+                    }
+                    el.value = newText;
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    setTimeout(() => el.setSelectionRange(newStart, newEnd), 0);
+                  }
+                }
+              });
             </script>
           </body>
         </html>
@@ -2112,7 +2147,7 @@ export default function App() {
               .info { margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
               .label { color: #666; font-size: 0.8em; font-weight: bold; }
               .value { font-weight: bold; }
-              textarea { width: 100%; border: 2px solid black; padding: 10px; font-weight: bold; min-height: 300px; box-sizing: border-box; }
+              #content { width: 100%; border: 2px solid black; padding: 10px; font-weight: bold; min-height: 300px; box-sizing: border-box; background: white; overflow-y: auto; }
               button { width: 100%; background: black; color: white; border: 2px solid black; padding: 15px; font-weight: bold; cursor: pointer; margin-top: 20px; }
             </style>
           </head>
@@ -2125,15 +2160,22 @@ export default function App() {
                 <div><div class="label">용도</div><div class="value">${cert.purpose}</div></div>
                 <div><div class="label">상태</div><div class="value">${cert.status}</div></div>
               </div>
-              <textarea id="content" placeholder="상세 내용을 입력하세요...">${cert.content || ''}</textarea>
+              <div id="content" contenteditable="true" placeholder="상세 내용을 입력하세요...">${cert.content || ''}</div>
               <button onclick="save()">저장하기</button>
             </div>
             <script>
               function save() {
-                const content = document.getElementById('content').value;
+                const content = document.getElementById('content').innerHTML;
                 window.opener.postMessage({ type: 'SAVE_CERT_CONTENT', data: { certId: '${cert.id}', content } }, '*');
                 window.close();
               }
+
+              document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+                  e.preventDefault();
+                  document.execCommand('bold', false, null);
+                }
+              });
             </script>
           </body>
         </html>
@@ -2143,7 +2185,7 @@ export default function App() {
       const templateList = Object.entries(templateContents).map(([t, c]) => `
         <div style="border: 2px solid black; padding: 15px; margin-bottom: 10px; background: white;">
           <div style="font-weight: black; margin-bottom: 10px;">${t}</div>
-          <textarea id="tpl-${t}" style="width: 100%; height: 150px; border: 1px solid #ccc; padding: 5px;">${c}</textarea>
+          <div id="tpl-${t}" contenteditable="true" style="width: 100%; height: 150px; border: 1px solid #ccc; padding: 5px; background: white; overflow-y: auto;">${c}</div>
           <button onclick="saveTemplate('${t}')" style="margin-top: 10px; width: auto; padding: 5px 15px; background: #333; color: white; border: none; cursor: pointer;">저장</button>
         </div>
       `).join('');
@@ -2162,9 +2204,16 @@ export default function App() {
             ${templateList}
             <script>
               function saveTemplate(type) {
-                const content = document.getElementById('tpl-' + type).value;
+                const content = document.getElementById('tpl-' + type).innerHTML;
                 window.opener.postMessage({ type: 'SAVE_TEMPLATE', data: { type, content } }, '*');
               }
+
+              document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+                  e.preventDefault();
+                  document.execCommand('bold', false, null);
+                }
+              });
             </script>
           </body>
         </html>
@@ -2362,11 +2411,11 @@ export default function App() {
               <button onClick={() => setEditingTemplateType(null)}><X size={24} /></button>
             </div>
             <div className="flex-1 overflow-y-auto space-y-4">
-              <textarea 
+              <RichEditor 
                 value={templateContents[editingTemplateType] || ''}
-                onChange={(e) => setTemplateContents({ ...templateContents, [editingTemplateType]: e.target.value })}
-                className="w-full border-2 border-black p-4 font-bold outline-none min-h-[400px] resize-none"
+                onChange={(val) => setTemplateContents({ ...templateContents, [editingTemplateType]: val })}
                 placeholder="템플릿 내용을 입력하세요..."
+                height="400px"
               />
             </div>
             <div className="mt-6 flex justify-end gap-2">
@@ -2900,11 +2949,11 @@ export default function App() {
                 </div>
                 <div>
                   <label className="block text-sm font-black mb-1">증명서 상세 내용</label>
-                  <textarea 
+                  <RichEditor 
                     value={editingCert.content || ''}
-                    onChange={(e) => setEditingCert({ ...editingCert, content: e.target.value })}
+                    onChange={(val) => setEditingCert({ ...editingCert, content: val })}
                     placeholder="증명서에 기재될 상세 내용을 입력하세요..."
-                    className="w-full border-2 border-black p-4 font-bold outline-none min-h-[300px] resize-none"
+                    height="300px"
                   />
                 </div>
               </div>
@@ -3331,10 +3380,10 @@ export default function App() {
                   </div>
                   <div className="flex items-start gap-4">
                     <span className="w-20 font-bold text-gray-700 mt-1">주호소</span>
-                    <textarea 
+                    <RichEditor 
                       value={formData.cc || ''}
-                      onChange={(e) => updateField('cc', e.target.value)}
-                      className="flex-1 border border-gray-300 p-2 focus:outline-none min-h-[60px]"
+                      onChange={(val) => updateField('cc', val)}
+                      className="flex-1"
                     />
                   </div>
                   <div className="flex items-center gap-4">
@@ -3353,10 +3402,10 @@ export default function App() {
                   </div>
                   <div className="flex items-start gap-4">
                     <span className="w-20 font-bold text-gray-700 mt-1">입원동기</span>
-                    <textarea 
+                    <RichEditor 
                       value={formData.hpi || ''}
-                      onChange={(e) => updateField('hpi', e.target.value)}
-                      className="flex-1 border border-gray-300 p-2 focus:outline-none min-h-[80px]"
+                      onChange={(val) => updateField('hpi', val)}
+                      className="flex-1"
                     />
                   </div>
                 </div>
@@ -3415,10 +3464,10 @@ export default function App() {
               <div className="p-4 grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
                 <div className="flex items-start gap-4">
                   <span className="w-20 font-bold text-gray-700 mt-1">과거력</span>
-                  <textarea 
+                  <RichEditor 
                     value={formData.pmh || ''}
-                    onChange={(e) => updateField('pmh', e.target.value)}
-                    className="flex-1 border border-gray-300 p-2 focus:outline-none min-h-[60px]"
+                    onChange={(val) => updateField('pmh', val)}
+                    className="flex-1"
                   />
                 </div>
                 <div className="flex items-start gap-4">
@@ -3455,10 +3504,10 @@ export default function App() {
                 </div>
                 <div className="flex items-start gap-4">
                   <span className="w-20 font-bold text-gray-700 mt-1">입원/수술력</span>
-                  <textarea 
+                  <RichEditor 
                     value={formData.psh || ''}
-                    onChange={(e) => updateField('psh', e.target.value)}
-                    className="flex-1 border border-gray-300 p-2 focus:outline-none min-h-[60px]"
+                    onChange={(val) => updateField('psh', val)}
+                    className="flex-1"
                   />
                 </div>
                 <div className="flex flex-col gap-4">
@@ -3912,11 +3961,12 @@ export default function App() {
 
           <div className="flex items-start gap-4">
             <span className="w-24 font-bold text-lg mt-1">특이사항</span>
-            <textarea 
+            <RichEditor 
               value={data.note || ''} 
-              onChange={(e) => updateDiet('note', e.target.value)}
-              className="flex-1 border border-gray-400 p-3 focus:outline-none focus:border-blue-500 min-h-[120px]"
+              onChange={(val) => updateDiet('note', val)}
+              className="flex-1"
               placeholder="식욕 부진, 연하 곤란, 오심/구토 등 기재"
+              height="120px"
             />
           </div>
         </div>
@@ -4077,28 +4127,28 @@ export default function App() {
                 
                 {activeOrderForm === item.id && (
                   <div className="mt-4 pt-4 border-t-2 border-black space-y-3">
-                    <textarea 
-                      id={`order-input-${item.id}`}
-                      className="w-full border-2 border-black p-2 text-xs focus:outline-none" 
-                      rows={3} 
+                    <RichEditor 
+                      height="100px"
                       placeholder="처방 내용을 입력하세요..."
+                      value={orderInputs[item.id] || ''}
+                      onChange={(val) => setOrderInputs(prev => ({ ...prev, [item.id]: val }))}
                     />
                     <div className="flex justify-end gap-2">
                       <button onClick={() => setActiveOrderForm(null)} className="text-[11px] font-bold underline">취소</button>
                       <button 
                         onClick={() => {
-                          const el = document.getElementById(`order-input-${item.id}`) as HTMLTextAreaElement;
-                          if (el && el.value.trim()) {
+                          const content = orderInputs[item.id];
+                          if (content && content.trim()) {
                             const newOrder = {
                               date: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
                               type: item.title,
-                              content: el.value.trim(),
+                              content: content.trim(),
                               status: 'Active'
                             };
                             const newOrdersList = [newOrder, ...(formData.recentOrders || [])];
                             updateField('recentOrders', newOrdersList);
                             handleSave({ recentOrders: newOrdersList });
-                            el.value = '';
+                            setOrderInputs(prev => ({ ...prev, [item.id]: '' }));
                             setActiveOrderForm(null);
                           }
                         }}
@@ -4189,28 +4239,28 @@ export default function App() {
                 
                 {activeSupportRequestForm === item.id && (
                   <div className="mt-4 pt-4 border-t-2 border-black space-y-3">
-                    <textarea 
-                      id={`support-input-${item.id}`}
-                      className="w-full border-2 border-black p-2 text-xs focus:outline-none" 
-                      rows={3} 
+                    <RichEditor 
+                      height="100px"
                       placeholder="요청 내용을 입력하세요..."
+                      value={supportInputs[item.id] || ''}
+                      onChange={(val) => setSupportInputs(prev => ({ ...prev, [item.id]: val }))}
                     />
                     <div className="flex justify-end gap-2">
                       <button onClick={() => setActiveSupportRequestForm(null)} className="text-[11px] font-bold underline">취소</button>
                       <button 
                         onClick={() => {
-                          const el = document.getElementById(`support-input-${item.id}`) as HTMLTextAreaElement;
-                          if (el && el.value.trim()) {
+                          const content = supportInputs[item.id];
+                          if (content && content.trim()) {
                             const newReq = {
                               date: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
                               dept: item.title,
-                              content: el.value.trim(),
+                              content: content.trim(),
                               status: 'Requested'
                             };
                             const newRequestsList = [newReq, ...(formData.supportRequests || [])];
                             updateField('supportRequests', newRequestsList);
                             handleSave({ supportRequests: newRequestsList });
-                            el.value = '';
+                            setSupportInputs(prev => ({ ...prev, [item.id]: '' }));
                             setActiveSupportRequestForm(null);
                           }
                         }}
@@ -4727,12 +4777,11 @@ export default function App() {
                       </label>
                     </div>
                     <div className="p-2">
-                      <textarea 
-                        value={formData.imagingNote}
-                        onChange={(e) => updateField('imagingNote', e.target.value)}
+                      <RichEditor 
+                        value={formData.imagingNote || ''}
+                        onChange={(val) => updateField('imagingNote', val)}
                         placeholder="영상검사 결과 및 판독 내용을 입력하세요..."
-                        spellCheck="false"
-                        className="w-full h-24 p-2 border border-gray-300 focus:outline-none resize-none"
+                        height="100px"
                       />
                     </div>
                     <div className="p-2 border-t border-gray-300">
@@ -4769,12 +4818,11 @@ export default function App() {
                       </label>
                     </div>
                     <div className="p-2">
-                      <textarea 
-                        value={formData.diagnosticNote}
-                        onChange={(e) => updateField('diagnosticNote', e.target.value)}
+                      <RichEditor 
+                        value={formData.diagnosticNote || ''}
+                        onChange={(val) => updateField('diagnosticNote', val)}
                         placeholder="진단검사 결과 및 부가 설명을 입력하세요..."
-                        spellCheck="false"
-                        className="w-full h-24 p-2 border border-gray-300 focus:outline-none resize-none"
+                        height="100px"
                       />
                     </div>
                     <div className="p-2 border-t border-gray-300">
@@ -5108,11 +5156,10 @@ export default function App() {
                 <div className="flex-1 border-2 border-black flex flex-col">
                   <div className="bg-[#00C9B1] text-white font-bold p-2 text-center text-lg">처치/시술기록</div>
                   <div className="flex-1 p-2">
-                    <textarea 
-                      value={formData.erTreatmentRecord}
-                      onChange={(e) => updateField('erTreatmentRecord', e.target.value)}
-                      spellCheck="false"
-                      className="w-full h-full resize-none focus:outline-none" 
+                    <RichEditor 
+                      value={formData.erTreatmentRecord || ''}
+                      onChange={(val) => updateField('erTreatmentRecord', val)}
+                      height="100%"
                     />
                   </div>
                 </div>
@@ -5139,22 +5186,20 @@ export default function App() {
                 <div className="flex-1 border-2 border-black flex flex-col">
                   <div className="bg-[#00C9B1] text-white font-bold p-2 text-center text-lg">Order</div>
                   <div className="flex-1 p-2">
-                    <textarea 
-                      value={formData.erOrder}
-                      onChange={(e) => updateField('erOrder', e.target.value)}
-                      spellCheck="false"
-                      className="w-full h-full resize-none focus:outline-none" 
+                    <RichEditor 
+                      value={formData.erOrder || ''}
+                      onChange={(val) => updateField('erOrder', val)}
+                      height="100%"
                     />
                   </div>
                 </div>
                 <div className="flex-1 border-2 border-black flex flex-col">
                   <div className="bg-[#00C9B1] text-white font-bold p-2 text-center text-lg">EXAM</div>
                   <div className="flex-1 p-2">
-                    <textarea 
-                      value={formData.erExam}
-                      onChange={(e) => updateField('erExam', e.target.value)}
-                      spellCheck="false"
-                      className="w-full h-full resize-none focus:outline-none" 
+                    <RichEditor 
+                      value={formData.erExam || ''}
+                      onChange={(val) => updateField('erExam', val)}
+                      height="100%"
                     />
                   </div>
                 </div>
@@ -5406,22 +5451,18 @@ export default function App() {
               <div className="space-y-4 pt-2">
                 <div className="flex flex-col gap-2">
                   <span className="text-gray-600 font-medium">주호소 (Chief Complaint)</span>
-                  <textarea 
-                    value={formData.chiefComplaint}
-                    onChange={(e) => updateField('chiefComplaint', e.target.value)}
-                    className="w-full border-b border-gray-400 focus:border-blue-500 outline-none py-1 bg-transparent text-[13px] resize-none"
-                    rows={2}
-                    spellCheck={false}
+                  <RichEditor 
+                    value={formData.chiefComplaint || ''}
+                    onChange={(val) => updateField('chiefComplaint', val)}
+                    height="60px"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
                   <span className="text-gray-600 font-medium">현병력 (Present Illness)</span>
-                  <textarea 
-                    value={formData.presentIllness}
-                    onChange={(e) => updateField('presentIllness', e.target.value)}
-                    className="w-full border-b border-gray-400 focus:border-blue-500 outline-none py-1 bg-transparent text-[13px] resize-none"
-                    rows={3}
-                    spellCheck={false}
+                  <RichEditor 
+                    value={formData.presentIllness || ''}
+                    onChange={(val) => updateField('presentIllness', val)}
+                    height="80px"
                   />
                 </div>
               </div>
@@ -5648,11 +5689,11 @@ export default function App() {
                     <span>처방 내역</span>
                   </div>
                   <div className="flex-1 p-2">
-                    <textarea 
-                      className="w-full h-full border border-gray-300 p-2 text-[13px] focus:outline-none focus:border-blue-500 resize-none"
-                      placeholder="처방 내역을 입력하세요."
+                    <RichEditor 
                       value={formData.nursingPrescriptionNote || ''}
-                      onChange={(e) => updateField('nursingPrescriptionNote', e.target.value)}
+                      onChange={(val) => updateField('nursingPrescriptionNote', val)}
+                      placeholder="처방 내역을 입력하세요."
+                      height="100%"
                     />
                   </div>
                 </div>
@@ -6101,12 +6142,11 @@ export default function App() {
 
                 <div className="space-y-2">
                   <label className="block font-bold text-sm border-l-4 border-blue-600 pl-2">퇴원시 환자 상태 및 간호 경과</label>
-                  <textarea 
-                    value={formData.dischargeProgress}
-                    onChange={(e) => updateField('dischargeProgress', e.target.value)}
-                    className="w-full border border-gray-300 p-3 rounded-sm focus:border-blue-500 outline-none text-[13px] resize-none"
-                    rows={6}
+                  <RichEditor 
+                    value={formData.dischargeProgress || ''}
+                    onChange={(val) => updateField('dischargeProgress', val)}
                     placeholder="퇴원 시점의 환자 상태를 상세히 기록하세요."
+                    height="200px"
                   />
                 </div>
 
@@ -6170,32 +6210,29 @@ export default function App() {
                   </div>
                   <div className="space-y-2">
                     <label className="block font-bold text-sm">작성내용</label>
-                    <textarea 
-                      className="w-full border-2 border-black p-3 focus:outline-none text-sm" 
-                      rows={5} 
+                    <RichEditor 
+                      value={newReport.content || ''}
+                      onChange={(val) => setNewReport({...newReport, content: val})}
                       placeholder="보고서 작성 내용을 입력하세요."
-                      value={newReport.content}
-                      onChange={(e) => setNewReport({...newReport, content: e.target.value})}
+                      height="150px"
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="block font-bold text-sm">상세 경위</label>
-                    <textarea 
-                      className="w-full border-2 border-black p-3 focus:outline-none text-sm" 
-                      rows={5} 
+                    <RichEditor 
+                      value={newReport.details || ''}
+                      onChange={(val) => setNewReport({...newReport, details: val})}
                       placeholder="사건의 상세 내용을 입력하세요."
-                      value={newReport.details}
-                      onChange={(e) => setNewReport({...newReport, details: e.target.value})}
+                      height="150px"
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="block font-bold text-sm">조치 사항</label>
-                    <textarea 
-                      className="w-full border-2 border-black p-3 focus:outline-none text-sm" 
-                      rows={3} 
+                    <RichEditor 
+                      value={newReport.actions || ''}
+                      onChange={(val) => setNewReport({...newReport, actions: val})}
                       placeholder="사건 발생 후 취해진 조치를 입력하세요."
-                      value={newReport.actions}
-                      onChange={(e) => setNewReport({...newReport, actions: e.target.value})}
+                      height="100px"
                     />
                   </div>
                   <div className="flex justify-end gap-3">

@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import RichEditor from './RichEditor';
 
 interface NursingWriterProps {
   onSave?: (data: any) => void;
@@ -47,12 +48,13 @@ const NursingWriter: React.FC<NursingWriterProps> = ({ onSave }) => {
               { label: '간호계획 Plan', key: 'plan' },
               { label: '간호수행/중재/이론적 근거 Interventions', key: 'interventions' }
             ].map(field => (
-              <div key={field.key} className="grid grid-cols-4 gap-2 items-center">
-                <label className="text-xs font-bold">{field.label}</label>
-                <textarea 
-                  className="col-span-3 h-7 border border-gray-300 p-1 text-sm focus:outline-none focus:border-blue-500 resize-none" 
+              <div key={field.key} className="grid grid-cols-4 gap-2 items-start">
+                <label className="text-xs font-bold mt-1">{field.label}</label>
+                <RichEditor 
+                  className="col-span-3"
+                  height="60px"
                   value={(nandaData as any)[field.key]}
-                  onChange={(e) => setNandaData({...nandaData, [field.key]: e.target.value})}
+                  onChange={(val) => setNandaData({...nandaData, [field.key]: val})}
                 />
               </div>
             ))}
@@ -69,12 +71,13 @@ const NursingWriter: React.FC<NursingWriterProps> = ({ onSave }) => {
               { label: 'I (Intervention)', key: 'i' },
               { label: 'E (Evaluation)', key: 'e' }
             ].map(field => (
-              <div key={field.key} className="grid grid-cols-4 gap-2 items-center">
-                <label className="text-xs font-bold">{field.label}</label>
-                <textarea 
-                  className="col-span-3 h-7 border border-gray-300 p-1 text-sm focus:outline-none focus:border-blue-500 resize-none" 
+              <div key={field.key} className="grid grid-cols-4 gap-2 items-start">
+                <label className="text-xs font-bold mt-1">{field.label}</label>
+                <RichEditor 
+                  className="col-span-3"
+                  height="60px"
                   value={(soapieData as any)[field.key]}
-                  onChange={(e) => setSoapieData({...soapieData, [field.key]: e.target.value})}
+                  onChange={(val) => setSoapieData({...soapieData, [field.key]: val})}
                 />
               </div>
             ))}
@@ -97,12 +100,13 @@ const NursingWriter: React.FC<NursingWriterProps> = ({ onSave }) => {
               { label: 'A (Action)', key: 'a' },
               { label: 'R (Response)', key: 'r' }
             ].map(field => (
-              <div key={field.key} className="grid grid-cols-4 gap-2 items-center">
-                <label className="text-xs font-bold">{field.label}</label>
-                <textarea 
-                  className="col-span-3 h-7 border border-gray-300 p-1 text-sm focus:outline-none focus:border-blue-500 resize-none" 
+              <div key={field.key} className="grid grid-cols-4 gap-2 items-start">
+                <label className="text-xs font-bold mt-1">{field.label}</label>
+                <RichEditor 
+                  className="col-span-3"
+                  height="60px"
                   value={(darData as any)[field.key]}
-                  onChange={(e) => setDarData({...darData, [field.key]: e.target.value})}
+                  onChange={(val) => setDarData({...darData, [field.key]: val})}
                 />
               </div>
             ))}
@@ -112,10 +116,10 @@ const NursingWriter: React.FC<NursingWriterProps> = ({ onSave }) => {
         return (
           <div>
             <label className="block text-xs font-bold mb-1">서술기록 내용</label>
-            <textarea 
-              className="w-full h-64 border border-gray-300 p-2 text-sm" 
+            <RichEditor 
+              height="250px"
               value={narrative}
-              onChange={(e) => setNarrative(e.target.value)}
+              onChange={(val) => setNarrative(val)}
               placeholder="기록 내용을 입력하세요."
             />
           </div>
@@ -124,10 +128,10 @@ const NursingWriter: React.FC<NursingWriterProps> = ({ onSave }) => {
         return (
           <div>
             <label className="block text-xs font-bold mb-1">특기사항 내용</label>
-            <textarea 
-              className="w-full h-64 border border-gray-300 p-2 text-sm" 
+            <RichEditor 
+              height="250px"
               value={specialNotes}
-              onChange={(e) => setSpecialNotes(e.target.value)}
+              onChange={(val) => setSpecialNotes(val)}
               placeholder="특기사항을 입력하세요."
             />
           </div>
