@@ -1592,10 +1592,15 @@ export default function App() {
       const userName = ACCOUNTS[loginId]?.name || loginId;
       const timestamp = `\n[저장됨: ${now.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} / ${userName}]`;
       
+      const cleanupTimestamp = (text: string) => {
+        if (!text) return "";
+        // Remove any bracketed text starting with "저장됨", including surrounding whitespace and common HTML tags
+        return text.replace(/(?:\s|<br\/?>|<p>|<\/p>)*\[저장됨[^\]]*\](?:\s|<br\/?>|<p>|<\/p>)*/gi, "").trim();
+      };
+
       const appendTimestamp = (text: string) => {
         if (!text) return "";
-        // Remove any existing timestamps (including those with or without leading newline)
-        const cleaned = text.replace(/\n?\[저장됨: [^\]]*\]/g, "").trim();
+        const cleaned = cleanupTimestamp(text);
         return cleaned ? cleaned + timestamp : "";
       };
 
