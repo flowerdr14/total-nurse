@@ -248,6 +248,12 @@ export interface Patient {
   diagnosticPhotos: string[];
   prescriptionNotes: Record<string, string>;
   
+  // Sidebar SOAP fields
+  sidebarS: string;
+  sidebarO: string;
+  sidebarA: string;
+  sidebarP: string;
+
   // Surgery Records
   surgeryNote: string;
   surgeryAttending: string;
@@ -787,6 +793,10 @@ const INITIAL_FORM_DATA: Patient = {
   diagnosticNote: '',
   diagnosticPhotos: [],
   prescriptionNotes: PRESCRIPTION_SUB_TABS.reduce((acc, tab) => ({ ...acc, [tab]: '' }), {}),
+  sidebarS: '',
+  sidebarO: '',
+  sidebarA: '',
+  sidebarP: '',
   surgeryNote: '',
   surgeryAttending: '',
   surgeryAnesthesia: '',
@@ -1025,7 +1035,7 @@ const HeaderButton = ({ icon: Icon, label, onClick, color = "text-black", disabl
 };
 
 const TabButton: React.FC<{ label: string, count: number, active: boolean, onClick: () => void, theme: any }> = ({ label, count, active, onClick, theme }) => (
-  <div className="relative flex flex-col items-center">
+  <div className="relative flex flex-col items-center font-gulim">
     <button 
       onClick={onClick}
       className={`px-3 py-2 rounded-md font-bold text-[14px] border transition-all min-w-[100px] ${
@@ -1057,6 +1067,25 @@ const InputField = ({ label, value, onChange, readOnly = false, labelWidth = "w-
       spellCheck={false}
       className="flex-1 border-b border-black px-1 py-0.5 text-sm focus:outline-none"
     />
+  </div>
+);
+
+const UnderlineInputField = ({ label, value, onChange, unit, labelWidth = "w-24" }: { label: string, value: string, onChange: (v: string) => void, unit?: string, labelWidth?: string }) => (
+  <div className="flex items-center gap-2 text-[14px]">
+    <span className={`${labelWidth} font-bold shrink-0`}>{label}</span>
+    <input 
+      type="text" 
+      value={value || ''} 
+      onChange={(e) => onChange(e.target.value)} 
+      className="flex-1 border-b border-black focus:outline-none h-8 bg-transparent"
+    />
+    {unit && <span className="text-[12px] font-bold shrink-0 w-14">{unit}</span>}
+  </div>
+);
+
+const SectionHeader = ({ label }: { label: string }) => (
+  <div className="bg-[#A6A6A6] text-black px-4 py-2 rounded-md font-bold block w-full text-[16px] mb-4">
+    {label}
   </div>
 );
 
@@ -1114,6 +1143,12 @@ const RECORD_COLORS = [
 
 const DEPARTMENTS = [
   '전체',
+  '101병동',
+  'OB101병동',
+  'OB산후병동',
+  'PACU',
+  'ICU',
+  'PED101병동',
   'EM응급의학과',
   'GS일반외과',
   'OS정형외과',
@@ -1248,6 +1283,16 @@ export default function App() {
   const [rightSidebarWidth, setRightSidebarWidth] = useState(384);
   const [rightSidebarTopHeight, setRightSidebarTopHeight] = useState(400);
   const [isPatientListCollapsed, setIsPatientListCollapsed] = useState(false);
+  const [expandedWards, setExpandedWards] = useState<Record<string, boolean>>({
+    'ICU': true,
+    '101병동': true,
+    'PED101병동': true,
+    'OB101병동': true,
+    'OB산후병동': true,
+    'PACU': true,
+    'EM응급실': true,
+    '퇴원완료': true
+  });
   const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
   const [isResizingRightVertical, setIsResizingRightVertical] = useState(false);
@@ -1465,7 +1510,7 @@ export default function App() {
         admission: p.soapBlocks.length > 0 || p.soapNote || p.exam ? 1 : 0,
         surgery: p.surgeryNote || p.surgeryAttending || p.surgeryName || p.surgerySoapBlocks.length > 0 ? 1 : 0,
         consult: p.consultNote || p.consultReason || p.consultSoapBlocks.length > 0 ? 1 : 0,
-        discharge: p.dischargeNote || p.dischargeReason || p.dischargeSoapBlocks.length > 0 ? 1 : 0,
+        discharge: (p.dischargeNote || p.dischargeReason || p.dischargeDiagnosis || p.dischargeCC || p.dischargeMainDx || p.dischargeDate || p.dischargeProgress || p.dischargeStatus || p.dischargePlan || p.dischargeSoapBlocks.length > 0) ? 1 : 0,
         lab: p.labRows.some(r => r.some(c => c !== '')) ? 1 : 0,
         other_record: p.otherRecordNote || p.otherReason || p.otherRecordSoapBlocks.length > 0 ? 1 : 0,
         other_hospital: p.otherHospitalNote ? 1 : 0,
@@ -1478,7 +1523,7 @@ export default function App() {
         admission: acc.admission + (p.soapBlocks.length > 0 || p.soapNote || p.exam ? 1 : 0),
         surgery: acc.surgery + (p.surgeryNote || p.surgeryAttending || p.surgeryName || p.surgerySoapBlocks.length > 0 ? 1 : 0),
         consult: acc.consult + (p.consultNote || p.consultReason || p.consultSoapBlocks.length > 0 ? 1 : 0),
-        discharge: acc.discharge + (p.dischargeNote || p.dischargeReason || p.dischargeSoapBlocks.length > 0 ? 1 : 0),
+        discharge: acc.discharge + ((p.dischargeNote || p.dischargeReason || p.dischargeDiagnosis || p.dischargeCC || p.dischargeMainDx || p.dischargeDate || p.dischargeProgress || p.dischargeStatus || p.dischargePlan || p.dischargeSoapBlocks.length > 0) ? 1 : 0),
         lab: acc.lab + (p.labRows.some(r => r.some(c => c !== '')) ? 1 : 0),
         other_record: acc.other_record + (p.otherRecordNote || p.otherReason || p.otherRecordSoapBlocks.length > 0 ? 1 : 0),
         other_hospital: acc.other_hospital + (p.otherHospitalNote ? 1 : 0),
@@ -1549,8 +1594,8 @@ export default function App() {
       
       const appendTimestamp = (text: string) => {
         if (!text) return "";
-        // Match timestamp at start of string or after a newline
-        const cleaned = text.replace(/(?:\n|^)\[저장됨: .*\]/g, "").trim();
+        // Remove any existing timestamps (including those with or without leading newline)
+        const cleaned = text.replace(/\n?\[저장됨: [^\]]*\]/g, "").trim();
         return cleaned ? cleaned + timestamp : "";
       };
 
@@ -1592,6 +1637,10 @@ export default function App() {
         certificates: JSON.stringify(dataToSave.certificates || []),
         nursingNote: appendTimestamp(dataToSave.nursingNote),
         nursingExam: appendTimestamp(dataToSave.nursingExam),
+        sidebarS: appendTimestamp(dataToSave.sidebarS),
+        sidebarO: appendTimestamp(dataToSave.sidebarO),
+        sidebarA: appendTimestamp(dataToSave.sidebarA),
+        sidebarP: appendTimestamp(dataToSave.sidebarP),
       };
       
       // Update local state immediately to prevent sync issues and provide instant feedback
@@ -1607,6 +1656,10 @@ export default function App() {
         diagnosticNote: patientData.diagnosticNote,
         nursingNote: patientData.nursingNote,
         nursingExam: patientData.nursingExam,
+        sidebarS: patientData.sidebarS,
+        sidebarO: patientData.sidebarO,
+        sidebarA: patientData.sidebarA,
+        sidebarP: patientData.sidebarP,
         prescriptionNotes: newPrescriptionNotes,
         soapBlocks: [...formData.soapBlocks], // Ensure fresh copy
         surgerySoapBlocks: [...formData.surgerySoapBlocks],
@@ -1660,7 +1713,28 @@ export default function App() {
   };
 
   const updateField = (field: keyof Patient, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Automatic Ward Assignment Logic
+      if (field === 'room') {
+        const roomVal = value as string;
+        if (roomVal.startsWith('ICU')) {
+          newData.ward = 'ICU';
+        } else if (roomVal === '10O병동' || roomVal === '101병동') { // Handling potential typo
+          if (newData.dept === 'OB' || newData.dept === 'OB산부인과') {
+            newData.ward = '산과병동';
+          }
+        }
+      } else if (field === 'dept') {
+        const deptVal = value as string;
+        if ((newData.room === '10O병동' || newData.room === '101병동') && (deptVal === 'OB' || deptVal === 'OB산부인과')) {
+          newData.ward = '산과병동';
+        }
+      }
+      
+      return newData;
+    });
   };
 
   const updateLabCell = (rowIndex: number, colIndex: number, value: string) => {
@@ -3075,153 +3149,147 @@ export default function App() {
   );
 
   const renderRightSidebar = (showSoapAdd: boolean = true) => (
-    <div className="w-[500px] border-2 border-black p-4 flex flex-col gap-6 shrink-0 overflow-y-auto">
+    <div className="w-[500px] border-2 border-black p-4 flex flex-col gap-8 shrink-0 overflow-y-auto bg-white font-gulim text-[14px]">
       <div className="mb-4">
-        <div className="text-xl font-bold text-center mb-1">경과기록지</div>
-        <div className="border-b-2 border-black w-full"></div>
-      </div>
-      <div className="bg-[#999] text-white px-3 py-1 font-bold text-lg mb-2">환자기본정보</div>
-
-      <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} />
-      <InputField label="병실" value={formData.room} onChange={(v) => updateField('room', v)} />
-      <InputField label="전문의" value={formData.assignedProfessor} onChange={(v) => updateField('assignedProfessor', v)} />
-      <InputField label="성명" value={formData.name} onChange={(v) => updateField('name', v)} />
-      <InputField label="나이" value={formData.age} onChange={(v) => updateField('age', v)} />
-      <InputField label="거주지" value={formData.address} onChange={(v) => updateField('address', v)} />
-      <InputField label="Dx" value={formData.dx} onChange={(v) => updateField('dx', v)} />
-      <InputField label="C.C" value={formData.cc} onChange={(v) => updateField('cc', v)} />
-      <div className="flex items-center gap-1 text-sm font-bold">
-        <span className="w-20">On Set</span>
-        <select 
-          value={formData.onsetYear} 
-          onChange={(e) => updateField('onsetYear', e.target.value)}
-          className="border-2 border-black px-1"
-        >
-          {Array.from({ length: 2101 - 1900 }, (_, i) => 1900 + i).map(y => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select> <span>년</span>
-        <select 
-          value={formData.onsetMonth} 
-          onChange={(e) => updateField('onsetMonth', e.target.value)}
-          className="border-2 border-black px-1"
-        >
-          {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select> <span>월</span>
-        <select 
-          value={formData.onsetDay} 
-          onChange={(e) => updateField('onsetDay', e.target.value)}
-          className="border-2 border-black px-1"
-        >
-          {Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(d => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select> <span>일</span>
-      </div>
-      <InputField label="혈액형" value={formData.bloodType} onChange={(v) => updateField('bloodType', v)} />
-      <InputField label="진료과" value={formData.dept} onChange={(v) => updateField('dept', v)} />
-      <div className="flex items-center gap-1 text-sm font-bold">
-        <span className="w-20">생년월일</span>
-        <select 
-          value={formData.dobYear} 
-          onChange={(e) => updateField('dobYear', e.target.value)}
-          className="border-2 border-black px-1"
-        >
-          {Array.from({ length: 2101 - 1900 }, (_, i) => 1900 + i).map(y => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select> <span>년</span>
-        <select 
-          value={formData.dobMonth} 
-          onChange={(e) => updateField('dobMonth', e.target.value)}
-          className="border-2 border-black px-1"
-        >
-          {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select> <span>월</span>
-        <select 
-          value={formData.dobDay} 
-          onChange={(e) => updateField('dobDay', e.target.value)}
-          className="border-2 border-black px-1"
-        >
-          {Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(d => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select> <span>일</span>
-      </div>
-      <div className="flex items-center gap-4 text-sm font-bold mt-2">
-        <span className="w-20">성별</span>
-        <label className="flex items-center gap-1">
-          <input type="radio" name="gender" checked={formData.gender === 'M'} onChange={() => updateField('gender', 'M')} /> 남
-        </label>
-        <label className="flex items-center gap-1">
-          <input type="radio" name="gender" checked={formData.gender === 'F'} onChange={() => updateField('gender', 'F')} /> 여
-        </label>
+        <div className="text-3xl font-bold text-center mb-1 tracking-[0.5em]">경 과 기 록 지</div>
       </div>
 
-      <div className="mt-4">
-        <div className="bg-[#999] text-white px-3 py-1 font-bold text-lg mb-2 flex items-center justify-between">
-          <span>V/S</span>
-          <span>&gt;</span>
-        </div>
-        <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
+        <SectionHeader label="환자정보" />
+        <div className="flex flex-col gap-3 px-1">
+          <UnderlineInputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} />
+          <UnderlineInputField label="병실" value={formData.room} onChange={(v) => updateField('room', v)} />
+          <UnderlineInputField label="전문의" value={formData.assignedProfessor} onChange={(v) => updateField('assignedProfessor', v)} />
+          <UnderlineInputField label="이름" value={formData.name} onChange={(v) => updateField('name', v)} />
+          
           <div className="flex items-center gap-2">
-            <span className="w-12 font-bold">HR</span>
-            <input type="text" value={formData.hr} onChange={(e) => updateField('hr', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
-            <span className="text-xs font-bold">bpm</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-12 font-bold">RR</span>
-            <input type="text" value={formData.rr} onChange={(e) => updateField('rr', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
-            <span className="text-xs font-bold">회/min</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-12 font-bold">BP</span>
-            <div className="flex-1 flex items-center gap-1">
-              <input type="text" value={formData.bpSys} onChange={(e) => updateField('bpSys', e.target.value)} className="w-12 border-2 border-black px-1 h-8 focus:outline-none text-center" />
-              <span>/</span>
-              <input type="text" value={formData.bpDia} onChange={(e) => updateField('bpDia', e.target.value)} className="w-12 border-2 border-black px-1 h-8 focus:outline-none text-center" />
-              <span className="text-xs font-bold ml-1">mmHg</span>
+            <span className="w-24 font-bold shrink-0">생년월일</span>
+            <div className="flex items-center gap-1">
+              <select value={formData.dobYear} onChange={(e) => updateField('dobYear', e.target.value)} className="border border-black px-1 text-[12px] h-8 bg-transparent">
+                {Array.from({ length: 2101 - 1900 }, (_, i) => 1900 + i).map(y => <option key={y} value={y}>{y}</option>)}
+              </select><span>년</span>
+              <select value={formData.dobMonth} onChange={(e) => updateField('dobMonth', e.target.value)} className="border border-black px-1 text-[12px] h-8 bg-transparent">
+                {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+              </select><span>월</span>
+              <select value={formData.dobDay} onChange={(e) => updateField('dobDay', e.target.value)} className="border border-black px-1 text-[12px] h-8 bg-transparent">
+                {Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(d => <option key={d} value={d}>{d}</option>)}
+              </select><span>일</span>
             </div>
           </div>
+
+          <div className="flex items-center gap-4 font-bold mt-1">
+            <span className="w-24">성별</span>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="gender" checked={formData.gender === 'M'} onChange={() => updateField('gender', 'M')} className="accent-blue-600 w-4 h-4" /> 남
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="gender" checked={formData.gender === 'F'} onChange={() => updateField('gender', 'F')} className="accent-blue-600 w-4 h-4" /> 여
+            </label>
+          </div>
+
+          <UnderlineInputField label="나이" value={formData.age} onChange={(v) => updateField('age', v)} />
+          <UnderlineInputField label="거주지" value={formData.address} onChange={(v) => updateField('address', v)} />
+          <UnderlineInputField label="Dx" value={formData.dx} onChange={(v) => updateField('dx', v)} />
+          <UnderlineInputField label="C.C" value={formData.cc} onChange={(v) => updateField('cc', v)} />
+          
           <div className="flex items-center gap-2">
-            <span className="w-12 font-bold">BT</span>
-            <input type="text" value={formData.bt} onChange={(e) => updateField('bt', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
-            <span className="text-xs font-bold">°C</span>
+            <span className="w-24 font-bold shrink-0">On Set</span>
+            <div className="flex items-center gap-1">
+              <select value={formData.onsetYear} onChange={(e) => updateField('onsetYear', e.target.value)} className="border border-black px-1 text-[12px] h-8 bg-transparent">
+                {Array.from({ length: 2101 - 1900 }, (_, i) => 1900 + i).map(y => <option key={y} value={y}>{y}</option>)}
+              </select><span>년</span>
+              <select value={formData.onsetMonth} onChange={(e) => updateField('onsetMonth', e.target.value)} className="border border-black px-1 text-[12px] h-8 bg-transparent">
+                {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+              </select><span>월</span>
+              <select value={formData.onsetDay} onChange={(e) => updateField('onsetDay', e.target.value)} className="border border-black px-1 text-[12px] h-8 bg-transparent">
+                {Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(d => <option key={d} value={d}>{d}</option>)}
+              </select><span>일</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Day 관리 */}
-      <div className="mt-4">
-        <div className="bg-[#BDBDBD] text-white font-bold px-3 py-1 text-lg text-center">
-          Day 관리
-        </div>
-        <div className="flex flex-col gap-2 mt-2 px-1">
-          <div className="flex items-center gap-2">
-            <span className="w-16 font-bold">HOD -</span>
-            <input type="date" value={formData.admissionDate} onChange={(e) => updateField('admissionDate', e.target.value)} className="border-2 border-black px-1 h-8 focus:outline-none flex-1 text-sm" />
-            <span className="w-12 text-center font-bold">{calculateDays(formData.admissionDate, true)}</span>
+      <div className="flex flex-col gap-2">
+        <SectionHeader label="SOAP" />
+        <div className="flex flex-col gap-4 px-1">
+          <div className="flex flex-col gap-1">
+            <span className="text-[15px] font-bold">Subjective</span>
+            <AutoHeightTextarea 
+              value={formData.sidebarS || ''} 
+              onChange={(e: any) => updateField('sidebarS', e.target.value)}
+              className="w-full border-b border-black focus:outline-none bg-transparent py-1"
+              minHeight="32px"
+            />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-16 font-bold">POD -</span>
-            <input type="date" value={formData.surgeryDate} onChange={(e) => updateField('surgeryDate', e.target.value)} className="border-2 border-black px-1 h-8 focus:outline-none flex-1 text-sm" />
-            <span className="w-12 text-center font-bold">{calculateDays(formData.surgeryDate, false)}</span>
+          <div className="flex flex-col gap-1">
+            <span className="text-[15px] font-bold">Objective</span>
+            <AutoHeightTextarea 
+              value={formData.sidebarO || ''} 
+              onChange={(e: any) => updateField('sidebarO', e.target.value)}
+              className="w-full border-b border-black focus:outline-none bg-transparent py-1"
+              minHeight="32px"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[15px] font-bold">Assessment</span>
+            <AutoHeightTextarea 
+              value={formData.sidebarA || ''} 
+              onChange={(e: any) => updateField('sidebarA', e.target.value)}
+              className="w-full border-b border-black focus:outline-none bg-transparent py-1"
+              minHeight="32px"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[15px] font-bold">Plan</span>
+            <AutoHeightTextarea 
+              value={formData.sidebarP || ''} 
+              onChange={(e: any) => updateField('sidebarP', e.target.value)}
+              className="w-full border-b border-black focus:outline-none bg-transparent py-1"
+              minHeight="32px"
+            />
           </div>
         </div>
       </div>
 
-      {/* 진단관리 */}
-      <div className="mt-4">
-        <div className="bg-[#BDBDBD] text-white font-bold px-3 py-1 text-lg text-center">
-          진단관리
-        </div>
-        <div className="flex flex-col gap-2 mt-2 px-1">
+      <div className="flex flex-col gap-2">
+        <SectionHeader label="V / S" />
+        <div className="flex flex-col gap-3 px-1">
+          <UnderlineInputField label="HR" value={formData.hr} onChange={(v) => updateField('hr', v)} unit="bpm" />
+          <UnderlineInputField label="RR" value={formData.rr} onChange={(v) => updateField('rr', v)} unit="회/min" />
           <div className="flex items-center gap-2">
-            <span className="w-24 font-bold">주진단코드 -</span>
+            <span className="w-24 font-bold shrink-0">BP</span>
+            <div className="flex-1 flex items-center gap-1 border-b border-black h-8">
+              <input type="text" value={formData.bpSys} onChange={(e) => updateField('bpSys', e.target.value)} className="w-16 focus:outline-none text-center bg-transparent" />
+              <span>/</span>
+              <input type="text" value={formData.bpDia} onChange={(e) => updateField('bpDia', e.target.value)} className="w-16 focus:outline-none text-center bg-transparent" />
+            </div>
+            <span className="text-[12px] font-bold shrink-0 w-14">mmHg</span>
+          </div>
+          <UnderlineInputField label="BT" value={formData.bt} onChange={(v) => updateField('bt', v)} unit="°C" />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <SectionHeader label="Day" />
+        <div className="flex flex-col gap-3 px-1">
+          <div className="flex items-center gap-2">
+            <span className="w-20 font-bold shrink-0">HOD -</span>
+            <input type="date" value={formData.admissionDate} onChange={(e) => updateField('admissionDate', e.target.value)} className="flex-1 border border-black px-2 h-8 focus:outline-none text-[12px] bg-transparent" />
+            <span className="w-16 text-center font-bold">{calculateDays(formData.admissionDate, true)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-20 font-bold shrink-0">POD -</span>
+            <input type="date" value={formData.surgeryDate} onChange={(e) => updateField('surgeryDate', e.target.value)} className="flex-1 border border-black px-2 h-8 focus:outline-none text-[12px] bg-transparent" />
+            <span className="w-16 text-center font-bold">{calculateDays(formData.surgeryDate, false)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <SectionHeader label="Diagnosis" />
+        <div className="flex flex-col gap-3 px-1">
+          <div className="flex items-center gap-2">
+            <span className="w-28 font-bold shrink-0">주진단코드 -</span>
             <div className="flex-1 flex gap-1">
               <select 
                 value={(formData.mainDxCode || '').charAt(0)} 
@@ -3233,7 +3301,7 @@ export default function App() {
                   const dx = DX_CODES.find(d => d.code === newCode);
                   if (dx) updateField('mainDxName', dx.name);
                 }}
-                className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                className="flex-1 border border-black px-1 h-8 focus:outline-none text-[12px] bg-transparent"
               >
                 <option value="">선택</option>
                 {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
@@ -3248,7 +3316,7 @@ export default function App() {
                   const dx = DX_CODES.find(d => d.code === newCode);
                   if (dx) updateField('mainDxName', dx.name);
                 }}
-                className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                className="flex-1 border border-black px-1 h-8 focus:outline-none text-[12px] bg-transparent"
               >
                 <option value="">선택</option>
                 {Array.from({ length: 99 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(n => <option key={n} value={n}>{n}</option>)}
@@ -3256,11 +3324,11 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-24 font-bold">주진단명 -</span>
-            <input type="text" value={formData.mainDxName} onChange={(e) => updateField('mainDxName', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none text-sm" />
+            <span className="w-28 font-bold shrink-0">주진단명 -</span>
+            <input type="text" value={formData.mainDxName} onChange={(e) => updateField('mainDxName', e.target.value)} className="flex-1 border border-black px-2 h-8 focus:outline-none bg-transparent" />
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-24 font-bold">부진단코드 -</span>
+            <span className="w-28 font-bold shrink-0">부진단코드 -</span>
             <div className="flex-1 flex gap-1">
               <select 
                 value={(formData.subDxCode || '').charAt(0)} 
@@ -3272,7 +3340,7 @@ export default function App() {
                   const dx = DX_CODES.find(d => d.code === newCode);
                   if (dx) updateField('subDxName', dx.name);
                 }}
-                className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                className="flex-1 border border-black px-1 h-8 focus:outline-none text-[12px] bg-transparent"
               >
                 <option value="">선택</option>
                 {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => <option key={l} value={l}>{l}</option>)}
@@ -3287,7 +3355,7 @@ export default function App() {
                   const dx = DX_CODES.find(d => d.code === newCode);
                   if (dx) updateField('subDxName', dx.name);
                 }}
-                className="flex-1 border-2 border-black px-1 h-8 focus:outline-none text-sm"
+                className="flex-1 border border-black px-1 h-8 focus:outline-none text-[12px] bg-transparent"
               >
                 <option value="">선택</option>
                 {Array.from({ length: 99 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(n => <option key={n} value={n}>{n}</option>)}
@@ -3295,28 +3363,21 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-24 font-bold">부진단명 -</span>
-            <input type="text" value={formData.subDxName} onChange={(e) => updateField('subDxName', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none text-sm" />
+            <span className="w-28 font-bold shrink-0">부진단명 -</span>
+            <input type="text" value={formData.subDxName} onChange={(e) => updateField('subDxName', e.target.value)} className="flex-1 border border-black px-2 h-8 focus:outline-none bg-transparent" />
           </div>
         </div>
       </div>
 
-      {showSoapAdd && (
-        <div className="mt-4 border-t-2 border-black pt-4">
-          <div className="bg-[#BDBDBD] text-black font-bold px-3 py-1 text-lg text-center mb-4">
-            Progress
-          </div>
-          <div className="grid grid-cols-1 gap-2">
-            <button 
-              onClick={addSoapBlock}
-              className="h-32 bg-[#BDBDBD] border-2 border-black flex flex-col items-center justify-center font-bold hover:bg-gray-400"
-            >
-              <div className="text-xl">SOAP</div>
-              <div className="text-xl">추가</div>
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="flex flex-col gap-2">
+        <SectionHeader label="Progress" />
+        <button 
+          onClick={addSoapBlock}
+          className="border-2 border-black bg-[#D9D9D9] h-32 flex items-center justify-center text-xl font-bold text-center p-4 hover:bg-gray-300 transition-colors"
+        >
+          SOAP 표<br />추가
+        </button>
+      </div>
     </div>
   );
 
@@ -6846,7 +6907,7 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         <div 
           style={{ width: isPatientListCollapsed ? '30px' : `${patientListWidth}px` }}
-          className="bg-white border-r-2 border-black flex flex-col transition-all duration-300 relative shrink-0"
+          className="bg-white border-r-2 border-black flex flex-col transition-all duration-300 relative shrink-0 font-gulim"
         >
           <div 
             style={{ backgroundColor: currentTheme.color }}
@@ -6870,7 +6931,7 @@ export default function App() {
             <>
               <div className="bg-[#E5F0FA] border-b-2 border-black shrink-0">
                 {/* Department Box */}
-                <div className="flex items-center gap-1 p-1 border-b border-[#A0C0E0]">
+                <div className="flex items-center gap-1 p-1">
                   <div className="border border-[#A0C0E0] bg-white px-2 py-0.5 text-[11px] font-bold text-[#333] h-[22px] flex items-center">
                     병동
                   </div>
@@ -6890,7 +6951,7 @@ export default function App() {
                 </div>
 
                 {/* Search */}
-                <div className="flex items-center gap-2 p-1 border-b border-[#A0C0E0]">
+                <div className="flex items-center gap-2 p-1">
                   <div className="flex items-center gap-2 text-xs text-[#333] font-bold whitespace-nowrap">
                     <label className="flex items-center gap-1 cursor-pointer">
                       <input type="checkbox" checked={filterByAll} onChange={(e) => setFilterByAll(e.target.checked)} className="accent-black w-3 h-3" /> 전체
@@ -6915,7 +6976,7 @@ export default function App() {
                 </div>
 
                 {/* Tabs */}
-                <div className="flex">
+                <div className="flex font-gulim">
                   <button 
                     onClick={() => setPatientTab('all')}
                     className={`flex-1 py-1 text-[11px] font-bold ${patientTab === 'all' ? 'bg-white border-b-2 border-x border-[#A0C0E0] text-black' : 'bg-[#D0E0F0] text-[#555]'}`}
@@ -6930,43 +6991,125 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto">
-                {filteredPatients.map(patient => (
-                  <button 
-                    key={patient.id}
-                    onClick={() => {
-                      if (activeTab === 'other_record') return;
-                      setSelectedPatientId(patient.id);
-                      if (activeTopMenu !== 'E.M.R' && activeTopMenu !== '의사처방' && activeTopMenu !== '지원부서' && activeTopMenu !== '활성창' && activeTopMenu !== '간호') {
-                        setShowPatientModal(true);
-                      }
-                      if (activeTopMenu === '간호') setActiveTab('nursing');
-                      else if (activeTopMenu === '의사처방') setActiveTab('doctor_prescription');
-                      else if (activeTopMenu === '지원부서') setActiveTab('support_dept');
-                      else if (activeTopMenu === '활성창') setActiveTab('consent_form');
-                      else if (activeTopMenu === 'E.M.R') setActiveTab('admission');
-                      else setActiveTab('admission');
-                    }}
-                    disabled={activeTab === 'other_record'}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setContextMenu({
-                        x: e.clientX,
-                        y: e.clientY,
-                        patientId: patient.id
-                      });
-                    }}
-                    className={`w-full text-left p-3 border-b border-gray-200 transition-colors ${
-                      activeTab === 'other_record' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
-                    } ${
-                      selectedPatientId === patient.id ? 'bg-slate-100 border-l-4 border-[#000080]' : ''
-                    }`}
-                  >
-                    <div className="font-bold text-sm">
-                      {patient.name} / {patient.chartNo} / {patient.gender} / {patient.dept}
-                    </div>
-                  </button>
-                ))}
+              <div className="flex-1 overflow-y-auto font-gulim">
+                {(() => {
+                  const wards = ['ICU', '101병동', 'PED101병동', 'OB101병동', 'OB산후병동', 'PACU', 'EM응급실', '퇴원완료'];
+                  const grouped: Record<string, Patient[]> = {
+                    'ICU': [],
+                    '101병동': [],
+                    'PED101병동': [],
+                    'OB101병동': [],
+                    'OB산후병동': [],
+                    'PACU': [],
+                    'EM응급실': [],
+                    '퇴원완료': [],
+                    '기타': []
+                  };
+
+                  filteredPatients.forEach(p => {
+                    const room = p.room || '';
+                    const dept = p.dept || '';
+                    const chartNo = p.chartNo || '';
+                    const isDischarged = p.dischargeNote || p.dischargeReason || p.dischargeDiagnosis || p.dischargeCC || p.dischargeMainDx || p.dischargeDate || p.dischargeProgress || p.dischargeStatus || p.dischargePlan || (p.dischargeSoapBlocks && p.dischargeSoapBlocks.length > 0);
+                    
+                    if (isDischarged) grouped['퇴원완료'].push(p);
+                    else if (chartNo.startsWith('ER')) grouped['EM응급실'].push(p);
+                    else if (room.includes('ICU')) grouped['ICU'].push(p);
+                    else if (room.includes('PACU')) grouped['PACU'].push(p);
+                    else if (room.includes('101')) {
+                      if (dept === 'PED') grouped['PED101병동'].push(p);
+                      else if (dept === 'OB') grouped['OB101병동'].push(p);
+                      else grouped['101병동'].push(p);
+                    }
+                    else if (dept === 'OB' && room.includes('산후')) grouped['OB산후병동'].push(p);
+                    else grouped['기타'].push(p);
+                  });
+
+                  const displayWards = patientTab === 'er' ? ['EM응급실', '퇴원완료'] : [...wards, '기타'];
+
+                  return displayWards.map(ward => {
+                    const patients = grouped[ward];
+                    if (!patients) return null;
+                    if (patients.length === 0 && ward === '기타') return null;
+                    
+                    const capacities: Record<string, number> = {
+                      'ICU': 6,
+                      '101병동': 4,
+                      'PED101병동': 4,
+                      'OB101병동': 2,
+                      'OB산후병동': 2,
+                      'PACU': 3,
+                      'EM응급실': 6,
+                      '퇴원완료': patients.length
+                    };
+                    const capacity = capacities[ward] || patients.length;
+                    const isExpanded = expandedWards[ward] !== false;
+
+                    return (
+                      <div key={ward} className="mb-3">
+                        <button 
+                          onClick={() => setExpandedWards(prev => ({ ...prev, [ward]: !isExpanded }))}
+                          className="w-full px-2 py-1 text-[11px] font-bold flex items-center gap-1 text-[#555] hover:bg-gray-100 transition-colors"
+                        >
+                          {isExpanded ? <ChevronDown size={12} className="shrink-0" /> : <ChevronRight size={12} className="shrink-0" />}
+                          <span className="text-orange-500 text-[10px] shrink-0">●</span>
+                          <span>{ward} [{patients.length}/{capacity}명]</span>
+                        </button>
+                        {isExpanded && (
+                          <div className="flex flex-col gap-1 mt-1 pl-6 pr-2">
+                            {patients.map(patient => (
+                              <button 
+                                key={patient.id}
+                                onClick={() => {
+                                  if (activeTab === 'other_record') return;
+                                  setSelectedPatientId(patient.id);
+                                  
+                                  if (patient.chartNo.startsWith('ER')) {
+                                    setActiveTab('er');
+                                  } else {
+                                    if (activeTopMenu === '간호') setActiveTab('nursing');
+                                    else if (activeTopMenu === '의사처방') setActiveTab('doctor_prescription');
+                                    else if (activeTopMenu === '지원부서') setActiveTab('support_dept');
+                                    else if (activeTopMenu === '활성창') setActiveTab('consent_form');
+                                    else if (activeTopMenu === 'E.M.R') setActiveTab('admission');
+                                    else setActiveTab('admission');
+                                  }
+
+                                  if (activeTopMenu !== 'E.M.R' && activeTopMenu !== '의사처방' && activeTopMenu !== '지원부서' && activeTopMenu !== '활성창' && activeTopMenu !== '간호') {
+                                    setShowPatientModal(true);
+                                  }
+                                }}
+                                disabled={activeTab === 'other_record'}
+                                onContextMenu={(e) => {
+                                  e.preventDefault();
+                                  setContextMenu({
+                                    x: e.clientX,
+                                    y: e.clientY,
+                                    patientId: patient.id
+                                  });
+                                }}
+                                className={`w-full text-left transition-colors overflow-hidden rounded-sm ${
+                                  activeTab === 'other_record' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
+                                } ${
+                                  selectedPatientId === patient.id ? 'bg-[#4FC3F7]' : 'bg-transparent'
+                                }`}
+                              >
+                                <div className={`px-2 py-1.5 text-[11px] font-bold flex items-center gap-2 ${
+                                  selectedPatientId === patient.id ? 'text-white' : 'text-gray-700'
+                                }`}>
+                                  <span className="text-green-500 text-[10px] shrink-0">●</span>
+                                  <span className="shrink-0">{patient.name}</span>
+                                  <span className="shrink-0">{patient.chartNo}</span>
+                                  <span className="shrink-0">{patient.gender} / {patient.dept} /</span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
                 {filteredPatients.length === 0 && (
                   <div className="p-4 text-center text-gray-500 text-sm">환자가 없습니다.</div>
                 )}
