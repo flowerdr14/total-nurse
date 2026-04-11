@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -12,8 +12,17 @@ interface RichEditorProps {
 }
 
 const RichEditor: React.FC<RichEditorProps> = ({ value, onChange, className, placeholder, height }) => {
+  const editorId = React.useId().replace(/:/g, '');
+
+  useEffect(() => {
+    const editorElement = document.querySelector(`#editor-${editorId} .ql-editor`);
+    if (editorElement) {
+      editorElement.setAttribute('spellcheck', 'false');
+    }
+  }, [editorId]);
+
   return (
-    <div className={`rich-editor-container ${className}`}>
+    <div id={`editor-${editorId}`} className={`rich-editor-container ${className}`}>
       <ReactQuill 
         theme="snow" 
         value={value || ''} 

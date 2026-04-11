@@ -1119,6 +1119,7 @@ const UnderlineInputField = ({ label, value, onChange, unit, labelWidth = "w-24"
       value={value || ''} 
       onChange={(e) => onChange(e.target.value)} 
       className="flex-1 border-b border-black focus:outline-none h-8 bg-transparent"
+      spellCheck={false}
     />
     {unit && <span className="text-[12px] font-bold shrink-0 w-14">{unit}</span>}
   </div>
@@ -1646,8 +1647,7 @@ export default function App() {
 
       const appendTimestamp = (text: string) => {
         if (!text) return "";
-        const cleaned = cleanupTimestamp(text);
-        return cleaned ? cleaned + timestamp : "";
+        return cleanupTimestamp(text);
       };
 
       const newPrescriptionNotes = { ...dataToSave.prescriptionNotes };
@@ -1934,11 +1934,7 @@ export default function App() {
       const newBlocks = [...(prev[blockField] as SoapBlock[])];
       newBlocks[index] = { 
         ...newBlocks[index], 
-        [field]: value,
-        lastModified: {
-          time: new Date().toLocaleString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          name: ACCOUNTS[loginId]?.name || loginId
-        }
+        [field]: value
       };
       return { ...prev, [blockField]: newBlocks };
     });
@@ -3244,12 +3240,7 @@ export default function App() {
                     <td className="w-32 bg-[#C0C0C0] border-r-2 border-black p-2 text-center font-bold text-gray-700">
                       관리
                     </td>
-                    <td className="p-2 flex justify-between items-center gap-2">
-                      {block.lastModified && (
-                        <span className="text-xs text-gray-500 font-bold">
-                          [저장됨: {block.lastModified.time} / {block.lastModified.name}]
-                        </span>
-                      )}
+                    <td className="p-2 flex justify-end items-center gap-2">
                       <div className="flex gap-2">
                         <button 
                           onClick={() => duplicateSoapBlock(idx)}
@@ -3406,9 +3397,9 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="w-24 font-bold shrink-0">BP</span>
             <div className="flex-1 flex items-center gap-1 border-b border-black h-8">
-              <input type="text" value={formData.bpSys} onChange={(e) => updateField('bpSys', e.target.value)} className="w-16 focus:outline-none text-center bg-transparent" />
+              <input type="text" value={formData.bpSys} onChange={(e) => updateField('bpSys', e.target.value)} className="w-16 focus:outline-none text-center bg-transparent" spellCheck={false} />
               <span>/</span>
-              <input type="text" value={formData.bpDia} onChange={(e) => updateField('bpDia', e.target.value)} className="w-16 focus:outline-none text-center bg-transparent" />
+              <input type="text" value={formData.bpDia} onChange={(e) => updateField('bpDia', e.target.value)} className="w-16 focus:outline-none text-center bg-transparent" spellCheck={false} />
             </div>
             <span className="text-[12px] font-bold shrink-0 w-14">mmHg</span>
           </div>
@@ -3421,12 +3412,12 @@ export default function App() {
         <div className="flex flex-col gap-3 px-1">
           <div className="flex items-center gap-2">
             <span className="w-20 font-bold shrink-0">HOD -</span>
-            <input type="date" value={formData.admissionDate} onChange={(e) => updateField('admissionDate', e.target.value)} className="flex-1 border border-black px-2 h-8 focus:outline-none text-[12px] bg-transparent" />
+            <input type="date" value={formData.admissionDate} onChange={(e) => updateField('admissionDate', e.target.value)} className="flex-1 border border-black px-2 h-8 focus:outline-none text-[12px] bg-transparent" spellCheck={false} />
             <span className="w-16 text-center font-bold">{calculateDays(formData.admissionDate, true)}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-20 font-bold shrink-0">POD -</span>
-            <input type="date" value={formData.surgeryDate} onChange={(e) => updateField('surgeryDate', e.target.value)} className="flex-1 border border-black px-2 h-8 focus:outline-none text-[12px] bg-transparent" />
+            <input type="date" value={formData.surgeryDate} onChange={(e) => updateField('surgeryDate', e.target.value)} className="flex-1 border border-black px-2 h-8 focus:outline-none text-[12px] bg-transparent" spellCheck={false} />
             <span className="w-16 text-center font-bold">{calculateDays(formData.surgeryDate, false)}</span>
           </div>
         </div>
@@ -3472,7 +3463,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2">
             <span className="w-28 font-bold shrink-0">주진단명 -</span>
-            <input type="text" value={formData.mainDxName} onChange={(e) => updateField('mainDxName', e.target.value)} className="flex-1 border border-black px-2 h-8 focus:outline-none bg-transparent" />
+            <input type="text" value={formData.mainDxName} onChange={(e) => updateField('mainDxName', e.target.value)} className="flex-1 border border-black px-2 h-8 focus:outline-none bg-transparent" spellCheck={false} />
           </div>
           <div className="flex items-center gap-2">
             <span className="w-28 font-bold shrink-0">부진단코드 -</span>
@@ -3511,7 +3502,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2">
             <span className="w-28 font-bold shrink-0">부진단명 -</span>
-            <input type="text" value={formData.subDxName} onChange={(e) => updateField('subDxName', e.target.value)} className="flex-1 border border-black px-2 h-8 focus:outline-none bg-transparent" />
+            <input type="text" value={formData.subDxName} onChange={(e) => updateField('subDxName', e.target.value)} className="flex-1 border border-black px-2 h-8 focus:outline-none bg-transparent" spellCheck={false} />
           </div>
         </div>
       </div>
@@ -3623,12 +3614,12 @@ export default function App() {
                     <span className="w-20 font-bold text-gray-700">신체</span>
                     <div className="flex items-center gap-2">
                       <span className="text-gray-600">키</span>
-                      <input type="text" value={formData.height || ''} onChange={(e) => updateField('height', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" />
+                      <input type="text" value={formData.height || ''} onChange={(e) => updateField('height', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" spellCheck={false} />
                       <span className="text-gray-600">cm</span>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
                       <span className="text-gray-600">몸무게</span>
-                      <input type="text" value={formData.weight || ''} onChange={(e) => updateField('weight', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" />
+                      <input type="text" value={formData.weight || ''} onChange={(e) => updateField('weight', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" spellCheck={false} />
                       <span className="text-gray-600">kg</span>
                     </div>
                   </div>
@@ -3637,27 +3628,27 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-2">
                       <div className="flex items-center gap-2">
                         <span className="w-10 text-gray-600">SBP</span>
-                        <input type="text" value={formData.bpSys || ''} onChange={(e) => updateField('bpSys', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" />
+                        <input type="text" value={formData.bpSys || ''} onChange={(e) => updateField('bpSys', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" spellCheck={false} />
                         <span className="text-gray-600 text-xs">mmHg</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-10 text-gray-600">DBP</span>
-                        <input type="text" value={formData.bpDia || ''} onChange={(e) => updateField('bpDia', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" />
+                        <input type="text" value={formData.bpDia || ''} onChange={(e) => updateField('bpDia', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" spellCheck={false} />
                         <span className="text-gray-600 text-xs">mmHg</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-10 text-gray-600">PR</span>
-                        <input type="text" value={formData.hr || ''} onChange={(e) => updateField('hr', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" />
+                        <input type="text" value={formData.hr || ''} onChange={(e) => updateField('hr', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" spellCheck={false} />
                         <span className="text-gray-600 text-xs">회/분</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-10 text-gray-600">RR</span>
-                        <input type="text" value={formData.rr || ''} onChange={(e) => updateField('rr', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" />
+                        <input type="text" value={formData.rr || ''} onChange={(e) => updateField('rr', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" spellCheck={false} />
                         <span className="text-gray-600 text-xs">회/분</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-10 text-gray-600">BT</span>
-                        <input type="text" value={formData.bt || ''} onChange={(e) => updateField('bt', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" />
+                        <input type="text" value={formData.bt || ''} onChange={(e) => updateField('bt', e.target.value)} className="w-16 border border-gray-300 px-2 py-1 focus:outline-none text-right" spellCheck={false} />
                         <span className="text-gray-600 text-xs">°C</span>
                       </div>
                     </div>
@@ -4633,11 +4624,11 @@ export default function App() {
               <div className="border-2 border-black p-2 bg-gray-100 grid grid-cols-2 gap-x-4 gap-y-2 shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="w-24 font-bold text-sm">성명</span>
-                  <input type="text" value={formData.name} onChange={(e) => updateField('name', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  <input type="text" value={formData.name} onChange={(e) => updateField('name', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" spellCheck={false} />
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-24 font-bold text-sm">환자번호</span>
-                  <input type="text" value={formData.chartNo} onChange={(e) => updateField('chartNo', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  <input type="text" value={formData.chartNo} onChange={(e) => updateField('chartNo', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" spellCheck={false} />
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-24 font-bold text-sm">나이/성별</span>
@@ -4649,19 +4640,19 @@ export default function App() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-24 font-bold text-sm">집도의</span>
-                  <input type="text" value={formData.surgeryAttending} onChange={(e) => updateField('surgeryAttending', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  <input type="text" value={formData.surgeryAttending} onChange={(e) => updateField('surgeryAttending', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" spellCheck={false} />
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-24 font-bold text-sm">어시스트</span>
-                  <input type="text" value={formData.surgeryAssistant} onChange={(e) => updateField('surgeryAssistant', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  <input type="text" value={formData.surgeryAssistant} onChange={(e) => updateField('surgeryAssistant', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" spellCheck={false} />
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-24 font-bold text-sm">마취과</span>
-                  <input type="text" value={formData.surgeryAnesthesiaDept} onChange={(e) => updateField('surgeryAnesthesiaDept', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  <input type="text" value={formData.surgeryAnesthesiaDept} onChange={(e) => updateField('surgeryAnesthesiaDept', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" spellCheck={false} />
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-24 font-bold text-sm">수술명</span>
-                  <input type="text" value={formData.surgeryName} onChange={(e) => updateField('surgeryName', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" />
+                  <input type="text" value={formData.surgeryName} onChange={(e) => updateField('surgeryName', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" spellCheck={false} />
                 </div>
               </div>
 
@@ -5029,6 +5020,7 @@ export default function App() {
                         onChange={(e) => updateField('residentId', e.target.value)}
                         className="w-full text-center focus:outline-none bg-transparent"
                         placeholder="880404-2******"
+                        spellCheck={false}
                       />
                     </td>
                     <td className="p-1">
@@ -5038,6 +5030,7 @@ export default function App() {
                         onChange={(e) => updateField('address', e.target.value)}
                         className="w-full focus:outline-none bg-transparent"
                         placeholder="서울특별시 강남구..."
+                        spellCheck={false}
                       />
                     </td>
                   </tr>
@@ -5055,6 +5048,7 @@ export default function App() {
                     onChange={(e) => updateField('soapNote', e.target.value)}
                     className="w-full h-full bg-transparent focus:outline-none resize-none text-sm"
                     placeholder="SOAP 기록..."
+                    spellCheck={false}
                   />
                 </div>
                 <div className="h-10 bg-[#87CEEB] border-t-2 border-black">
@@ -5069,6 +5063,7 @@ export default function App() {
                     onChange={(e) => updateField('nursingNote', e.target.value)}
                     className="w-full h-full bg-transparent focus:outline-none resize-none text-sm"
                     placeholder="간호기록..."
+                    spellCheck={false}
                   />
                 </div>
                 <div className="h-10 bg-[#87CEEB] border-t-2 border-black">
@@ -5098,6 +5093,7 @@ export default function App() {
                       value={formData.labMemo} 
                       onChange={(e) => updateField('labMemo', e.target.value)}
                       className="w-full h-full bg-transparent focus:outline-none resize-none text-xs font-bold"
+                      spellCheck={false}
                     />
                   </div>
                 </div>
@@ -5123,6 +5119,7 @@ export default function App() {
                           value={chemoSearch.cycle}
                           onChange={(e) => setChemoSearch(prev => ({ ...prev, cycle: e.target.value }))}
                           className="w-full h-full text-center focus:outline-none" 
+                          spellCheck={false}
                         />
                       </td>
                       <td className="border-r-2 border-black p-0">
@@ -5130,6 +5127,7 @@ export default function App() {
                           value={chemoSearch.day}
                           onChange={(e) => setChemoSearch(prev => ({ ...prev, day: e.target.value }))}
                           className="w-full h-full text-center focus:outline-none" 
+                          spellCheck={false}
                         />
                       </td>
                       <td className="border-r-2 border-black p-0">
@@ -5137,6 +5135,7 @@ export default function App() {
                           value={chemoSearch.drug}
                           onChange={(e) => setChemoSearch(prev => ({ ...prev, drug: e.target.value }))}
                           className="w-full h-full text-center focus:outline-none" 
+                          spellCheck={false}
                         />
                       </td>
                       <td className="p-0">
@@ -5144,6 +5143,7 @@ export default function App() {
                           value={chemoSearch.dose}
                           onChange={(e) => setChemoSearch(prev => ({ ...prev, dose: e.target.value }))}
                           className="w-full h-full text-center focus:outline-none" 
+                          spellCheck={false}
                         />
                       </td>
                     </tr>
@@ -5256,12 +5256,12 @@ export default function App() {
                     <tbody>
                       {(formData.vsHistory || []).map((record, i) => (
                         <tr key={i} className="border-b border-black text-center h-10">
-                          <td className="border-r border-black p-0"><input value={record.date} onChange={(e) => updateVSRecord(i, 'date', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
-                          <td className="border-r border-black p-0"><input value={record.hr} onChange={(e) => updateVSRecord(i, 'hr', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
-                          <td className="border-r border-black p-0"><input value={record.rr} onChange={(e) => updateVSRecord(i, 'rr', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
-                          <td className="border-r border-black p-0"><input value={record.bt} onChange={(e) => updateVSRecord(i, 'bt', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
-                          <td className="border-r border-black p-0"><input value={record.bp} onChange={(e) => updateVSRecord(i, 'bp', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
-                          <td className="p-0"><input value={record.author} onChange={(e) => updateVSRecord(i, 'author', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                          <td className="border-r border-black p-0"><input value={record.date} onChange={(e) => updateVSRecord(i, 'date', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
+                          <td className="border-r border-black p-0"><input value={record.hr} onChange={(e) => updateVSRecord(i, 'hr', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
+                          <td className="border-r border-black p-0"><input value={record.rr} onChange={(e) => updateVSRecord(i, 'rr', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
+                          <td className="border-r border-black p-0"><input value={record.bt} onChange={(e) => updateVSRecord(i, 'bt', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
+                          <td className="border-r border-black p-0"><input value={record.bp} onChange={(e) => updateVSRecord(i, 'bp', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
+                          <td className="p-0"><input value={record.author} onChange={(e) => updateVSRecord(i, 'author', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -5282,12 +5282,12 @@ export default function App() {
                     <tbody>
                       {(formData.ioHistory || []).map((record, i) => (
                         <tr key={i} className="border-b border-black text-center h-10">
-                          <td className="border-r border-black p-0"><input value={record.date} onChange={(e) => updateIORecord(i, 'date', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
-                          <td className="border-r border-black p-0"><input value={record.input} onChange={(e) => updateIORecord(i, 'input', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
-                          <td className="border-r border-black p-0"><input value={record.inputContent} onChange={(e) => updateIORecord(i, 'inputContent', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
-                          <td className="border-r border-black p-0"><input value={record.output} onChange={(e) => updateIORecord(i, 'output', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
-                          <td className="border-r border-black p-0"><input value={record.outputContent} onChange={(e) => updateIORecord(i, 'outputContent', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
-                          <td className="p-0"><input value={record.author} onChange={(e) => updateIORecord(i, 'author', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                          <td className="border-r border-black p-0"><input value={record.date} onChange={(e) => updateIORecord(i, 'date', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
+                          <td className="border-r border-black p-0"><input value={record.input} onChange={(e) => updateIORecord(i, 'input', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
+                          <td className="border-r border-black p-0"><input value={record.inputContent} onChange={(e) => updateIORecord(i, 'inputContent', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
+                          <td className="border-r border-black p-0"><input value={record.output} onChange={(e) => updateIORecord(i, 'output', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
+                          <td className="border-r border-black p-0"><input value={record.outputContent} onChange={(e) => updateIORecord(i, 'outputContent', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
+                          <td className="p-0"><input value={record.author} onChange={(e) => updateIORecord(i, 'author', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -5318,6 +5318,7 @@ export default function App() {
                                   value={cell} 
                                   onChange={(e) => updateLabCell(i, j, e.target.value)}
                                   className="w-full h-full bg-transparent px-1 text-center focus:outline-none"
+                                  spellCheck={false}
                                 />
                               </td>
                             ))}
@@ -5408,6 +5409,7 @@ export default function App() {
                                   value={record.type}
                                   onChange={(e) => updatePrescriptionRecord(record.id, 'type', e.target.value)}
                                   className="w-full p-1 focus:outline-none bg-transparent text-center"
+                                  spellCheck={false}
                                 />
                               </td>
                               <td className="border-r border-black p-0">
@@ -5416,6 +5418,7 @@ export default function App() {
                                   value={record.date}
                                   onChange={(e) => updatePrescriptionRecord(record.id, 'date', e.target.value)}
                                   className="w-full p-1 focus:outline-none bg-transparent text-center"
+                                  spellCheck={false}
                                 />
                               </td>
                               <td className="border-r border-black p-0">
@@ -5424,6 +5427,7 @@ export default function App() {
                                   value={record.prescriber}
                                   onChange={(e) => updatePrescriptionRecord(record.id, 'prescriber', e.target.value)}
                                   className="w-full p-1 focus:outline-none bg-transparent text-center"
+                                  spellCheck={false}
                                 />
                               </td>
                               <td className="border-r border-black p-0">
@@ -5518,7 +5522,7 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-12 font-bold">BT</span>
-                        <input type="text" value={formData.bt} onChange={(e) => updateField('bt', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" />
+                        <input type="text" value={formData.bt} onChange={(e) => updateField('bt', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none" spellCheck={false} />
                         <span className="text-xs font-bold">°C</span>
                       </div>
                     </div>
@@ -5568,7 +5572,7 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-24 font-bold">주진단명 -</span>
-                        <input type="text" value={formData.mainDxName} onChange={(e) => updateField('mainDxName', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none text-sm" />
+                        <input type="text" value={formData.mainDxName} onChange={(e) => updateField('mainDxName', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none text-sm" spellCheck={false} />
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-24 font-bold">부진단코드 -</span>
@@ -5607,7 +5611,7 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-24 font-bold">부진단명 -</span>
-                        <input type="text" value={formData.subDxName} onChange={(e) => updateField('subDxName', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none text-sm" />
+                        <input type="text" value={formData.subDxName} onChange={(e) => updateField('subDxName', e.target.value)} className="flex-1 border-2 border-black px-2 h-8 focus:outline-none text-sm" spellCheck={false} />
                       </div>
                     </div>
                   </div>

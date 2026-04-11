@@ -37,6 +37,7 @@ const NursingWriter: React.FC<NursingWriterProps> = ({ onSave }) => {
                   type="text"
                   className="col-span-2 border border-gray-300 p-1 text-sm focus:outline-none focus:border-blue-500"
                   placeholder="입력"
+                  spellCheck={false}
                   value={nandaData[label === '영역 Domain' ? 'domain' : label === '분류 Class' ? 'class' : 'diagnosis']}
                   onChange={(e) => setNandaData({...nandaData, [label === '영역 Domain' ? 'domain' : label === '분류 Class' ? 'class' : 'diagnosis']: e.target.value})}
                 />
@@ -91,6 +92,7 @@ const NursingWriter: React.FC<NursingWriterProps> = ({ onSave }) => {
               <input 
                 type="text"
                 className="w-full border border-gray-300 p-2 text-sm" 
+                spellCheck={false}
                 value={darData.focus}
                 onChange={(e) => setDarData({...darData, focus: e.target.value})}
               />
@@ -148,6 +150,7 @@ const NursingWriter: React.FC<NursingWriterProps> = ({ onSave }) => {
         <input 
           type="time" 
           className="text-black font-normal text-sm p-0.5 rounded" 
+          spellCheck={false}
           value={time}
           onChange={(e) => setTime(e.target.value)}
         />

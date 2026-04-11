@@ -13,7 +13,7 @@ const NursingDashboard: React.FC<NursingDashboardProps> = () => {
       <div className="flex gap-4 flex-1 overflow-hidden">
         <div className="flex-1 border-2 border-black p-4 flex flex-col bg-white">
           <h2 className="font-bold text-lg mb-2 bg-gray-200 p-1 border-b-2 border-black">처방 내역</h2>
-          <textarea className="w-full flex-1 border border-gray-300 p-2 text-sm" placeholder="처방 내역을 입력하세요." />
+          <textarea className="w-full flex-1 border border-gray-300 p-2 text-sm" placeholder="처방 내역을 입력하세요." spellCheck={false} />
         </div>
         <div className="flex-1 border-2 border-black p-4 flex flex-col bg-white overflow-hidden">
           <h2 className="font-bold text-lg mb-2 bg-gray-200 p-1 border-b-2 border-black">간호 기록 내역</h2>
