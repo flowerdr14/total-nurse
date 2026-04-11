@@ -4,6 +4,15 @@
  */
 
 import React, { useState, useMemo, useEffect, useRef, Component } from 'react';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer 
+} from 'recharts';
 import NursingDashboard from './components/NursingDashboard';
 import NursingWriter from './components/NursingWriter';
 import RichEditor from './components/RichEditor';
@@ -201,6 +210,16 @@ export interface ConsultRecordItem {
   otherNote: string;
 }
 
+export interface PrescriptionRecord {
+  id: string;
+  type: string;
+  date: string;
+  prescriber: string;
+  content: string;
+  precautions: string;
+  status: string; // '완료' | '진행중' | '대기중' | '진행필요' | '딜레이 가능' | '딜레이 불가능' | '요청함'
+}
+
 export interface Patient {
   id: string;
   name: string;
@@ -217,6 +236,9 @@ export interface Patient {
   onsetMonth: string;
   onsetDay: string;
   address: string;
+  residentId: string;
+  targetValue: string;
+  labMemo: string;
   dobYear: string;
   dobMonth: string;
   dobDay: string;
@@ -247,6 +269,9 @@ export interface Patient {
   diagnosticNote: string;
   diagnosticPhotos: string[];
   prescriptionNotes: Record<string, string>;
+  prescriptionRecords?: PrescriptionRecord[];
+  vsHistory?: { date: string, hr: string, rr: string, bt: string, bp: string, author: string }[];
+  ioHistory?: { date: string, input: string, inputContent: string, output: string, outputContent: string, author: string }[];
   
   // Sidebar SOAP fields
   sidebarS: string;
@@ -467,7 +492,17 @@ export interface Patient {
   dietNote: string;
 }
 
-const PRESCRIPTION_SUB_TABS = ['검사 처방', '영상 검사', '약물 지시', '처치/시술', '진료 지시', '컨설트', '항암 처방', '기타'];
+const PRESCRIPTION_SUB_TABS = ['검사 처방', '영상 검사', '약물 지시', '처치/시술', '진료 지시', '컨설트', '기타'];
+
+const PRESCRIPTION_STATUSES = [
+  { name: '요청함', color: '#FFFFFF', textColor: 'black' },
+  { name: '대기중', color: '#87CEEB', textColor: 'black' },
+  { name: '진행중', color: '#FFFF00', textColor: 'black' },
+  { name: '진행필요', color: '#FFC0CB', textColor: 'black' },
+  { name: '완료', color: '#FF8C00', textColor: 'white' },
+  { name: '딜레이 가능', color: '#A52A2A', textColor: 'white' },
+  { name: '딜레이 불가능', color: '#90EE90', textColor: 'black' },
+];
 
 const DX_CODES = [
   { code: '', name: '' },
@@ -764,6 +799,9 @@ const INITIAL_FORM_DATA: Patient = {
   onsetMonth: '01',
   onsetDay: '01',
   address: '',
+  residentId: '',
+  targetValue: '',
+  labMemo: '',
   dobYear: '2024',
   dobMonth: '01',
   dobDay: '01',
@@ -793,6 +831,9 @@ const INITIAL_FORM_DATA: Patient = {
   diagnosticNote: '',
   diagnosticPhotos: [],
   prescriptionNotes: PRESCRIPTION_SUB_TABS.reduce((acc, tab) => ({ ...acc, [tab]: '' }), {}),
+  prescriptionRecords: [],
+  vsHistory: [],
+  ioHistory: [],
   sidebarS: '',
   sidebarO: '',
   sidebarA: '',
@@ -1143,12 +1184,12 @@ const RECORD_COLORS = [
 
 const DEPARTMENTS = [
   '전체',
-  '101병동',
-  'OB101병동',
+  '100병동',
+  'OB100병동',
   'OB산후병동',
   'PACU',
   'ICU',
-  'PED101병동',
+  'PED100병동',
   'EM응급의학과',
   'GS일반외과',
   'OS정형외과',
@@ -1244,6 +1285,10 @@ export default function App() {
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('none');
   const [prescriptionSubTab, setPrescriptionSubTab] = useState<string>(PRESCRIPTION_SUB_TABS[0]);
+  const [labSubTab, setLabSubTab] = useState<string>('V/S 체크');
+  const [imagingTab, setImagingTab] = useState<'영상검사' | '진단검사'>('영상검사');
+  const [chemoSearch, setChemoSearch] = useState({ cycle: '', day: '', drug: '', dose: '' });
+  const [chemoResult, setChemoResult] = useState({ cycle: '', day: '', drug: '', dose: '' });
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1260,6 +1305,7 @@ export default function App() {
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, patientId: string } | null>(null);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
   const [modalTab, setModalTab] = useState('admission_record');
+  const [selectedLabItem, setSelectedLabItem] = useState<string>('CBC');
   const [showCalculator, setShowCalculator] = useState(false);
   const [printType, setPrintType] = useState<TabType | null>(null);
   const lastSyncedIdRef = useRef<string | null>(null);
@@ -1285,9 +1331,9 @@ export default function App() {
   const [isPatientListCollapsed, setIsPatientListCollapsed] = useState(false);
   const [expandedWards, setExpandedWards] = useState<Record<string, boolean>>({
     'ICU': true,
-    '101병동': true,
-    'PED101병동': true,
-    'OB101병동': true,
+    '100병동': true,
+    'PED100병동': true,
+    'OB100병동': true,
     'OB산후병동': true,
     'PACU': true,
     'EM응급실': true,
@@ -1726,14 +1772,14 @@ export default function App() {
         const roomVal = value as string;
         if (roomVal.startsWith('ICU')) {
           newData.ward = 'ICU';
-        } else if (roomVal === '10O병동' || roomVal === '101병동') { // Handling potential typo
+        } else if (roomVal === '10O병동' || roomVal === '100병동') { // Handling potential typo
           if (newData.dept === 'OB' || newData.dept === 'OB산부인과') {
             newData.ward = '산과병동';
           }
         }
       } else if (field === 'dept') {
         const deptVal = value as string;
-        if ((newData.room === '10O병동' || newData.room === '101병동') && (deptVal === 'OB' || deptVal === 'OB산부인과')) {
+        if ((newData.room === '10O병동' || newData.room === '100병동') && (deptVal === 'OB' || deptVal === 'OB산부인과')) {
           newData.ward = '산과병동';
         }
       }
@@ -1762,6 +1808,102 @@ export default function App() {
   const updatePrescriptionNote = (tab: string, value: string) => {
     const newNotes = { ...formData.prescriptionNotes, [tab]: value };
     updateField('prescriptionNotes', newNotes);
+  };
+
+  const addPrescriptionRecord = (type: string) => {
+    const newRecord: PrescriptionRecord = {
+      id: Date.now().toString(),
+      type: type,
+      date: new Date().toLocaleDateString('ko-KR').replace(/\. /g, '.').replace(/\.$/, ''),
+      prescriber: '',
+      content: '',
+      precautions: '',
+      status: '요청함'
+    };
+    const newRecords = [...(formData.prescriptionRecords || []), newRecord];
+    updateField('prescriptionRecords', newRecords);
+  };
+
+  const updatePrescriptionRecord = (id: string, field: keyof PrescriptionRecord, value: string) => {
+    const newRecords = (formData.prescriptionRecords || []).map(r => 
+      r.id === id ? { ...r, [field]: value } : r
+    );
+    updateField('prescriptionRecords', newRecords);
+  };
+
+  const cyclePrescriptionStatus = (id: string) => {
+    const record = (formData.prescriptionRecords || []).find(r => r.id === id);
+    if (!record) return;
+    
+    const currentIndex = PRESCRIPTION_STATUSES.findIndex(s => s.name === record.status);
+    const nextIndex = (currentIndex + 1) % PRESCRIPTION_STATUSES.length;
+    const nextStatus = PRESCRIPTION_STATUSES[nextIndex].name;
+    
+    updatePrescriptionRecord(id, 'status', nextStatus);
+  };
+
+  const deletePrescriptionRecord = (id: string) => {
+    const newRecords = (formData.prescriptionRecords || []).filter(r => r.id !== id);
+    updateField('prescriptionRecords', newRecords);
+  };
+
+  const addVSRecord = () => {
+    const newRecord = { 
+      date: new Date().toLocaleString('ko-KR'), 
+      hr: '', 
+      rr: '', 
+      bt: '', 
+      bp: '', 
+      author: '' 
+    };
+    updateField('vsHistory', [...(formData.vsHistory || []), newRecord]);
+  };
+
+  const updateVSRecord = (index: number, field: string, value: string) => {
+    const newHistory = [...(formData.vsHistory || [])];
+    newHistory[index] = { ...newHistory[index], [field]: value };
+    updateField('vsHistory', newHistory);
+  };
+
+  const addIORecord = () => {
+    const newRecord = { 
+      date: new Date().toLocaleString('ko-KR'), 
+      input: '', 
+      inputContent: '', 
+      output: '', 
+      outputContent: '', 
+      author: '' 
+    };
+    updateField('ioHistory', [...(formData.ioHistory || []), newRecord]);
+  };
+
+  const updateIORecord = (index: number, field: string, value: string) => {
+    const newHistory = [...(formData.ioHistory || [])];
+    newHistory[index] = { ...newHistory[index], [field]: value };
+    updateField('ioHistory', newHistory);
+  };
+
+  const handleChemoSearch = () => {
+    // Search in current patient's regimenRows
+    const found = formData.regimenRows.find(r => 
+      (chemoSearch.cycle === '' || r[0] === chemoSearch.cycle) &&
+      (chemoSearch.day === '' || r[1] === chemoSearch.day) &&
+      (chemoSearch.drug === '' || r[2].includes(chemoSearch.drug))
+    );
+
+    if (found) {
+      setChemoResult({
+        cycle: found[0],
+        day: found[1],
+        drug: found[2],
+        dose: found[3]
+      });
+    } else {
+      // If not found in current patient, simulate a search by just showing what was typed
+      // or show a "not found" state. The user requested "if searched, show on right".
+      // Let's just copy for now to provide immediate feedback if no data exists.
+      setChemoResult({ ...chemoSearch });
+    }
   };
 
   const addSoapBlock = () => {
@@ -4160,6 +4302,7 @@ export default function App() {
       { id: 'lab', title: 'Lab / Imaging Plan', icon: FlaskConical, color: 'bg-purple-500' },
       { id: 'treatment', title: 'Treatment Plan', icon: Stethoscope, color: 'bg-red-500' },
       { id: 'consult', title: 'Consult Order', icon: Users, color: 'bg-indigo-500' },
+      { id: 'chemo', title: '항암 처방 (Chemotherapy)', icon: FlaskConical, color: 'bg-pink-500' },
       { id: 'special', title: 'Special Order', icon: Star, color: 'bg-yellow-500' },
       { id: 'modification', title: 'Modification based on progress', icon: TrendingUp, color: 'bg-orange-500' },
       { id: 'history', title: 'Doctor\'s Order History', icon: History, color: 'bg-gray-500' },
@@ -4172,38 +4315,108 @@ export default function App() {
             <ClipboardList size={32} /> 의사처방 (Doctor's Prescription)
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {items.map((item) => (
-              <div key={item.id} className="bg-white border-4 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all flex flex-col h-full">
-                <div className="flex justify-between items-start mb-4">
-                  <div className={`${item.color} w-12 h-12 rounded-full flex items-center justify-center border-2 border-black`}>
-                    <item.icon className="text-white" size={24} />
+              <div key={item.id} className="bg-white border-4 border-black p-10 shadow-[10px_10px_0_0_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[5px_5px_0_0_rgba(0,0,0,1)] transition-all flex flex-col min-h-[400px]">
+                <div className="flex justify-between items-start mb-6">
+                  <div className={`${item.color} w-20 h-20 rounded-full flex items-center justify-center border-4 border-black`}>
+                    <item.icon className="text-white" size={40} />
                   </div>
                   {item.id !== 'history' && (
                     <button 
                       onClick={() => setActiveOrderForm(item.id)}
-                      className="bg-black text-white p-1 hover:bg-gray-800 transition-colors"
+                      className="bg-black text-white p-2 hover:bg-gray-800 transition-colors border-2 border-black"
                     >
-                      <Plus size={20} />
+                      <Plus size={28} />
                     </button>
                   )}
                 </div>
-                <h3 className="font-black text-lg mb-2">{item.title}</h3>
-                <p className="text-sm text-gray-600 font-bold mb-4 flex-1">처방 및 지시사항을 관리합니다.</p>
+                <h3 className="font-black text-2xl mb-4">{item.title}</h3>
+                <p className="text-base text-gray-600 font-bold mb-6 flex-1">처방 및 지시사항을 관리합니다.</p>
                 
                 {activeOrderForm === item.id && (
                   <div className="mt-4 pt-4 border-t-2 border-black space-y-3">
-                    <RichEditor 
-                      height="100px"
-                      placeholder="처방 내용을 입력하세요..."
-                      value={orderInputs[item.id] || ''}
-                      onChange={(val) => setOrderInputs(prev => ({ ...prev, [item.id]: val }))}
-                    />
+                    {item.id === 'chemo' ? (
+                      <div className="flex flex-col gap-4">
+                        <div className="flex items-center gap-4 bg-gray-50 p-2 border-2 border-black">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs">Height:</span>
+                            <input 
+                              type="text" 
+                              value={formData.height} 
+                              onChange={(e) => updateField('height', e.target.value)}
+                              className="w-12 border-b border-black bg-transparent text-center font-bold text-xs"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs">Weight:</span>
+                            <input 
+                              type="text" 
+                              value={formData.weight} 
+                              onChange={(e) => updateField('weight', e.target.value)}
+                              className="w-12 border-b border-black bg-transparent text-center font-bold text-xs"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-[#000080]">BSA:</span>
+                            <span className="font-black text-sm text-[#000080]">
+                              {(() => {
+                                const h = parseFloat(formData.height);
+                                const w = parseFloat(formData.weight);
+                                if (isNaN(h) || isNaN(w) || h <= 0 || w <= 0) return '0.00';
+                                return Math.sqrt((h * w) / 3600).toFixed(2);
+                              })()}
+                            </span>
+                          </div>
+                        </div>
+                        <table className="w-full border-collapse border border-black text-[10px]">
+                          <thead>
+                            <tr className="bg-gray-200">
+                              <th className="border border-black p-1">Cycle</th>
+                              <th className="border border-black p-1">Day</th>
+                              <th className="border border-black p-1">Drug</th>
+                              <th className="border border-black p-1">Dose</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {formData.regimenRows.map((row, i) => (
+                              <tr key={i}>
+                                {row.map((cell, j) => (
+                                  <td key={j} className="border border-black p-0">
+                                    <input 
+                                      type="text" 
+                                      value={cell} 
+                                      onChange={(e) => updateRegimenCell(i, j, e.target.value)}
+                                      className="w-full h-full bg-transparent px-1 focus:outline-none"
+                                    />
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <button onClick={addRegimenRow} className="bg-gray-200 border border-black text-[10px] font-bold py-1">행 추가</button>
+                      </div>
+                    ) : (
+                      <RichEditor 
+                        height="100px"
+                        placeholder="처방 내용을 입력하세요..."
+                        value={orderInputs[item.id] || ''}
+                        onChange={(val) => setOrderInputs(prev => ({ ...prev, [item.id]: val }))}
+                      />
+                    )}
                     <div className="flex justify-end gap-2">
                       <button onClick={() => setActiveOrderForm(null)} className="text-[11px] font-bold underline">취소</button>
                       <button 
                         onClick={() => {
-                          const content = orderInputs[item.id];
+                          let content = '';
+                          if (item.id === 'chemo') {
+                            const bsa = Math.sqrt((parseFloat(formData.height) * parseFloat(formData.weight)) / 3600).toFixed(2);
+                            content = `[Chemo Order] BSA: ${bsa}m²\n` + formData.regimenRows.map(r => r.join(' | ')).filter(r => r.trim() !== '|||').join('\n');
+                          } else {
+                            content = orderInputs[item.id] || '';
+                          }
+
                           if (content && content.trim()) {
                             const newOrder = {
                               date: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
@@ -4785,10 +4998,340 @@ export default function App() {
           </div>
         );
       case 'lab':
-      case 'prescription':
-        const isLab = activeTab === 'lab';
-        const isPrescription = activeTab === 'prescription';
+        return (
+          <div className="flex-1 flex flex-col p-4 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
+            {/* Patient Basic Info Header */}
+            <div className="bg-[#FF00FF] text-white font-bold px-2 py-1 text-sm mb-2">환자기본정보</div>
+            <div className="border border-black mb-4">
+              <table className="w-full border-collapse text-[11px]">
+                <thead>
+                  <tr className="bg-gray-100 border-b border-black">
+                    <th className="border-r border-black p-1 w-[12%]">환자번호</th>
+                    <th className="border-r border-black p-1 w-[12%]">환자명</th>
+                    <th className="border-r border-black p-1 w-[12%]">병실</th>
+                    <th className="border-r border-black p-1 w-[12%]">나이</th>
+                    <th className="border-r border-black p-1 w-[12%]">주치의</th>
+                    <th className="border-r border-black p-1 w-[15%]">주민등록번호</th>
+                    <th className="p-1">거주지</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="text-center h-8">
+                    <td className="border-r border-black p-1">{formData.chartNo || '00000000'}</td>
+                    <td className="border-r border-black p-1">{formData.name || '신규환자'}</td>
+                    <td className="border-r border-black p-1">{formData.room || '-'}</td>
+                    <td className="border-r border-black p-1">{formData.age || '0'}</td>
+                    <td className="border-r border-black p-1">{formData.doctor || '미정'}</td>
+                    <td className="border-r border-black p-1">
+                      <input 
+                        type="text" 
+                        value={formData.residentId} 
+                        onChange={(e) => updateField('residentId', e.target.value)}
+                        className="w-full text-center focus:outline-none bg-transparent"
+                        placeholder="880404-2******"
+                      />
+                    </td>
+                    <td className="p-1">
+                      <input 
+                        type="text" 
+                        value={formData.address} 
+                        onChange={(e) => updateField('address', e.target.value)}
+                        className="w-full focus:outline-none bg-transparent"
+                        placeholder="서울특별시 강남구..."
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
+            {/* SOAP / Nursing Record Section */}
+            <div className="flex gap-2 mb-4">
+              <div className="flex-1 flex flex-col border-2 border-black">
+                <div className="bg-gray-400 text-white font-bold text-center py-1 text-lg border-b-2 border-black">SOAP</div>
+                <div className="flex-1 bg-[#FFFFCC] p-1 min-h-[80px]">
+                  <textarea 
+                    value={formData.soapNote} 
+                    onChange={(e) => updateField('soapNote', e.target.value)}
+                    className="w-full h-full bg-transparent focus:outline-none resize-none text-sm"
+                    placeholder="SOAP 기록..."
+                  />
+                </div>
+                <div className="h-10 bg-[#87CEEB] border-t-2 border-black">
+                  {/* Additional blue section as per image */}
+                </div>
+              </div>
+              <div className="flex-1 flex flex-col border-2 border-black">
+                <div className="bg-gray-400 text-white font-bold text-center py-1 text-lg border-b-2 border-black">간호기록</div>
+                <div className="flex-1 bg-[#FFFFCC] p-1 min-h-[80px]">
+                  <textarea 
+                    value={formData.nursingNote || ''} 
+                    onChange={(e) => updateField('nursingNote', e.target.value)}
+                    className="w-full h-full bg-transparent focus:outline-none resize-none text-sm"
+                    placeholder="간호기록..."
+                  />
+                </div>
+                <div className="h-10 bg-[#87CEEB] border-t-2 border-black">
+                  {/* Additional blue section as per image */}
+                </div>
+              </div>
+              <div className="w-64 flex flex-col border-2 border-black overflow-hidden">
+                <div className="flex border-b-2 border-black h-12">
+                  <div className="w-24 bg-gray-400 text-black font-bold flex items-center justify-center text-xs border-r-2 border-black text-center px-1">환자차트 번호</div>
+                  <div className="flex-1 bg-white flex items-center justify-center font-bold text-sm">{formData.chartNo}</div>
+                </div>
+                <div className="flex border-b-2 border-black h-12">
+                  <div className="w-24 bg-gray-400 text-black font-bold flex items-center justify-center text-xs border-r-2 border-black text-center px-1">목표수치</div>
+                  <div className="flex-1 bg-white p-1">
+                    <input 
+                      type="text" 
+                      value={formData.targetValue} 
+                      onChange={(e) => updateField('targetValue', e.target.value)}
+                      className="w-full h-full focus:outline-none text-center font-bold"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-1">
+                  <div className="w-24 bg-gray-400 text-black font-bold flex items-center justify-center text-xs border-r-2 border-black text-center px-1">메모</div>
+                  <div className="flex-1 bg-[#FFFFCC] p-1">
+                    <textarea 
+                      value={formData.labMemo} 
+                      onChange={(e) => updateField('labMemo', e.target.value)}
+                      className="w-full h-full bg-transparent focus:outline-none resize-none text-xs font-bold"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Chemo Section */}
+            <div className="flex gap-2 mb-4">
+              <div className="flex-1 flex border-2 border-black">
+                <table className="w-full border-collapse text-[11px]">
+                  <thead>
+                    <tr className="bg-gray-300 border-b-2 border-black">
+                      <th className="border-r-2 border-black p-1">Cycle</th>
+                      <th className="border-r-2 border-black p-1">Day</th>
+                      <th className="border-r-2 border-black p-1">Drug</th>
+                      <th className="p-1">Does</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="h-8">
+                      <td className="border-r-2 border-black p-0">
+                        <input 
+                          value={chemoSearch.cycle}
+                          onChange={(e) => setChemoSearch(prev => ({ ...prev, cycle: e.target.value }))}
+                          className="w-full h-full text-center focus:outline-none" 
+                        />
+                      </td>
+                      <td className="border-r-2 border-black p-0">
+                        <input 
+                          value={chemoSearch.day}
+                          onChange={(e) => setChemoSearch(prev => ({ ...prev, day: e.target.value }))}
+                          className="w-full h-full text-center focus:outline-none" 
+                        />
+                      </td>
+                      <td className="border-r-2 border-black p-0">
+                        <input 
+                          value={chemoSearch.drug}
+                          onChange={(e) => setChemoSearch(prev => ({ ...prev, drug: e.target.value }))}
+                          className="w-full h-full text-center focus:outline-none" 
+                        />
+                      </td>
+                      <td className="p-0">
+                        <input 
+                          value={chemoSearch.dose}
+                          onChange={(e) => setChemoSearch(prev => ({ ...prev, dose: e.target.value }))}
+                          className="w-full h-full text-center focus:outline-none" 
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <button 
+                onClick={handleChemoSearch}
+                className="w-16 bg-gray-400 border-2 border-black flex items-center justify-center text-white font-bold text-center text-sm hover:bg-gray-500 transition-colors"
+              >
+                기록<br/>조회
+              </button>
+              <div className="flex-1 flex border-2 border-black bg-white">
+                <table className="w-full border-collapse text-[11px]">
+                  <thead>
+                    <tr className="bg-gray-300 border-b-2 border-black">
+                      <th className="border-r-2 border-black p-1">Cycle</th>
+                      <th className="border-r-2 border-black p-1">Day</th>
+                      <th className="border-r-2 border-black p-1">Drug</th>
+                      <th className="p-1">Does</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="h-8 text-center font-bold">
+                      <td className="border-r-2 border-black p-1">{chemoResult.cycle}</td>
+                      <td className="border-r-2 border-black p-1">{chemoResult.day}</td>
+                      <td className="border-r-2 border-black p-1">{chemoResult.drug}</td>
+                      <td className="p-1">{chemoResult.dose}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Imaging / Diagnostic Tabs */}
+            <div className="flex flex-col border-2 border-black mb-4">
+              <div className="flex border-b-2 border-black">
+                {['영상검사', '진단검사'].map(t => (
+                  <button 
+                    key={t}
+                    onClick={() => setImagingTab(t as any)}
+                    className={`px-4 py-1 font-bold border-r-2 border-black transition-colors ${imagingTab === t ? 'bg-white' : 'bg-gray-300 hover:bg-gray-200'}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <div className="flex h-48">
+                <div className="flex-1 border-r-2 border-black p-2 overflow-y-auto">
+                  <RichEditor 
+                    value={imagingTab === '영상검사' ? formData.imagingNote : formData.diagnosticNote}
+                    onChange={(val) => updateField(imagingTab === '영상검사' ? 'imagingNote' : 'diagnosticNote', val)}
+                    height="100%"
+                  />
+                </div>
+                <div className="w-1/2 flex flex-col items-center justify-center p-4 bg-white relative group">
+                  <div className="text-xl font-bold text-gray-400">검사 이미지 업로드</div>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={imagingTab === '영상검사' ? handlePhotoUpload : handleDiagnosticPhotoUpload}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                  <div className="flex flex-wrap gap-2 mt-4 overflow-y-auto max-h-32">
+                    {(imagingTab === '영상검사' ? formData.imagingPhotos : formData.diagnosticPhotos || []).map((photo, idx) => (
+                      <img key={idx} src={photo} className="w-16 h-16 object-cover border border-black" referrerPolicy="no-referrer" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Lab Sub-tabs Section */}
+            <div className="flex flex-col flex-1 min-h-0">
+              <div className="flex items-end justify-between mb-0">
+                <div className="flex gap-1">
+                  {['V/S 체크', 'I/O 체크', '검사결과 그래프', '검사결과 기록지'].map(t => (
+                    <button 
+                      key={t}
+                      onClick={() => setLabSubTab(t)}
+                      className={`px-6 py-1 font-bold border-2 border-black rounded-t-lg transition-colors ${labSubTab === t ? 'bg-white border-b-white -mb-[2px] z-10' : 'bg-gray-300 hover:bg-gray-200'}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <button 
+                  onClick={() => {
+                    if (labSubTab === 'V/S 체크') addVSRecord();
+                    else if (labSubTab === 'I/O 체크') addIORecord();
+                  }}
+                  className="bg-gray-300 text-white px-4 py-1 font-bold border-2 border-black rounded-t-lg hover:bg-gray-400 mb-0"
+                >
+                  기록 추가
+                </button>
+              </div>
+              <div className="flex-1 border-2 border-black p-0 bg-white overflow-y-auto">
+                {labSubTab === 'V/S 체크' && (
+                  <table className="w-full border-collapse text-[12px]">
+                    <thead>
+                      <tr className="bg-gray-100 border-b border-black">
+                        <th className="border-r border-black p-2 w-40">확인일자</th>
+                        <th className="border-r border-black p-2">HR</th>
+                        <th className="border-r border-black p-2">RR</th>
+                        <th className="border-r border-black p-2">BT</th>
+                        <th className="border-r border-black p-2">BP</th>
+                        <th className="p-2 w-32">담당자</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(formData.vsHistory || []).map((record, i) => (
+                        <tr key={i} className="border-b border-black text-center h-10">
+                          <td className="border-r border-black p-0"><input value={record.date} onChange={(e) => updateVSRecord(i, 'date', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                          <td className="border-r border-black p-0"><input value={record.hr} onChange={(e) => updateVSRecord(i, 'hr', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                          <td className="border-r border-black p-0"><input value={record.rr} onChange={(e) => updateVSRecord(i, 'rr', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                          <td className="border-r border-black p-0"><input value={record.bt} onChange={(e) => updateVSRecord(i, 'bt', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                          <td className="border-r border-black p-0"><input value={record.bp} onChange={(e) => updateVSRecord(i, 'bp', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                          <td className="p-0"><input value={record.author} onChange={(e) => updateVSRecord(i, 'author', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {labSubTab === 'I/O 체크' && (
+                  <table className="w-full border-collapse text-[12px]">
+                    <thead>
+                      <tr className="bg-gray-100 border-b border-black">
+                        <th className="border-r border-black p-2 w-40">확인일자</th>
+                        <th className="border-r border-black p-2">Input</th>
+                        <th className="border-r border-black p-2">Input 내용물</th>
+                        <th className="border-r border-black p-2">Output</th>
+                        <th className="border-r border-black p-2">Output 내용물</th>
+                        <th className="p-2 w-32">담당자</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(formData.ioHistory || []).map((record, i) => (
+                        <tr key={i} className="border-b border-black text-center h-10">
+                          <td className="border-r border-black p-0"><input value={record.date} onChange={(e) => updateIORecord(i, 'date', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                          <td className="border-r border-black p-0"><input value={record.input} onChange={(e) => updateIORecord(i, 'input', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                          <td className="border-r border-black p-0"><input value={record.inputContent} onChange={(e) => updateIORecord(i, 'inputContent', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                          <td className="border-r border-black p-0"><input value={record.output} onChange={(e) => updateIORecord(i, 'output', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                          <td className="border-r border-black p-0"><input value={record.outputContent} onChange={(e) => updateIORecord(i, 'outputContent', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                          <td className="p-0"><input value={record.author} onChange={(e) => updateIORecord(i, 'author', e.target.value)} className="w-full h-full text-center focus:outline-none" /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {labSubTab === '검사결과 그래프' && (
+                  <div className="p-8 flex items-center justify-center h-full">
+                    <div className="text-2xl font-bold text-gray-400">실시간 그래프 추가</div>
+                  </div>
+                )}
+                {labSubTab === '검사결과 기록지' && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-[10px]">
+                      <thead>
+                        <tr className="bg-gray-200 border-b border-black">
+                          {['검사일자', 'CBC', 'UA', '감염', 'LFT', 'PFT', 'TUMOR', 'ABGA', 'CRP', 'ESR', '특수혈액', '기타'].map(h => (
+                            <th key={h} className="border-r border-black p-1 text-center">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {formData.labRows.map((row, i) => (
+                          <tr key={i} className={`border-b border-black ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                            {row.map((cell, j) => (
+                              <td key={j} className="border-r border-black p-0 h-8">
+                                <input 
+                                  type="text" 
+                                  value={cell} 
+                                  onChange={(e) => updateLabCell(i, j, e.target.value)}
+                                  className="w-full h-full bg-transparent px-1 text-center focus:outline-none"
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      case 'prescription':
         return (
           <div className="flex-1 flex flex-col p-4 bg-white overflow-auto">
             <div className="grid grid-cols-4 gap-x-8 gap-y-1 mb-4 font-bold text-sm border-b-2 border-black pb-2">
@@ -4802,239 +5345,124 @@ export default function App() {
               <EditableSummary label="병실" value={formData.room} onChange={(v) => updateField('room', v)} />
             </div>
 
-            {isLab && (
-              <>
-                <div className="border-2 border-black mb-4 overflow-x-auto">
-                  <table className="w-full border-collapse">
+            <div className="flex flex-col flex-1">
+                <div className="flex justify-between items-end mb-2">
+                  <div className="flex-1"></div>
+                  <div className="flex flex-col gap-1 items-end">
+                    <div className="flex gap-1">
+                      {['검사', '약물', '처치', '접종'].map(btn => (
+                        <button 
+                          key={btn}
+                          onClick={() => addPrescriptionRecord(btn)}
+                          className="bg-gray-500 text-white px-4 py-1 text-xs font-bold hover:bg-gray-600 border border-black min-w-[60px]"
+                        >
+                          {btn}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-1">
+                      {['진료', '협진', '퇴원', '예약', '기타'].map(btn => (
+                        <button 
+                          key={btn}
+                          onClick={() => addPrescriptionRecord(btn)}
+                          className="bg-gray-500 text-white px-4 py-1 text-xs font-bold hover:bg-gray-600 border border-black min-w-[60px]"
+                        >
+                          {btn}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-2 border-black overflow-x-auto bg-white">
+                  <table className="w-full border-collapse text-[11px]">
                     <thead>
-                      <tr className="bg-gray-200 border-b-2 border-black">
-                        {['검사일자', 'CBC', 'UA', '감염', 'LFT', 'PFT', 'TUMOR', 'ABGA', 'CRP', 'ESR', '특수혈액', '기타'].map(h => (
-                          <th key={h} className="border-r-2 border-black p-1 text-xs">{h}</th>
-                        ))}
+                      <tr className="bg-gray-100 border-b-2 border-black">
+                        <th className="border-r border-black p-1 w-12">No.</th>
+                        <th className="border-r border-black p-1 w-20">종류</th>
+                        <th className="border-r border-black p-1 w-28">처방일자</th>
+                        <th className="border-r border-black p-1 w-20">처방자</th>
+                        <th className="border-r border-black p-1">내용</th>
+                        <th className="border-r border-black p-1 w-48">주의사항</th>
+                        <th className="p-1 w-28">상태 (색상)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {formData.labRows.map((row, i) => (
-                        <tr key={i} className={`border-b border-black ${i % 3 === 0 ? 'bg-slate-100' : i % 3 === 1 ? 'bg-green-50' : 'bg-yellow-50'}`}>
-                          {row.map((cell, j) => (
-                            <td key={j} className="border-r-2 border-black p-0 h-8">
-                              <input 
-                                type="text" 
-                                value={cell} 
-                                onChange={(e) => updateLabCell(i, j, e.target.value)}
-                                spellCheck="false"
-                                className="w-full h-full bg-transparent px-1 text-xs focus:outline-none"
-                              />
-                            </td>
-                          ))}
+                      {(formData.prescriptionRecords || []).length > 0 ? (
+                        formData.prescriptionRecords.map((record, idx) => {
+                          const statusInfo = PRESCRIPTION_STATUSES.find(s => s.name === record.status) || PRESCRIPTION_STATUSES[0];
+                          return (
+                            <tr key={record.id} className="border-b border-black last:border-b-0 hover:bg-gray-50 group">
+                              <td className="border-r border-black p-1 text-center font-bold relative">
+                                {idx + 1}
+                                <button 
+                                  onClick={() => deletePrescriptionRecord(record.id)}
+                                  className="absolute left-0 top-0 hidden group-hover:flex bg-red-500 text-white p-0.5 rounded-br"
+                                >
+                                  <Trash2 size={10} />
+                                </button>
+                              </td>
+                              <td className="border-r border-black p-0">
+                                <input 
+                                  type="text"
+                                  value={record.type}
+                                  onChange={(e) => updatePrescriptionRecord(record.id, 'type', e.target.value)}
+                                  className="w-full p-1 focus:outline-none bg-transparent text-center"
+                                />
+                              </td>
+                              <td className="border-r border-black p-0">
+                                <input 
+                                  type="text"
+                                  value={record.date}
+                                  onChange={(e) => updatePrescriptionRecord(record.id, 'date', e.target.value)}
+                                  className="w-full p-1 focus:outline-none bg-transparent text-center"
+                                />
+                              </td>
+                              <td className="border-r border-black p-0">
+                                <input 
+                                  type="text"
+                                  value={record.prescriber}
+                                  onChange={(e) => updatePrescriptionRecord(record.id, 'prescriber', e.target.value)}
+                                  className="w-full p-1 focus:outline-none bg-transparent text-center"
+                                />
+                              </td>
+                              <td className="border-r border-black p-0">
+                                <AutoHeightTextarea 
+                                  value={record.content}
+                                  onChange={(e: any) => updatePrescriptionRecord(record.id, 'content', e.target.value)}
+                                  className="w-full p-1 focus:outline-none bg-transparent"
+                                  minHeight="24px"
+                                />
+                              </td>
+                              <td className="border-r border-black p-0">
+                                <AutoHeightTextarea 
+                                  value={record.precautions}
+                                  onChange={(e: any) => updatePrescriptionRecord(record.id, 'precautions', e.target.value)}
+                                  className="w-full p-1 focus:outline-none bg-transparent"
+                                  minHeight="24px"
+                                />
+                              </td>
+                              <td 
+                                className="p-1 text-center font-bold cursor-pointer transition-colors select-none"
+                                style={{ backgroundColor: statusInfo.color, color: statusInfo.textColor }}
+                                onClick={() => cyclePrescriptionStatus(record.id)}
+                              >
+                                {record.status}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-gray-400 italic">
+                            상단의 버튼을 눌러 처방을 추가하세요.
+                          </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>
-
-                <div className="flex flex-col gap-4 mb-4">
-                  <div className="border-2 border-black">
-                    <div className="border-b-2 border-black p-1 font-bold text-xl flex justify-between items-center">
-                      <span>영상검사 (Imaging Test)</span>
-                      <label className="bg-gray-400 text-white px-3 py-1 rounded cursor-pointer hover:bg-gray-500 font-bold text-sm">
-                        사진 업로드
-                        <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-                      </label>
-                    </div>
-                    <div className="p-2">
-                      <RichEditor 
-                        value={formData.imagingNote || ''}
-                        onChange={(val) => updateField('imagingNote', val)}
-                        placeholder="영상검사 결과 및 판독 내용을 입력하세요..."
-                        height="100px"
-                      />
-                    </div>
-                    <div className="p-2 border-t border-gray-300">
-                      <div className="flex flex-wrap gap-4">
-                        {(formData.imagingPhotos || []).map((photo, idx) => (
-                          <div key={idx} className="relative group">
-                            <img 
-                              src={photo} 
-                              alt={`Imaging ${idx}`} 
-                              className="w-32 h-32 object-cover border-2 border-black rounded shadow-sm cursor-zoom-in"
-                              onClick={() => window.open(photo)}
-                            />
-                            <button 
-                              onClick={() => removePhoto(idx)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ))}
-                        {(formData.imagingPhotos || []).length === 0 && (
-                          <div className="text-sm text-gray-400 py-4">등록된 사진이 없습니다.</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-2 border-black">
-                    <div className="border-b-2 border-black p-1 font-bold text-xl flex justify-between items-center">
-                      <span>진단검사 (Diagnostic Test)</span>
-                      <label className="bg-gray-400 text-white px-3 py-1 rounded cursor-pointer hover:bg-gray-500 font-bold text-sm">
-                        사진 업로드
-                        <input type="file" accept="image/*" onChange={handleDiagnosticPhotoUpload} className="hidden" />
-                      </label>
-                    </div>
-                    <div className="p-2">
-                      <RichEditor 
-                        value={formData.diagnosticNote || ''}
-                        onChange={(val) => updateField('diagnosticNote', val)}
-                        placeholder="진단검사 결과 및 부가 설명을 입력하세요..."
-                        height="100px"
-                      />
-                    </div>
-                    <div className="p-2 border-t border-gray-300">
-                      <div className="flex flex-wrap gap-4">
-                        {(formData.diagnosticPhotos || []).map((photo, idx) => (
-                          <div key={idx} className="relative group">
-                            <img 
-                              src={photo} 
-                              alt={`Diagnostic ${idx}`} 
-                              className="w-32 h-32 object-cover border-2 border-black rounded shadow-sm cursor-zoom-in"
-                              onClick={() => window.open(photo)}
-                            />
-                            <button 
-                              onClick={() => removeDiagnosticPhoto(idx)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ))}
-                        {(formData.diagnosticPhotos || []).length === 0 && (
-                          <div className="text-sm text-gray-400 py-4">등록된 사진이 없습니다.</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {isPrescription && (
-              <div className="flex flex-col flex-1">
-                <div className="flex border-2 border-black border-b-0">
-                  {PRESCRIPTION_SUB_TABS.map(t => (
-                    <button 
-                      key={t} 
-                      onClick={() => setPrescriptionSubTab(t)}
-                      className={`px-4 py-1 border-r-2 border-black font-bold transition-colors ${
-                        prescriptionSubTab === t ? 'text-white' : 'hover:bg-gray-100'
-                      }`}
-                      style={{ backgroundColor: prescriptionSubTab === t ? currentTheme.color : undefined }}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex-1 border-2 border-black p-4 overflow-y-auto">
-                  {prescriptionSubTab === '항암 처방' ? (
-                    <div className="flex flex-col h-full">
-                      <div className="flex items-center gap-6 mb-4 bg-gray-50 p-3 border-2 border-black">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold">Height:</span>
-                          <input 
-                            type="text" 
-                            value={formData.height} 
-                            onChange={(e) => updateField('height', e.target.value)}
-                            className="w-20 border-b-2 border-black bg-transparent px-1 focus:outline-none text-center font-bold"
-                            placeholder="cm"
-                          />
-                          <span className="text-sm">cm</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold">Weight:</span>
-                          <input 
-                            type="text" 
-                            value={formData.weight} 
-                            onChange={(e) => updateField('weight', e.target.value)}
-                            className="w-20 border-b-2 border-black bg-transparent px-1 focus:outline-none text-center font-bold"
-                            placeholder="kg"
-                          />
-                          <span className="text-sm">kg</span>
-                        </div>
-                        <div className="flex items-center gap-2 ml-4">
-                          <span className="font-bold text-[#000080]">BSA:</span>
-                          <div className="bg-white border-2 border-black px-4 py-1 font-black text-xl text-[#000080] min-w-[80px] text-center">
-                            {(() => {
-                              const h = parseFloat(formData.height);
-                              const w = parseFloat(formData.weight);
-                              if (isNaN(h) || isNaN(w) || h <= 0 || w <= 0) return '0.00';
-                              return Math.sqrt((h * w) / 3600).toFixed(2);
-                            })()}
-                          </div>
-                          <span className="font-bold text-sm">m²</span>
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <table className="w-full border-collapse border-2 border-black">
-                          <thead>
-                            <tr className="bg-gray-300 border-b-2 border-black">
-                              {['Cycle', 'Day', 'Drug', 'Dose'].map(h => (
-                                <th key={h} className="border-r-2 border-black p-2 w-1/4 text-center font-bold">{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {formData.regimenRows.map((row, i) => (
-                              <tr key={i} className="border-b border-black h-10">
-                                {row.map((cell, j) => (
-                                  <td key={j} className={`border-r-2 border-black p-0 ${j === 1 ? 'bg-slate-100' : j === 2 ? 'bg-yellow-50' : j === 3 ? 'bg-green-50' : ''}`}>
-                                    <input 
-                                      type="text" 
-                                      value={cell} 
-                                      onChange={(e) => updateRegimenCell(i, j, e.target.value)}
-                                      spellCheck="false"
-                                      className="w-full h-full bg-transparent px-2 focus:outline-none font-medium"
-                                    />
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="flex justify-end gap-2 mt-4">
-                        <button 
-                          onClick={() => handleOpenPopup('calculator')}
-                          className="bg-[#00A86B] text-white px-6 py-2 rounded font-bold hover:opacity-90 transition-opacity border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                        >
-                          계산기
-                        </button>
-                        <button 
-                          onClick={addRegimenRow}
-                          className="bg-[#00A86B] text-white px-6 py-2 rounded font-bold hover:opacity-90 transition-opacity border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                        >
-                          추가
-                        </button>
-                        <button 
-                          onClick={() => handleSave()}
-                          className="bg-[#00A86B] text-white px-6 py-2 rounded font-bold hover:opacity-90 transition-opacity border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                        >
-                          저장
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <AutoHeightTextarea 
-                      value={formData.prescriptionNotes[prescriptionSubTab] || ''}
-                      onChange={(e: any) => updatePrescriptionNote(prescriptionSubTab, e.target.value)}
-                      className="w-full focus:outline-none" 
-                      placeholder={`${prescriptionSubTab} 내용을 입력하세요...`} 
-                      minHeight="500px"
-                    />
-                  )}
-                </div>
               </div>
-            )}
           </div>
         );
       case 'er':
@@ -6998,12 +7426,12 @@ export default function App() {
               </div>
               <div className="flex-1 overflow-y-auto font-gulim">
                 {(() => {
-                  const wards = ['ICU', '101병동', 'PED101병동', 'OB101병동', 'OB산후병동', 'PACU', 'EM응급실', '퇴원완료'];
+                  const wards = ['ICU', '100병동', 'PED100병동', 'OB100병동', 'OB산후병동', 'PACU', 'EM응급실', '퇴원완료'];
                   const grouped: Record<string, Patient[]> = {
                     'ICU': [],
-                    '101병동': [],
-                    'PED101병동': [],
-                    'OB101병동': [],
+                    '100병동': [],
+                    'PED100병동': [],
+                    'OB100병동': [],
                     'OB산후병동': [],
                     'PACU': [],
                     'EM응급실': [],
@@ -7021,10 +7449,10 @@ export default function App() {
                     else if (chartNo.startsWith('ER')) grouped['EM응급실'].push(p);
                     else if (room.includes('ICU')) grouped['ICU'].push(p);
                     else if (room.includes('PACU')) grouped['PACU'].push(p);
-                    else if (room.includes('101')) {
-                      if (dept === 'PED') grouped['PED101병동'].push(p);
-                      else if (dept === 'OB') grouped['OB101병동'].push(p);
-                      else grouped['101병동'].push(p);
+                    else if (room.includes('101') || room.includes('102') || room.includes('103') || room.includes('104')) {
+                      if (dept === 'PED') grouped['PED100병동'].push(p);
+                      else if (dept === 'OB') grouped['OB100병동'].push(p);
+                      else grouped['100병동'].push(p);
                     }
                     else if (dept === 'OB' && room.includes('산후')) grouped['OB산후병동'].push(p);
                     else grouped['기타'].push(p);
@@ -7039,9 +7467,9 @@ export default function App() {
                     
                     const capacities: Record<string, number> = {
                       'ICU': 6,
-                      '101병동': 4,
-                      'PED101병동': 4,
-                      'OB101병동': 2,
+                      '100병동': 4,
+                      'PED100병동': 4,
+                      'OB100병동': 2,
                       'OB산후병동': 2,
                       'PACU': 3,
                       'EM응급실': 6,
@@ -7829,27 +8257,52 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
           <div className="font-bold text-lg mb-2">처방기록</div>
           <table className="w-full border-collapse border-2 border-black">
             <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-black p-1 text-[10px] w-24">처방일자/처방명</th>
-                {PRESCRIPTION_SUB_TABS.map(t => (
-                  <th key={t} className="border border-black p-1 text-[10px]">{t}</th>
-                ))}
+              <tr className="bg-gray-100 border-b-2 border-black">
+                <th className="border border-black p-1 text-[10px] w-12 text-center">No.</th>
+                <th className="border border-black p-1 text-[10px] w-20 text-center">종류</th>
+                <th className="border border-black p-1 text-[10px] w-24 text-center">처방일자</th>
+                <th className="border border-black p-1 text-[10px] w-20 text-center">처방자</th>
+                <th className="border border-black p-1 text-[10px] text-center">내용</th>
+                <th className="border border-black p-1 text-[10px] w-40 text-center">주의사항</th>
+                <th className="border border-black p-1 text-[10px] w-24 text-center">상태</th>
               </tr>
             </thead>
             <tbody>
-              {Array.from({ length: 10 }).map((_, i) => (
-                <tr key={i}>
-                  <td className="border border-black p-1 text-[10px] h-12"></td>
-                  {PRESCRIPTION_SUB_TABS.map(t => (
-                    <td key={t} className="border border-black p-1 text-[10px] h-12">
-                      {i === 0 ? patient.prescriptionNotes[t] : ''}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {(patient.prescriptionRecords || []).length > 0 ? (
+                patient.prescriptionRecords.map((record, i) => {
+                  const statusInfo = PRESCRIPTION_STATUSES.find(s => s.name === record.status) || PRESCRIPTION_STATUSES[0];
+                  return (
+                    <tr key={record.id} className="border-b border-black">
+                      <td className="border border-black p-1 text-[10px] text-center font-bold">{i + 1}</td>
+                      <td className="border border-black p-1 text-[10px] text-center">{record.type}</td>
+                      <td className="border border-black p-1 text-[10px] text-center">{record.date}</td>
+                      <td className="border border-black p-1 text-[10px] text-center">{record.prescriber}</td>
+                      <td className="border border-black p-1 text-[10px] whitespace-pre-wrap">{record.content}</td>
+                      <td className="border border-black p-1 text-[10px] whitespace-pre-wrap">{record.precautions}</td>
+                      <td 
+                        className="border border-black p-1 text-[10px] text-center font-bold"
+                        style={{ backgroundColor: statusInfo.color, color: statusInfo.textColor }}
+                      >
+                        {record.status}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    <td className="border border-black p-1 text-[10px] h-8"></td>
+                    <td className="border border-black p-1 text-[10px] h-8"></td>
+                    <td className="border border-black p-1 text-[10px] h-8"></td>
+                    <td className="border border-black p-1 text-[10px] h-8"></td>
+                    <td className="border border-black p-1 text-[10px] h-8"></td>
+                    <td className="border border-black p-1 text-[10px] h-8"></td>
+                    <td className="border border-black p-1 text-[10px] h-8"></td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-          <div className="mt-4 text-[10px] italic">*위 처방기록 기록 시 처방명은 담당자와 함께 기재할 것. 예) [작성자: R1 OOO]</div>
         </div>
       )}
     </div>
