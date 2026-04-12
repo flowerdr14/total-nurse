@@ -1553,29 +1553,29 @@ export default function App() {
       const p = patients.find(p => p.id === selectedPatientId);
       if (!p) return { er: 0, admission: 0, surgery: 0, consult: 0, discharge: 0, lab: 0, other_record: 0, other_hospital: 0, prescription: 0 };
       return {
-        er: p.erVS || p.erMode || p.erTime || p.erSoapBlocks.length > 0 || p.erSoapNote || p.erExam ? 1 : 0,
-        admission: p.soapBlocks.length > 0 || p.soapNote || p.exam ? 1 : 0,
-        surgery: p.surgeryNote || p.surgeryAttending || p.surgeryName || p.surgerySoapBlocks.length > 0 ? 1 : 0,
-        consult: p.consultNote || p.consultReason || p.consultSoapBlocks.length > 0 ? 1 : 0,
-        discharge: (p.dischargeNote || p.dischargeReason || p.dischargeDiagnosis || p.dischargeCC || p.dischargeMainDx || p.dischargeDate || p.dischargeProgress || p.dischargeStatus || p.dischargePlan || p.dischargeSoapBlocks.length > 0) ? 1 : 0,
+        er: p.erSoapBlocks.length || (p.erVS || p.erMode || p.erTime || p.erSoapNote || p.erExam ? 1 : 0),
+        admission: p.soapBlocks.length || (p.soapNote || p.exam ? 1 : 0),
+        surgery: p.surgerySoapBlocks.length || (p.surgeryNote || p.surgeryAttending || p.surgeryName ? 1 : 0),
+        consult: p.consultSoapBlocks.length || (p.consultNote || p.consultReason ? 1 : 0),
+        discharge: p.dischargeSoapBlocks.length || (p.dischargeNote || p.dischargeReason || p.dischargeDiagnosis || p.dischargeCC || p.dischargeMainDx || p.dischargeDate || p.dischargeProgress || p.dischargeStatus || p.dischargePlan ? 1 : 0),
         lab: p.labRows.some(r => r.some(c => c !== '')) ? 1 : 0,
-        other_record: p.otherRecordNote || p.otherReason || p.otherRecordSoapBlocks.length > 0 ? 1 : 0,
+        other_record: p.otherRecordSoapBlocks.length || (p.otherRecordNote || p.otherReason ? 1 : 0),
         other_hospital: p.otherHospitalNote ? 1 : 0,
-        prescription: Object.values(p.prescriptionNotes).some(v => v !== '') ? 1 : 0,
-        nursing: (p.nursingNote || p.nursingSoapBlocks.length > 0 || p.nursingExam || p.medicationRows.some(r => r.some(c => c !== '')) || Object.values(p.nursingRecords).length > 0) ? 1 : 0
+        prescription: p.prescriptionRecords?.length || 0,
+        nursing: p.nursingSoapBlocks.length || (p.nursingNote || p.nursingExam || p.medicationRows.some(r => r.some(c => c !== '')) || Object.values(p.nursingRecords).length > 0 ? 1 : 0)
       };
     } else {
       return patients.reduce((acc, p) => ({
-        er: acc.er + (p.erVS || p.erMode || p.erTime || p.erSoapBlocks.length > 0 || p.erSoapNote || p.erExam ? 1 : 0),
-        admission: acc.admission + (p.soapBlocks.length > 0 || p.soapNote || p.exam ? 1 : 0),
-        surgery: acc.surgery + (p.surgeryNote || p.surgeryAttending || p.surgeryName || p.surgerySoapBlocks.length > 0 ? 1 : 0),
-        consult: acc.consult + (p.consultNote || p.consultReason || p.consultSoapBlocks.length > 0 ? 1 : 0),
-        discharge: acc.discharge + ((p.dischargeNote || p.dischargeReason || p.dischargeDiagnosis || p.dischargeCC || p.dischargeMainDx || p.dischargeDate || p.dischargeProgress || p.dischargeStatus || p.dischargePlan || p.dischargeSoapBlocks.length > 0) ? 1 : 0),
+        er: acc.er + (p.erSoapBlocks.length || (p.erVS || p.erMode || p.erTime || p.erSoapNote || p.erExam ? 1 : 0)),
+        admission: acc.admission + (p.soapBlocks.length || (p.soapNote || p.exam ? 1 : 0)),
+        surgery: acc.surgery + (p.surgerySoapBlocks.length || (p.surgeryNote || p.surgeryAttending || p.surgeryName ? 1 : 0)),
+        consult: acc.consult + (p.consultSoapBlocks.length || (p.consultNote || p.consultReason ? 1 : 0)),
+        discharge: acc.discharge + (p.dischargeSoapBlocks.length || (p.dischargeNote || p.dischargeReason || p.dischargeDiagnosis || p.dischargeCC || p.dischargeMainDx || p.dischargeDate || p.dischargeProgress || p.dischargeStatus || p.dischargePlan ? 1 : 0)),
         lab: acc.lab + (p.labRows.some(r => r.some(c => c !== '')) ? 1 : 0),
-        other_record: acc.other_record + (p.otherRecordNote || p.otherReason || p.otherRecordSoapBlocks.length > 0 ? 1 : 0),
+        other_record: acc.other_record + (p.otherRecordSoapBlocks.length || (p.otherRecordNote || p.otherReason ? 1 : 0)),
         other_hospital: acc.other_hospital + (p.otherHospitalNote ? 1 : 0),
-        prescription: acc.prescription + (Object.values(p.prescriptionNotes).some(v => v !== '') ? 1 : 0),
-        nursing: acc.nursing + ((p.nursingNote || p.nursingSoapBlocks.length > 0 || p.nursingExam || p.medicationRows.some(r => r.some(c => c !== '')) || Object.values(p.nursingRecords).length > 0) ? 1 : 0)
+        prescription: acc.prescription + (p.prescriptionRecords?.length || 0),
+        nursing: acc.nursing + (p.nursingSoapBlocks.length || (p.nursingNote || p.nursingExam || p.medicationRows.some(r => r.some(c => c !== '')) || Object.values(p.nursingRecords).length > 0 ? 1 : 0))
       }), { er: 0, admission: 0, surgery: 0, consult: 0, discharge: 0, lab: 0, other_record: 0, other_hospital: 0, prescription: 0, nursing: 0 });
     }
   }, [selectedPatientId, patients]);
