@@ -16,6 +16,7 @@ import {
 import NursingDashboard from './components/NursingDashboard';
 import NursingWriter from './components/NursingWriter';
 import RichEditor from './components/RichEditor';
+import CanvasDraw from 'react-canvas-draw';
 
 class ErrorBoundary extends Component<any, any> {
   state = { hasError: false };
@@ -117,6 +118,21 @@ declare global {
 
 export type TabType = 'admission' | 'surgery' | 'consult' | 'discharge' | 'lab' | 'other_record' | 'other_hospital' | 'prescription' | 'er' | 'nursing' | 'doctor_prescription' | 'support_dept' | 'certificate' | 'none';
 export type NursingSubTab = string;
+
+export interface ReceptionRecord {
+  id: string;
+  patientId: string;
+  patientName: string;
+  chartNo: string;
+  time: string;
+  status: '진료대기' | '진료중' | '진료완료' | '진료예약';
+  dept: string;
+  doctor: string;
+  type: string;
+  gender: string;
+  age: string;
+  date: string;
+}
 
 export interface CertificateRecord {
   id: string;
@@ -294,6 +310,22 @@ export interface Patient {
   surgeryAnesthesiaDept: string;
   surgeryOpLabNote: string;
   surgerySpecialNote: string;
+  surgeryOrganName?: string;
+  surgeryClampTime?: string;
+  surgeryAdaptationTime?: string;
+  surgeryAnesthesiaTime?: string;
+  surgeryColdStorageTime?: string;
+  surgeryBloodCollectionTime?: string;
+  surgeryColdStorageTime2?: string;
+  surgeryBloodLoss?: string;
+  surgerySutureUsed?: 'Normal' | 'plenty' | 'less';
+  surgeryDrawingData?: string;
+  surgeryPreOpDx?: string;
+  surgeryPostOpDx?: string;
+  surgeryProcess?: string;
+  surgeryColdStorageTime3?: string;
+  surgeryPreOpPhoto?: string;
+  surgeryPostOpPhoto?: string;
 
   // Consult Records
   consultNote: string;
@@ -418,6 +450,14 @@ export interface Patient {
   supportRequests: { date: string, dept: string, content: string, status: string }[];
   reports: { type: string, date: string, location: string, details: string, actions: string }[];
   certificates: CertificateRecord[];
+  receptionRecords?: ReceptionRecord[];
+  patientMemo?: string;
+  insuranceType?: string;
+  insuranceNo?: string;
+  insuranceGroup?: string;
+  insuranceSymbol?: string;
+  patientType?: string;
+  diagnosisType?: string;
 
   // New Patient Assessment Fields
   admissionPath?: string;
@@ -490,6 +530,7 @@ export interface Patient {
   currentDiet: string;
   isFasting: boolean;
   dietNote: string;
+  fieldMetadata?: Record<string, { time: string, name: string }>;
 }
 
 const PRESCRIPTION_SUB_TABS = ['검사 처방', '영상 검사', '약물 지시', '처치/시술', '진료 지시', '컨설트', '기타'];
@@ -790,8 +831,8 @@ const INITIAL_FORM_DATA: Patient = {
   age: '',
   gender: 'M',
   room: '',
-  dept: '',
-  doctor: '',
+  dept: '산부인과',
+  doctor: '조준모',
   bloodType: '',
   dx: '',
   cc: '',
@@ -927,6 +968,22 @@ const INITIAL_FORM_DATA: Patient = {
   surgeryAnesthesiaDept: '',
   surgeryOpLabNote: '',
   surgerySpecialNote: '',
+  surgeryOrganName: '',
+  surgeryClampTime: '',
+  surgeryAdaptationTime: '',
+  surgeryAnesthesiaTime: '',
+  surgeryColdStorageTime: '',
+  surgeryBloodCollectionTime: '',
+  surgeryColdStorageTime2: '',
+  surgeryBloodLoss: '',
+  surgerySutureUsed: 'Normal',
+  surgeryDrawingData: '',
+  surgeryPreOpDx: '',
+  surgeryPostOpDx: '',
+  surgeryProcess: '',
+  surgeryColdStorageTime3: '',
+  surgeryPreOpPhoto: '',
+  surgeryPostOpPhoto: '',
   consultNote: '',
   consultDept: '',
   consultProfessor: '',
@@ -1022,7 +1079,14 @@ const INITIAL_FORM_DATA: Patient = {
   recentOrders: [],
   supportRequests: [],
   reports: [],
-  certificates: []
+  certificates: [],
+  patientMemo: '',
+  insuranceType: '건강보험',
+  insuranceNo: '',
+  insuranceGroup: '',
+  insuranceSymbol: '',
+  patientType: 'NORMAL',
+  diagnosisType: '일반진료',
 };
 
 const ACCOUNTS: Record<string, { pw: string, name: string }> = {
@@ -1067,9 +1131,9 @@ const HeaderButton = ({ icon: Icon, label, onClick, color = "text-black", disabl
         backgroundColor: isHexBg ? bgColor : undefined,
         borderColor: isHexBorder ? borderColor : undefined
       }}
-      className={`flex items-center gap-1 px-2.5 py-1 hover:opacity-80 transition-opacity ${color} font-bold text-[13px] border ${!isHexBorder ? borderColor : ''} rounded shadow-sm ${!isHexBg ? (bgColor || 'bg-transparent') : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`flex items-center gap-1 px-2.5 py-1 hover:opacity-80 transition-opacity ${color} font-bold text-[15px] border ${!isHexBorder ? borderColor : ''} rounded shadow-sm ${!isHexBg ? (bgColor || 'bg-transparent') : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
-      {Icon && <Icon size={15} strokeWidth={2.5} />}
+      {Icon && <Icon size={17} strokeWidth={2.5} />}
       <span>{label}</span>
     </button>
   );
@@ -1079,7 +1143,7 @@ const TabButton: React.FC<{ label: string, count: number, active: boolean, onCli
   <div className="relative flex flex-col items-center font-gulim">
     <button 
       onClick={onClick}
-      className={`px-3 py-2 rounded-md font-bold text-[14px] border transition-all min-w-[100px] ${
+      className={`px-3 py-2 rounded-md font-bold text-[16px] border transition-all min-w-[100px] ${
         active 
           ? 'text-white border-gray-600 shadow-inner' 
           : 'bg-[#E0E0E0] border-gray-400 text-gray-700 hover:bg-gray-200'
@@ -1099,34 +1163,34 @@ const TabButton: React.FC<{ label: string, count: number, active: boolean, onCli
 
 const InputField = ({ label, value, onChange, readOnly = false, labelWidth = "w-20" }: { label: string, value?: string | number, onChange?: (val: string) => void, readOnly?: boolean, labelWidth?: string }) => (
   <div className="flex items-center gap-4">
-    <span className={`${labelWidth} font-bold text-sm text-gray-700 shrink-0`}>{label}</span>
+    <span className={`${labelWidth} font-bold text-base text-gray-700 shrink-0`}>{label}</span>
     <input 
       type="text" 
       value={value || ''} 
       onChange={(e) => onChange?.(e.target.value)}
       readOnly={readOnly}
       spellCheck={false}
-      className="flex-1 border-b border-black px-1 py-0.5 text-sm focus:outline-none"
+      className="flex-1 border-b border-black px-1 py-0.5 text-base focus:outline-none"
     />
   </div>
 );
 
 const UnderlineInputField = ({ label, value, onChange, unit, labelWidth = "w-24" }: { label: string, value: string, onChange: (v: string) => void, unit?: string, labelWidth?: string }) => (
-  <div className="flex items-center gap-2 text-[14px]">
+  <div className="flex items-center gap-2 text-sm">
     <span className={`${labelWidth} font-bold shrink-0`}>{label}</span>
     <input 
       type="text" 
       value={value || ''} 
       onChange={(e) => onChange(e.target.value)} 
-      className="flex-1 border-b border-black focus:outline-none h-8 bg-transparent"
+      className="flex-1 border-b border-black focus:outline-none h-8 bg-transparent text-sm"
       spellCheck={false}
     />
-    {unit && <span className="text-[12px] font-bold shrink-0 w-14">{unit}</span>}
+    {unit && <span className="text-xs font-bold shrink-0 w-16">{unit}</span>}
   </div>
 );
 
 const SectionHeader = ({ label }: { label: string }) => (
-  <div className="bg-[#A6A6A6] text-black px-4 py-2 rounded-md font-bold block w-full text-[16px] mb-4">
+  <div className="bg-[#A6A6A6] text-black px-4 py-2 rounded-md font-bold block w-full text-base mb-4">
     {label}
   </div>
 );
@@ -1152,7 +1216,7 @@ const AutoHeightTextarea = ({ value, onChange, placeholder, className, minHeight
       onChange={onChange}
       placeholder={placeholder}
       spellCheck="false"
-      className={`${className} overflow-hidden resize-none`}
+      className={`${className} overflow-hidden resize-none text-sm`}
       style={{ minHeight }}
     />
   );
@@ -1303,6 +1367,86 @@ export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [receptionList, setReceptionList] = useState<ReceptionRecord[]>([]);
+  const [showReceptionModal, setShowReceptionModal] = useState(false);
+  const [showSavedToast, setShowSavedToast] = useState(false);
+  const [savedToastMessage, setSavedToastMessage] = useState('');
+
+  const handleAddReception = async (patient: Patient, dept: string, doctor: string) => {
+    const now = new Date();
+    const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+    const date = now.toISOString().split('T')[0];
+    
+    const newRecord: ReceptionRecord = {
+      id: Date.now().toString(),
+      patientId: patient.id,
+      patientName: patient.name,
+      chartNo: patient.chartNo,
+      time,
+      status: '진료대기',
+      dept,
+      doctor,
+      type: '건강보험',
+      gender: patient.gender,
+      age: patient.age,
+      date
+    };
+    
+    try {
+      await setDoc(doc(db, 'reception', newRecord.id), newRecord);
+    } catch (error) {
+      console.error("Reception add error:", error);
+    }
+  };
+
+  const handleUpdateReceptionStatus = async (id: string, status: ReceptionRecord['status']) => {
+    try {
+      await updateDoc(doc(db, 'reception', id), { status });
+    } catch (error) {
+      console.error("Reception update error:", error);
+    }
+  };
+
+  const handleCreatePatient = async (patientData: Partial<Patient>) => {
+    const newId = Date.now().toString();
+    const newPatient: Patient = {
+      ...INITIAL_FORM_DATA,
+      ...patientData,
+      id: newId,
+      chartNo: patientData.chartNo || Math.floor(10000000 + Math.random() * 90000000).toString(),
+    };
+    
+    try {
+      await setDoc(doc(db, 'patients', newId), newPatient);
+      setSelectedPatientId(newId);
+      return newPatient;
+    } catch (error) {
+      console.error("Patient creation error:", error);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const q = query(collection(db, 'reception'), orderBy('time', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: ReceptionRecord[] = [];
+      snapshot.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() } as ReceptionRecord);
+      });
+      setReceptionList(list);
+    }, (error) => {
+      console.error("Reception fetch error:", error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const saveReception = async (record: ReceptionRecord) => {
+    try {
+      await setDoc(doc(db, 'reception', record.id), record);
+    } catch (error) {
+      console.error("Reception save error:", error);
+    }
+  };
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, patientId: string } | null>(null);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
   const [modalTab, setModalTab] = useState('admission_record');
@@ -1637,7 +1781,18 @@ export default function App() {
       // Append timestamp to record fields in Korean time
       const now = new Date();
       const userName = ACCOUNTS[loginId]?.name || loginId;
-      const timestamp = `\n[저장됨: ${now.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} / ${userName}]`;
+      
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const h = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      const sec = String(now.getSeconds()).padStart(2, '0');
+      const timestampStr = `${y}-${m}-${d} ${h}:${min}`;
+      const fullTimestampStr = `${y}-${m}-${d} ${h}:${min}:${sec}`;
+      
+      const timestamp = `\n[저장됨: ${timestampStr} / ${userName}]`;
+      setSavedToastMessage(`[저장됨: ${timestampStr} / ${userName}]`);
       
       const cleanupTimestamp = (text: string) => {
         if (!text) return "";
@@ -1647,12 +1802,30 @@ export default function App() {
 
       const appendTimestamp = (text: string) => {
         if (!text) return "";
-        return cleanupTimestamp(text);
+        return cleanupTimestamp(text) + timestamp;
+      };
+
+      const newFieldMetadata = { ...(dataToSave.fieldMetadata || {}) };
+      const updateMetadata = (field: string) => {
+        newFieldMetadata[field] = { time: fullTimestampStr, name: userName };
+      };
+
+      const updateSoapBlocksMetadata = (blocksStr: string) => {
+        try {
+          const blocks = JSON.parse(blocksStr) as SoapBlock[];
+          return JSON.stringify(blocks.map(b => ({
+            ...b,
+            lastModified: { time: fullTimestampStr, name: userName }
+          })));
+        } catch (e) {
+          return blocksStr;
+        }
       };
 
       const newPrescriptionNotes = { ...dataToSave.prescriptionNotes };
       Object.keys(newPrescriptionNotes).forEach(key => {
-        newPrescriptionNotes[key] = appendTimestamp(newPrescriptionNotes[key]);
+        newPrescriptionNotes[key] = cleanupTimestamp(newPrescriptionNotes[key]);
+        updateMetadata(`prescriptionNotes.${key}`);
       });
 
       const patientData = { 
@@ -1662,22 +1835,22 @@ export default function App() {
         regimenRows: JSON.stringify(dataToSave.regimenRows),
         imagingPhotos: JSON.stringify(dataToSave.imagingPhotos || []),
         diagnosticPhotos: JSON.stringify(dataToSave.diagnosticPhotos || []),
-        soapNote: appendTimestamp(dataToSave.soapNote),
-        soapBlocks: JSON.stringify(dataToSave.soapBlocks),
-        exam: appendTimestamp(dataToSave.exam),
-        erLabNote: appendTimestamp(dataToSave.erLabNote),
-        erSoapNote: appendTimestamp(dataToSave.erSoapNote),
-        erSoapBlocks: JSON.stringify(dataToSave.erSoapBlocks),
-        erExam: appendTimestamp(dataToSave.erExam),
-        imagingNote: appendTimestamp(dataToSave.imagingNote),
-        diagnosticNote: appendTimestamp(dataToSave.diagnosticNote),
+        soapNote: cleanupTimestamp(dataToSave.soapNote),
+        soapBlocks: updateSoapBlocksMetadata(JSON.stringify(dataToSave.soapBlocks)),
+        exam: cleanupTimestamp(dataToSave.exam),
+        erLabNote: cleanupTimestamp(dataToSave.erLabNote),
+        erSoapNote: cleanupTimestamp(dataToSave.erSoapNote),
+        erSoapBlocks: updateSoapBlocksMetadata(JSON.stringify(dataToSave.erSoapBlocks)),
+        erExam: cleanupTimestamp(dataToSave.erExam),
+        imagingNote: cleanupTimestamp(dataToSave.imagingNote),
+        diagnosticNote: cleanupTimestamp(dataToSave.diagnosticNote),
         prescriptionNotes: newPrescriptionNotes,
-        surgerySoapBlocks: JSON.stringify(dataToSave.surgerySoapBlocks),
-        consultSoapBlocks: JSON.stringify(dataToSave.consultSoapBlocks),
-        dischargeSoapBlocks: JSON.stringify(dataToSave.dischargeSoapBlocks),
-        otherRecordSoapBlocks: JSON.stringify(dataToSave.otherRecordSoapBlocks),
+        surgerySoapBlocks: updateSoapBlocksMetadata(JSON.stringify(dataToSave.surgerySoapBlocks)),
+        consultSoapBlocks: updateSoapBlocksMetadata(JSON.stringify(dataToSave.consultSoapBlocks)),
+        dischargeSoapBlocks: updateSoapBlocksMetadata(JSON.stringify(dataToSave.dischargeSoapBlocks)),
+        otherRecordSoapBlocks: updateSoapBlocksMetadata(JSON.stringify(dataToSave.otherRecordSoapBlocks)),
         nursingRecords: JSON.stringify(dataToSave.nursingRecords || {}),
-        nursingSoapBlocks: JSON.stringify(dataToSave.nursingSoapBlocks || []),
+        nursingSoapBlocks: updateSoapBlocksMetadata(JSON.stringify(dataToSave.nursingSoapBlocks || [])),
         medicationRows: JSON.stringify(dataToSave.medicationRows || []),
         treatmentData: JSON.stringify(dataToSave.treatmentData || {}),
         nursingPlan: JSON.stringify(dataToSave.nursingPlan || {}),
@@ -1686,13 +1859,19 @@ export default function App() {
         supportRequests: JSON.stringify(dataToSave.supportRequests || []),
         reports: JSON.stringify(dataToSave.reports || []),
         certificates: JSON.stringify(dataToSave.certificates || []),
-        nursingNote: appendTimestamp(dataToSave.nursingNote),
-        nursingExam: appendTimestamp(dataToSave.nursingExam),
-        sidebarS: appendTimestamp(dataToSave.sidebarS),
-        sidebarO: appendTimestamp(dataToSave.sidebarO),
-        sidebarA: appendTimestamp(dataToSave.sidebarA),
-        sidebarP: appendTimestamp(dataToSave.sidebarP),
+        nursingNote: cleanupTimestamp(dataToSave.nursingNote),
+        nursingExam: cleanupTimestamp(dataToSave.nursingExam),
+        sidebarS: cleanupTimestamp(dataToSave.sidebarS),
+        sidebarO: cleanupTimestamp(dataToSave.sidebarO),
+        sidebarA: cleanupTimestamp(dataToSave.sidebarA),
+        sidebarP: cleanupTimestamp(dataToSave.sidebarP),
+        fieldMetadata: newFieldMetadata,
       };
+
+      // Update metadata for all fields that were cleaned up
+      ['soapNote', 'exam', 'erLabNote', 'erSoapNote', 'erExam', 'imagingNote', 'diagnosticNote', 'nursingNote', 'nursingExam', 'sidebarS', 'sidebarO', 'sidebarA', 'sidebarP'].forEach(f => {
+        if (dataToSave[f as keyof Patient]) updateMetadata(f);
+      });
       
       // Update local state immediately to prevent sync issues and provide instant feedback
       const updatedFormData = {
@@ -1712,18 +1891,19 @@ export default function App() {
         sidebarA: patientData.sidebarA,
         sidebarP: patientData.sidebarP,
         prescriptionNotes: newPrescriptionNotes,
-        soapBlocks: [...formData.soapBlocks], // Ensure fresh copy
-        surgerySoapBlocks: [...formData.surgerySoapBlocks],
-        consultSoapBlocks: [...formData.consultSoapBlocks],
-        dischargeSoapBlocks: [...formData.dischargeSoapBlocks],
-        otherRecordSoapBlocks: [...formData.otherRecordSoapBlocks],
+        soapBlocks: JSON.parse(patientData.soapBlocks),
+        surgerySoapBlocks: JSON.parse(patientData.surgerySoapBlocks),
+        consultSoapBlocks: JSON.parse(patientData.consultSoapBlocks),
+        dischargeSoapBlocks: JSON.parse(patientData.dischargeSoapBlocks),
+        otherRecordSoapBlocks: JSON.parse(patientData.otherRecordSoapBlocks),
         nursingRecords: { ...formData.nursingRecords },
-        nursingSoapBlocks: [...formData.nursingSoapBlocks],
+        nursingSoapBlocks: JSON.parse(patientData.nursingSoapBlocks),
         medicationRows: [...formData.medicationRows],
         treatmentData: { ...formData.treatmentData },
         nursingPlan: { ...formData.nursingPlan },
         specialRecord: { ...formData.specialRecord },
-        certificates: [...formData.certificates]
+        certificates: [...formData.certificates],
+        fieldMetadata: newFieldMetadata,
       };
       
       setFormData(updatedFormData);
@@ -1733,7 +1913,8 @@ export default function App() {
 
       await setDoc(doc(db, "patients", id), patientData);
       
-      alert("저장되었습니다.");
+      setShowSavedToast(true);
+      setTimeout(() => setShowSavedToast(false), 3000);
     } catch (e: any) {
       console.error("Save error:", e);
       alert("저장 중 오류가 발생했습니다.");
@@ -1978,11 +2159,29 @@ export default function App() {
   };
 
   const handlePrint = (type: TabType) => {
+    const originalTitle = document.title;
+    const typeLabels: Record<string, string> = {
+      admission: '입원기록지',
+      er: '응급기록지',
+      surgery: '수술처치기록지',
+      consult: '협진의뢰기록지',
+      discharge: '퇴원요약지',
+      lab: '검사결과지',
+      other_record: '기타기록지',
+      other_hospital: '타병원기록지',
+      prescription: '처방기록지',
+      nursing: '간호기록지'
+    };
+    
+    const label = typeLabels[type] || '기록지';
+    document.title = `${formData.name}-${formData.chartNo}-${label}`;
+
     setPrintType(type);
     setShowPrintMenu(false);
     setTimeout(() => {
       window.print();
       setPrintType(null);
+      document.title = originalTitle;
     }, 500);
   };
 
@@ -2569,7 +2768,7 @@ export default function App() {
       printWindow.document.write(`
         <html>
           <head>
-            <title>${cert.type} - ${cert.patientName}</title>
+            <title>${cert.patientName}-${formData.chartNo}-${cert.type}</title>
             <style>
               body { font-family: 'Gulim', sans-serif; padding: 40px; line-height: 1.6; }
               .header { text-align: center; border-bottom: 2px solid black; padding-bottom: 20px; margin-bottom: 30px; }
@@ -3208,7 +3407,7 @@ export default function App() {
   const renderSoapSection = (blocks: SoapBlock[], noteValue: string, noteField: string, examValue?: string, examField?: string) => (
     <>
       <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
-        <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">
+        <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10 text-sm">
           SOAP
         </div>
         <div className="p-2 flex flex-col gap-4">
@@ -3223,7 +3422,7 @@ export default function App() {
                     { id: 'p', label: 'Plan' }
                   ].map((row) => (
                     <tr key={row.id} className="border-b border-black">
-                      <td className="w-32 bg-[#C0C0C0] border-r-2 border-black p-2 text-center font-bold text-gray-700">
+                      <td className="w-32 bg-[#C0C0C0] border-r-2 border-black p-2 text-center font-bold text-gray-700 text-sm">
                         {row.label}
                       </td>
                       <td className="p-0">
@@ -3231,16 +3430,19 @@ export default function App() {
                           value={block[row.id as keyof SoapBlock]}
                           onChange={(e: any) => updateSoapBlock(idx, row.id as keyof SoapBlock, e.target.value)}
                           className="w-full p-2 focus:outline-none block"
-                          minHeight="30px"
+                          minHeight="40px"
                         />
                       </td>
                     </tr>
                   ))}
                   <tr>
-                    <td className="w-32 bg-[#C0C0C0] border-r-2 border-black p-2 text-center font-bold text-gray-700">
+                    <td className="w-32 bg-[#C0C0C0] border-r-2 border-black p-2 text-center font-bold text-gray-700 text-sm">
                       관리
                     </td>
-                    <td className="p-2 flex justify-end items-center gap-2">
+                    <td className="p-2 flex justify-between items-center gap-2">
+                      <div className="text-xs text-gray-600 font-bold">
+                        {block.lastModified && `작성자: ${block.lastModified.name} / 작성일: ${block.lastModified.time}`}
+                      </div>
                       <div className="flex gap-2">
                         <button 
                           onClick={() => duplicateSoapBlock(idx)}
@@ -3261,18 +3463,26 @@ export default function App() {
               </table>
             </div>
           ))}
-          <AutoHeightTextarea 
-            value={noteValue}
-            onChange={(e: any) => updateField(noteField as keyof Patient, e.target.value)}
-            placeholder="여기에 자유롭게 기록하세요..."
-            className="w-full p-2 focus:outline-none block" 
-            minHeight="400px"
-          />
+          <div className="flex flex-col">
+            <AutoHeightTextarea 
+              value={noteValue}
+              onChange={(e: any) => updateField(noteField as keyof Patient, e.target.value)}
+              placeholder="여기에 자유롭게 기록하세요..."
+              className="w-full p-2 focus:outline-none block" 
+              minHeight="400px"
+            />
+            {formData.fieldMetadata?.[noteField] && (
+              <div className="text-right p-2 text-sm text-gray-600 font-bold">
+                <div>작성자: {formData.fieldMetadata[noteField].name}</div>
+                <div>작성일: {formData.fieldMetadata[noteField].time}</div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {examField !== undefined && (
         <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
-          <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">EXAM</div>
+          <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10 text-sm">EXAM</div>
           <div className="p-2 flex flex-col">
             <AutoHeightTextarea 
               value={examValue}
@@ -3280,6 +3490,12 @@ export default function App() {
               className="w-full p-2 focus:outline-none block" 
               minHeight="200px"
             />
+            {formData.fieldMetadata?.[examField] && (
+              <div className="text-right p-2 text-xs text-gray-600 font-bold">
+                <div>작성자: {formData.fieldMetadata[examField].name}</div>
+                <div>작성일: {formData.fieldMetadata[examField].time}</div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -3287,7 +3503,7 @@ export default function App() {
   );
 
   const renderRightSidebar = (showSoapAdd: boolean = true) => (
-    <div className="w-[500px] border-2 border-black p-4 flex flex-col gap-8 shrink-0 overflow-y-auto bg-white font-gulim text-[14px]">
+    <div className="w-[500px] border-2 border-black p-4 flex flex-col gap-8 shrink-0 overflow-y-auto bg-white font-gulim text-xs">
       <div className="mb-4">
         <div className="text-3xl font-bold text-center mb-1 tracking-[0.5em]">경 과 기 록 지</div>
       </div>
@@ -3301,27 +3517,27 @@ export default function App() {
           <UnderlineInputField label="이름" value={formData.name} onChange={(v) => updateField('name', v)} />
           
           <div className="flex items-center gap-2">
-            <span className="w-24 font-bold shrink-0">생년월일</span>
-            <div className="flex items-center gap-1">
-              <select value={formData.dobYear} onChange={(e) => updateField('dobYear', e.target.value)} className="border border-black px-1 text-[12px] h-8 bg-transparent">
+            <span className="w-24 font-bold shrink-0 text-sm">생년월일</span>
+            <div className="flex items-center gap-1 text-sm">
+              <select value={formData.dobYear} onChange={(e) => updateField('dobYear', e.target.value)} className="border border-black px-1 text-xs h-8 bg-transparent">
                 {Array.from({ length: 2101 - 1900 }, (_, i) => 1900 + i).map(y => <option key={y} value={y}>{y}</option>)}
               </select><span>년</span>
-              <select value={formData.dobMonth} onChange={(e) => updateField('dobMonth', e.target.value)} className="border border-black px-1 text-[12px] h-8 bg-transparent">
+              <select value={formData.dobMonth} onChange={(e) => updateField('dobMonth', e.target.value)} className="border border-black px-1 text-xs h-8 bg-transparent">
                 {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
               </select><span>월</span>
-              <select value={formData.dobDay} onChange={(e) => updateField('dobDay', e.target.value)} className="border border-black px-1 text-[12px] h-8 bg-transparent">
+              <select value={formData.dobDay} onChange={(e) => updateField('dobDay', e.target.value)} className="border border-black px-1 text-xs h-8 bg-transparent">
                 {Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(d => <option key={d} value={d}>{d}</option>)}
               </select><span>일</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 font-bold mt-1">
+          <div className="flex items-center gap-4 font-bold mt-1 text-sm">
             <span className="w-24">성별</span>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="gender" checked={formData.gender === 'M'} onChange={() => updateField('gender', 'M')} className="accent-blue-600 w-4 h-4" /> 남
+              <input type="radio" name="gender" checked={formData.gender === 'M'} onChange={() => updateField('gender', 'M')} className="accent-blue-600 w-5 h-5" /> 남
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="gender" checked={formData.gender === 'F'} onChange={() => updateField('gender', 'F')} className="accent-blue-600 w-4 h-4" /> 여
+              <input type="radio" name="gender" checked={formData.gender === 'F'} onChange={() => updateField('gender', 'F')} className="accent-blue-600 w-5 h-5" /> 여
             </label>
           </div>
 
@@ -3331,15 +3547,15 @@ export default function App() {
           <UnderlineInputField label="C.C" value={formData.cc} onChange={(v) => updateField('cc', v)} />
           
           <div className="flex items-center gap-2">
-            <span className="w-24 font-bold shrink-0">On Set</span>
-            <div className="flex items-center gap-1">
-              <select value={formData.onsetYear} onChange={(e) => updateField('onsetYear', e.target.value)} className="border border-black px-1 text-[12px] h-8 bg-transparent">
+            <span className="w-24 font-bold shrink-0 text-sm">On Set</span>
+            <div className="flex items-center gap-1 text-sm">
+              <select value={formData.onsetYear} onChange={(e) => updateField('onsetYear', e.target.value)} className="border border-black px-1 text-xs h-8 bg-transparent">
                 {Array.from({ length: 2101 - 1900 }, (_, i) => 1900 + i).map(y => <option key={y} value={y}>{y}</option>)}
               </select><span>년</span>
-              <select value={formData.onsetMonth} onChange={(e) => updateField('onsetMonth', e.target.value)} className="border border-black px-1 text-[12px] h-8 bg-transparent">
+              <select value={formData.onsetMonth} onChange={(e) => updateField('onsetMonth', e.target.value)} className="border border-black px-1 text-xs h-8 bg-transparent">
                 {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
               </select><span>월</span>
-              <select value={formData.onsetDay} onChange={(e) => updateField('onsetDay', e.target.value)} className="border border-black px-1 text-[12px] h-8 bg-transparent">
+              <select value={formData.onsetDay} onChange={(e) => updateField('onsetDay', e.target.value)} className="border border-black px-1 text-xs h-8 bg-transparent">
                 {Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(d => <option key={d} value={d}>{d}</option>)}
               </select><span>일</span>
             </div>
@@ -3351,40 +3567,60 @@ export default function App() {
         <SectionHeader label="SOAP" />
         <div className="flex flex-col gap-4 px-1">
           <div className="flex flex-col gap-1">
-            <span className="text-[15px] font-bold">Subjective</span>
+            <span className="text-sm font-bold">Subjective</span>
             <AutoHeightTextarea 
               value={formData.sidebarS || ''} 
               onChange={(e: any) => updateField('sidebarS', e.target.value)}
               className="w-full border-b border-black focus:outline-none bg-transparent py-1"
-              minHeight="32px"
+              minHeight="40px"
             />
+            {formData.fieldMetadata?.sidebarS && (
+              <div className="text-right text-[10px] text-gray-500 font-bold">
+                작성자: {formData.fieldMetadata.sidebarS.name} / 작성일: {formData.fieldMetadata.sidebarS.time}
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-[15px] font-bold">Objective</span>
+            <span className="text-sm font-bold">Objective</span>
             <AutoHeightTextarea 
               value={formData.sidebarO || ''} 
               onChange={(e: any) => updateField('sidebarO', e.target.value)}
               className="w-full border-b border-black focus:outline-none bg-transparent py-1"
-              minHeight="32px"
+              minHeight="40px"
             />
+            {formData.fieldMetadata?.sidebarO && (
+              <div className="text-right text-[10px] text-gray-500 font-bold">
+                작성자: {formData.fieldMetadata.sidebarO.name} / 작성일: {formData.fieldMetadata.sidebarO.time}
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-[15px] font-bold">Assessment</span>
+            <span className="text-sm font-bold">Assessment</span>
             <AutoHeightTextarea 
               value={formData.sidebarA || ''} 
               onChange={(e: any) => updateField('sidebarA', e.target.value)}
               className="w-full border-b border-black focus:outline-none bg-transparent py-1"
-              minHeight="32px"
+              minHeight="40px"
             />
+            {formData.fieldMetadata?.sidebarA && (
+              <div className="text-right text-[10px] text-gray-500 font-bold">
+                작성자: {formData.fieldMetadata.sidebarA.name} / 작성일: {formData.fieldMetadata.sidebarA.time}
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-[15px] font-bold">Plan</span>
+            <span className="text-sm font-bold">Plan</span>
             <AutoHeightTextarea 
               value={formData.sidebarP || ''} 
               onChange={(e: any) => updateField('sidebarP', e.target.value)}
               className="w-full border-b border-black focus:outline-none bg-transparent py-1"
-              minHeight="32px"
+              minHeight="40px"
             />
+            {formData.fieldMetadata?.sidebarP && (
+              <div className="text-right text-[10px] text-gray-500 font-bold">
+                작성자: {formData.fieldMetadata.sidebarP.name} / 작성일: {formData.fieldMetadata.sidebarP.time}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -4434,7 +4670,7 @@ export default function App() {
           </div>
 
           <div className="mt-12 bg-white border-4 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
-            <h3 className="font-black text-xl mb-4 border-b-2 border-black pb-2">최근 처방 내역 (Recent Orders)</h3>
+            <h3 className="font-black text-sm mb-4 border-b-2 border-black pb-2">최근 처방 내역 (Recent Orders)</h3>
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="bg-gray-100 border-b-2 border-black">
@@ -4484,7 +4720,7 @@ export default function App() {
     return (
       <div className="flex-1 p-8 bg-gray-100 overflow-y-auto font-['Gulim','굴림',sans-serif]">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl font-black mb-8 border-b-4 border-black pb-2 flex items-center gap-2">
+          <h2 className="text-sm font-black mb-8 border-b-4 border-black pb-2 flex items-center gap-2">
             <Users size={32} /> 지원부서 (Support Department)
           </h2>
           
@@ -4504,19 +4740,19 @@ export default function App() {
                     </button>
                   )}
                 </div>
-                <h3 className="font-black text-lg mb-2">{item.title}</h3>
-                <p className="text-sm text-gray-600 font-bold mb-4 flex-1">부서별 지원 요청 및 협업을 관리합니다.</p>
+                <h3 className="font-black text-sm mb-2">{item.title}</h3>
+                <p className="text-base text-gray-600 font-bold mb-4 flex-1">부서별 지원 요청 및 협업을 관리합니다.</p>
                 
                 {activeSupportRequestForm === item.id && (
                   <div className="mt-4 pt-4 border-t-2 border-black space-y-3">
                     <RichEditor 
-                      height="100px"
+                      height="120px"
                       placeholder="요청 내용을 입력하세요..."
                       value={supportInputs[item.id] || ''}
                       onChange={(val) => setSupportInputs(prev => ({ ...prev, [item.id]: val }))}
                     />
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => setActiveSupportRequestForm(null)} className="text-[11px] font-bold underline">취소</button>
+                      <button onClick={() => setActiveSupportRequestForm(null)} className="text-[13px] font-bold underline">취소</button>
                       <button 
                         onClick={() => {
                           const content = supportInputs[item.id];
@@ -4534,7 +4770,7 @@ export default function App() {
                             setActiveSupportRequestForm(null);
                           }
                         }}
-                        className="bg-black text-white px-3 py-1 text-[11px] font-bold"
+                        className="bg-black text-white px-3 py-1 text-[13px] font-bold"
                       >
                         요청 보내기
                       </button>
@@ -4546,8 +4782,8 @@ export default function App() {
           </div>
 
           <div className="mt-12 bg-white border-4 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
-            <h3 className="font-black text-xl mb-4 border-b-2 border-black pb-2">지원 요청 목록 (Request List)</h3>
-            <table className="w-full border-collapse text-sm">
+            <h3 className="font-black text-sm mb-4 border-b-2 border-black pb-2">지원 요청 목록 (Request List)</h3>
+            <table className="w-full border-collapse text-base">
               <thead>
                 <tr className="bg-gray-100 border-b-2 border-black">
                   <th className="p-2 text-left border-r-2 border-black">요청일시</th>
@@ -4564,7 +4800,7 @@ export default function App() {
                       <td className="p-2 border-r-2 border-black">{req.dept}</td>
                       <td className="p-2 border-r-2 border-black font-bold">{req.content}</td>
                       <td className="p-2">
-                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[11px] font-bold">{req.status}</span>
+                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[13px] font-bold">{req.status}</span>
                       </td>
                     </tr>
                   ))
@@ -4619,74 +4855,305 @@ export default function App() {
         );
       case 'surgery':
         return (
-          <div className="flex-1 flex gap-10 p-4 bg-white overflow-hidden">
-            <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-              <div className="border-2 border-black p-2 bg-gray-100 grid grid-cols-2 gap-x-4 gap-y-2 shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-24 font-bold text-sm">성명</span>
-                  <input type="text" value={formData.name} onChange={(e) => updateField('name', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" spellCheck={false} />
+          <div className="flex-1 flex flex-col bg-white font-['Gulim','굴림',sans-serif] overflow-hidden">
+            {/* Header */}
+            <div className="bg-[#ff80ff] text-white px-4 py-1 text-lg font-bold shrink-0">
+              · 수술기록
+            </div>
+
+            <div className="flex-1 overflow-y-auto flex">
+              {/* Left Column */}
+              <div className="w-[350px] border-r border-gray-300 flex flex-col">
+                <div className="bg-[#b3b3b3] text-white px-4 py-1 text-sm font-bold">
+                  작성일
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-24 font-bold text-sm">환자번호</span>
-                  <input type="text" value={formData.chartNo} onChange={(e) => updateField('chartNo', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" spellCheck={false} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-24 font-bold text-sm">나이/성별</span>
-                  <input type="text" value={`${formData.age}/${formData.gender}`} readOnly className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none bg-gray-200" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-24 font-bold text-sm">병실/주치의</span>
-                  <input type="text" value={`${formData.room}/${formData.doctor}`} readOnly className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none bg-gray-200" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-24 font-bold text-sm">집도의</span>
-                  <input type="text" value={formData.surgeryAttending} onChange={(e) => updateField('surgeryAttending', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" spellCheck={false} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-24 font-bold text-sm">어시스트</span>
-                  <input type="text" value={formData.surgeryAssistant} onChange={(e) => updateField('surgeryAssistant', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" spellCheck={false} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-24 font-bold text-sm">마취과</span>
-                  <input type="text" value={formData.surgeryAnesthesiaDept} onChange={(e) => updateField('surgeryAnesthesiaDept', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" spellCheck={false} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-24 font-bold text-sm">수술명</span>
-                  <input type="text" value={formData.surgeryName} onChange={(e) => updateField('surgeryName', e.target.value)} className="flex-1 border-2 border-black px-2 py-1 text-sm focus:outline-none" spellCheck={false} />
+                <div className="p-4 flex flex-col gap-6">
+                  {/* Surgery Basic Info */}
+                  <div className="flex flex-col">
+                    <div className="bg-[#ff80ff] text-black px-4 py-1 text-lg font-bold mb-2">
+                      수술 기본정보
+                    </div>
+                    <div className="flex flex-col gap-2 px-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold w-16">수술일:</span>
+                        <input 
+                          type="text" 
+                          value={formData.surgeryDate} 
+                          onChange={(e) => updateField('surgeryDate', e.target.value)}
+                          className="flex-1 border-b border-black focus:outline-none text-base"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold w-16">집도의:</span>
+                        <input 
+                          type="text" 
+                          value={formData.surgeryAttending} 
+                          onChange={(e) => updateField('surgeryAttending', e.target.value)}
+                          className="flex-1 border-b border-black focus:outline-none text-base"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold w-16">보조의:</span>
+                        <input 
+                          type="text" 
+                          value={formData.surgeryAssistant} 
+                          onChange={(e) => updateField('surgeryAssistant', e.target.value)}
+                          className="flex-1 border-b border-black focus:outline-none text-base"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold w-16">마취방법:</span>
+                        <input 
+                          type="text" 
+                          value={formData.surgeryAnesthesia} 
+                          onChange={(e) => updateField('surgeryAnesthesia', e.target.value)}
+                          className="flex-1 border-b border-black focus:outline-none text-base"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pre-op Diagnosis */}
+                  <div className="flex flex-col">
+                    <div className="bg-[#ff80ff] text-black px-4 py-1 text-lg font-bold mb-2">
+                      수술 전 진단명
+                    </div>
+                    <input 
+                      type="text" 
+                      value={formData.surgeryPreOpDx} 
+                      onChange={(e) => updateField('surgeryPreOpDx', e.target.value)}
+                      className="mx-2 border-b border-black focus:outline-none text-base"
+                    />
+                  </div>
+
+                  {/* Post-op Diagnosis */}
+                  <div className="flex flex-col">
+                    <div className="bg-[#ff80ff] text-black px-4 py-1 text-lg font-bold mb-2">
+                      수술 후 진단명
+                    </div>
+                    <input 
+                      type="text" 
+                      value={formData.surgeryPostOpDx} 
+                      onChange={(e) => updateField('surgeryPostOpDx', e.target.value)}
+                      className="mx-2 border-b border-black focus:outline-none text-base"
+                    />
+                  </div>
+
+                  {/* Surgery Name */}
+                  <div className="flex flex-col">
+                    <div className="bg-[#ff80ff] text-black px-4 py-1 text-lg font-bold mb-2">
+                      수술명
+                    </div>
+                    <input 
+                      type="text" 
+                      value={formData.surgeryName} 
+                      onChange={(e) => updateField('surgeryName', e.target.value)}
+                      className="mx-2 border-b border-black focus:outline-none text-base"
+                    />
+                  </div>
+
+                  {/* Intra-op Notes */}
+                  <div className="flex flex-col">
+                    <div className="bg-[#ff80ff] text-black px-4 py-1 text-lg font-bold mb-2">
+                      수술 중 특이사황
+                    </div>
+                    <textarea 
+                      value={formData.surgerySpecialNote} 
+                      onChange={(e) => updateField('surgerySpecialNote', e.target.value)}
+                      className="mx-2 border-b border-black focus:outline-none text-base resize-none h-12"
+                    />
+                  </div>
+
+                  {/* Surgery Process */}
+                  <div className="flex flex-col">
+                    <div className="bg-[#ff80ff] text-black px-4 py-1 text-lg font-bold mb-2">
+                      수술과정
+                    </div>
+                    <textarea 
+                      value={formData.surgeryProcess} 
+                      onChange={(e) => updateField('surgeryProcess', e.target.value)}
+                      className="mx-2 border-b border-black focus:outline-none text-base resize-none h-12"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
-                <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">
-                  수술/마취기록
+              {/* Right Column */}
+              <div className="flex-1 flex flex-col">
+                <div className="bg-[#b3b3b3] text-white px-4 py-1 text-base font-bold">
+                  환자정보
                 </div>
-                <div className="p-2 flex flex-col h-full">
-                  <AutoHeightTextarea 
-                    value={formData.surgeryOpLabNote}
-                    onChange={(e: any) => updateField('surgeryOpLabNote', e.target.value)}
-                    placeholder="수술/마취기록을 입력하세요..."
-                    className="w-full p-2 focus:outline-none block flex-1" 
-                    minHeight="200px"
-                  />
-                </div>
-              </div>
+                <div className="p-4">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-[13px] mb-4">
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold">성명:</span>
+                      <span className="border-b border-black flex-1 min-w-[150px]">{formData.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold">진료과:</span>
+                      <span className="border-b border-black flex-1 min-w-[150px]">{formData.dept}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold">차트번호:</span>
+                      <span className="border-b border-black flex-1 min-w-[150px]">{formData.chartNo}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold">혈액형:</span>
+                      <span className="border-b border-black flex-1 min-w-[150px]">{formData.bloodType}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold">키:</span>
+                      <span className="border-b border-black flex-1 min-w-[150px]">{formData.height} cm</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold">나이:</span>
+                      <span className="border-b border-black flex-1 min-w-[150px]">{formData.age}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold">체중:</span>
+                      <span className="border-b border-black flex-1 min-w-[150px]">{formData.weight} kg</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold">병실:</span>
+                      <span className="border-b border-black flex-1 min-w-[150px]">{formData.room}</span>
+                    </div>
+                  </div>
 
-              <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
-                <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10">
-                  특이사항
-                </div>
-                <div className="p-2 flex flex-col h-full">
-                  <AutoHeightTextarea 
-                    value={formData.surgerySpecialNote}
-                    onChange={(e: any) => updateField('surgerySpecialNote', e.target.value)}
-                    placeholder="특이사항을 입력하세요..."
-                    className="w-full p-2 focus:outline-none block flex-1" 
-                    minHeight="200px"
-                  />
+                  <div className="bg-[#b3b3b3] text-white px-4 py-1 text-sm font-bold mb-4">
+                    수술정보
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-[#ff80ff] text-black px-2 py-0.5 text-sm font-bold w-24 text-center">장기명</span>
+                      <input 
+                        type="text" 
+                        value={formData.surgeryOrganName} 
+                        onChange={(e) => updateField('surgeryOrganName', e.target.value)}
+                        className="flex-1 border-b border-black focus:outline-none text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold">-</span>
+                      <input 
+                        type="text" 
+                        className="flex-1 border-b border-black focus:outline-none text-sm"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="bg-[#ff80ff] text-black px-2 py-0.5 text-sm font-bold w-32 text-center">혈관 클램프 시간</span>
+                      <input 
+                        type="text" 
+                        value={formData.surgeryClampTime} 
+                        onChange={(e) => updateField('surgeryClampTime', e.target.value)}
+                        className="flex-1 border-b border-black focus:outline-none text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-[#ff80ff] text-black px-2 py-0.5 text-sm font-bold w-24 text-center">적응시간</span>
+                      <input 
+                        type="text" 
+                        value={formData.surgeryAdaptationTime} 
+                        onChange={(e) => updateField('surgeryAdaptationTime', e.target.value)}
+                        className="flex-1 border-b border-black focus:outline-none text-sm"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="bg-[#ff80ff] text-black px-2 py-0.5 text-sm font-bold w-24 text-center">마취시간</span>
+                      <input 
+                        type="text" 
+                        value={formData.surgeryAnesthesiaTime} 
+                        onChange={(e) => updateField('surgeryAnesthesiaTime', e.target.value)}
+                        className="flex-1 border-b border-black focus:outline-none text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-[#ff80ff] text-black px-2 py-0.5 text-sm font-bold w-32 text-center">냉장보관시간</span>
+                      <input 
+                        type="text" 
+                        value={formData.surgeryColdStorageTime} 
+                        onChange={(e) => updateField('surgeryColdStorageTime', e.target.value)}
+                        className="flex-1 border-b border-black focus:outline-none text-sm"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="bg-[#ff80ff] text-black px-2 py-0.5 text-sm font-bold w-32 text-center">냉장보관시간</span>
+                      <input 
+                        type="text" 
+                        value={formData.surgeryColdStorageTime2} 
+                        onChange={(e) => updateField('surgeryColdStorageTime2', e.target.value)}
+                        className="flex-1 border-b border-black focus:outline-none text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-[#ff80ff] text-black px-2 py-0.5 text-sm font-bold w-32 text-center">냉장보관시간</span>
+                      <input 
+                        type="text" 
+                        value={formData.surgeryColdStorageTime3} 
+                        onChange={(e) => updateField('surgeryColdStorageTime3', e.target.value)}
+                        className="flex-1 border-b border-black focus:outline-none text-sm"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="bg-[#ff80ff] text-black px-2 py-0.5 text-sm font-bold w-40 text-center">혈액검사 : 채혈시간</span>
+                      <input 
+                        type="text" 
+                        value={formData.surgeryBloodCollectionTime} 
+                        onChange={(e) => updateField('surgeryBloodCollectionTime', e.target.value)}
+                        className="flex-1 border-b border-black focus:outline-none text-sm"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="bg-[#ff80ff] text-black px-2 py-0.5 text-sm font-bold w-24 text-center">봉합과 사용</span>
+                      <div className="flex items-center gap-4 px-2">
+                        <label className="flex items-center gap-1 text-[13px]">
+                          <input type="checkbox" checked={formData.surgerySutureUsed === 'Normal'} onChange={() => updateField('surgerySutureUsed', 'Normal')} /> Normal
+                        </label>
+                        <label className="flex items-center gap-1 text-[13px]">
+                          <input type="checkbox" checked={formData.surgerySutureUsed === 'less'} onChange={() => updateField('surgerySutureUsed', 'less')} /> less
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-4 px-2">
+                        <label className="flex items-center gap-1 text-[13px]">
+                          <input type="checkbox" checked={formData.surgerySutureUsed === 'plenty'} onChange={() => updateField('surgerySutureUsed', 'plenty')} /> plenty
+                        </label>
+                        <input type="text" className="flex-1 border-b border-black focus:outline-none text-sm" />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="bg-[#ff80ff] text-black px-2 py-0.5 text-sm font-bold w-24 text-center">혈액 손실량</span>
+                      <input 
+                        type="text" 
+                        value={formData.surgeryBloodLoss} 
+                        onChange={(e) => updateField('surgeryBloodLoss', e.target.value)}
+                        className="flex-1 border-b border-black focus:outline-none text-sm"
+                      />
+                      <span className="text-sm">(mg)</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mt-6">
+                    <div className="flex flex-col gap-2">
+                      <span className="bg-[#ff80ff] text-black px-2 py-0.5 text-sm font-bold w-24 text-center">수술 전 사진</span>
+                      <div className="border-2 border-black h-40 flex items-center justify-center text-base font-bold cursor-pointer hover:bg-gray-50">
+                        사진 업로드
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <span className="bg-[#ff80ff] text-black px-2 py-0.5 text-sm font-bold w-24 text-center">수술 후 사진</span>
+                      <div className="border-2 border-black h-40 flex items-center justify-center text-base font-bold cursor-pointer hover:bg-gray-50">
+                        사진 업로드
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            {renderRightSidebar(false)}
           </div>
         );
       case 'consult':
@@ -5475,10 +5942,10 @@ export default function App() {
             <div className="w-[450px] flex flex-col gap-4 shrink-0 overflow-y-auto pr-2">
               <div className="border-2 border-black flex flex-col">
                 <div className="mb-4">
-                  <div className="text-xl font-bold text-center mb-1">경과기록지</div>
+                  <div className="text-sm font-bold text-center mb-1">경과기록지</div>
                   <div className="border-b-2 border-black w-full"></div>
                 </div>
-                <div className="bg-[#5a9a9a] text-white font-bold p-2 text-lg">환자기본정보</div>
+                <div className="bg-[#5a9a9a] text-white font-bold p-2 text-sm">환자기본정보</div>
                 <div className="p-4 flex flex-col gap-6">
                   <InputField label="성명" value={formData.name} onChange={(v) => updateField('name', v)} />
                   <InputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} />
@@ -5496,7 +5963,7 @@ export default function App() {
                   </div>
 
                   <div className="mt-4">
-                    <div className="bg-[#5a9a9a] text-white font-bold p-2 text-lg flex items-center justify-between">
+                    <div className="bg-[#5a9a9a] text-white font-bold p-2 text-sm flex items-center justify-between">
                       <span>V/S</span>
                       <span>&gt;</span>
                     </div>
@@ -5904,13 +6371,13 @@ export default function App() {
 
     const UnderlineInput = ({ label, value, onChange, width = "w-full", placeholder = "" }: any) => (
       <div className={`flex items-center gap-2 ${width}`}>
-        {label && <span className="text-gray-600 shrink-0">{label}</span>}
+        {label && <span className="text-gray-600 shrink-0 text-sm font-bold">{label}</span>}
         <input
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="flex-1 border-b border-gray-400 focus:border-blue-500 outline-none px-1 py-0.5 bg-transparent text-[13px]"
+          className="flex-1 border-b border-gray-400 focus:border-blue-500 outline-none px-1 py-0.5 bg-transparent text-base font-bold"
           spellCheck={false}
         />
       </div>
@@ -6959,7 +7426,7 @@ export default function App() {
             {NURSING_SIDEBAR_ITEMS.map(item => (
               <div key={item.id}>
                 <button
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/10 transition-colors text-[13px] text-left ${currentTheme.name === 'Pink' ? 'text-black' : 'text-white'} ${formData.nursingSubTab === item.label ? 'bg-white/20 font-bold' : ''}`}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/10 transition-colors text-sm text-left ${currentTheme.name === 'Pink' ? 'text-black' : 'text-white'} ${formData.nursingSubTab === item.label ? 'bg-white/20 font-bold' : ''}`}
                   onClick={() => {
                     if (item.hasSub) {
                       setNursingSidebarOpen(prev => ({ ...prev, [item.id]: !prev[item.id] }));
@@ -6969,11 +7436,11 @@ export default function App() {
                     }
                   }}
                 >
-                  <span className="text-base w-5 text-center">{item.icon}</span>
+                  <span className="text-lg w-5 text-center">{item.icon}</span>
                   <span className="flex-1">{item.label}</span>
                   {item.hasSub && (
                     <ChevronDown 
-                      size={14} 
+                      size={16} 
                       className={`opacity-50 transition-transform ${nursingSidebarOpen[item.id] ? 'rotate-180' : ''}`} 
                     />
                   )}
@@ -6983,7 +7450,7 @@ export default function App() {
                     {item.subItems.map(sub => (
                       <div key={sub.id}>
                         <button
-                          className={`w-full flex items-center gap-3 pl-10 pr-4 py-2 hover:bg-white/10 transition-colors text-[12px] text-left ${currentTheme.name === 'Pink' ? (formData.nursingSubTab === sub.label ? 'bg-white/20 font-bold text-black' : 'text-black/80') : (formData.nursingSubTab === sub.label ? 'bg-white/20 font-bold text-white' : 'text-white/80')}`}
+                          className={`w-full flex items-center gap-3 pl-10 pr-4 py-2 hover:bg-white/10 transition-colors text-xs text-left ${currentTheme.name === 'Pink' ? (formData.nursingSubTab === sub.label ? 'bg-white/20 font-bold text-black' : 'text-black/80') : (formData.nursingSubTab === sub.label ? 'bg-white/20 font-bold text-white' : 'text-white/80')}`}
                           onClick={() => {
                             if (sub.hasSub) {
                               setNursingSidebarOpen(prev => ({ ...prev, [sub.id]: !prev[sub.id] }));
@@ -6993,11 +7460,11 @@ export default function App() {
                             }
                           }}
                         >
-                          <span className="text-sm w-4 text-center">{sub.icon}</span>
+                          <span className="text-base w-4 text-center">{sub.icon}</span>
                           <span className="flex-1">{sub.label}</span>
                           {sub.hasSub && (
                             <ChevronDown 
-                              size={12} 
+                              size={14} 
                               className={`opacity-50 transition-transform ${nursingSidebarOpen[sub.id] ? 'rotate-180' : ''}`} 
                             />
                           )}
@@ -7013,7 +7480,7 @@ export default function App() {
                                   setNursingIsWriting(false);
                                 }}
                               >
-                                <span className="text-xs w-4 text-center">{ss.icon}</span>
+                                <span className="text-sm w-4 text-center">{ss.icon}</span>
                                 <span className="flex-1">{ss.label}</span>
                               </button>
                             ))}
@@ -7043,20 +7510,20 @@ export default function App() {
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden bg-white">
           {/* Top Patient Info Header */}
-          <div className="bg-[#f2f7f7] p-4 border-b border-gray-300 grid grid-cols-4 gap-x-12 gap-y-2 text-[13px]">
+          <div className="bg-[#f2f7f7] p-4 border-b border-gray-300 grid grid-cols-4 gap-x-12 gap-y-4 text-base">
              <UnderlineInput label="등록번호" value={formData.chartNo} onChange={(v: string) => updateField('chartNo', v)} />
              <UnderlineInput label="키" value={formData.height} onChange={(v: string) => updateField('height', v)} />
              <UnderlineInput label="진료과" value={formData.dept} onChange={(v: string) => updateField('dept', v)} />
              <UnderlineInput label="주진단코드" value={formData.mainDxCode} onChange={(v: string) => updateField('mainDxCode', v)} />
              
              <div className="flex items-start gap-4">
-               <span className="text-gray-600 w-16">이름</span>
+               <span className="text-gray-600 w-16 font-bold">이름</span>
                <div className="flex flex-col flex-1">
                  <input 
                    type="text" 
                    value={formData.name} 
                    onChange={(e) => updateField('name', e.target.value)}
-                   className="font-bold border-b border-gray-400 focus:border-blue-500 outline-none bg-transparent"
+                   className="font-bold border-b border-gray-400 focus:border-blue-500 outline-none bg-transparent text-base"
                    spellCheck={false}
                  />
 
@@ -7068,19 +7535,19 @@ export default function App() {
 
              <UnderlineInput label="나이" value={formData.age} onChange={(v: string) => updateField('age', v)} />
              <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">HOD</span>
-               <span className="font-bold">{calculateDays(formData.admissionDate, true)}</span>
+               <span className="text-gray-600 w-16 font-bold">HOD</span>
+               <span className="font-bold text-base">{calculateDays(formData.admissionDate, true)}</span>
              </div>
              <UnderlineInput label="병실" value={formData.room} onChange={(v: string) => updateField('room', v)} />
              <UnderlineInput label="부진단코드" value={formData.subDxCode} onChange={(v: string) => updateField('subDxCode', v)} />
 
              <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">성별</span>
-               <span className="font-bold">{formData.gender === 'M' ? '남자' : '여자'}</span>
+               <span className="text-gray-600 w-16 font-bold">성별</span>
+               <span className="font-bold text-base">{formData.gender === 'M' ? '남자' : '여자'}</span>
              </div>
              <div className="flex items-center gap-4">
-               <span className="text-gray-600 w-16">POD</span>
-               <span className="font-bold">{calculateDays(formData.surgeryDate, false)}</span>
+               <span className="text-gray-600 w-16 font-bold">POD</span>
+               <span className="font-bold text-base">{calculateDays(formData.surgeryDate, false)}</span>
              </div>
              <UnderlineInput label="담당교수" value={formData.assignedProfessor} onChange={(v: string) => updateField('assignedProfessor', v)} />
              <UnderlineInput label="부진단명" value={formData.subDxName} onChange={(v: string) => updateField('subDxName', v)} />
@@ -7159,6 +7626,14 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      {/* Saved Toast */}
+      {showSavedToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-black/80 text-white px-8 py-4 rounded-full font-bold z-[9999] shadow-lg flex items-center gap-3 animate-bounce text-lg">
+          <Check size={32} className="text-green-400" />
+          {savedToastMessage}
+        </div>
+      )}
+
       <div 
         style={{ backgroundColor: currentTheme.bg }}
         className="flex flex-col h-screen min-w-[1200px] font-sans overflow-hidden"
@@ -7171,7 +7646,7 @@ export default function App() {
               setActiveTopMenu('의사처방');
               setActiveTab('doctor_prescription');
             }}
-            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '의사처방' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+            className={`font-bold text-xs px-3 py-0.5 rounded transition-all ${activeTopMenu === '의사처방' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
             의사처방
           </button>
@@ -7180,7 +7655,7 @@ export default function App() {
               setActiveTopMenu('E.M.R');
               setActiveTab('admission');
             }}
-            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === 'E.M.R' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+            className={`font-bold text-sm px-3 py-0.5 rounded transition-all ${activeTopMenu === 'E.M.R' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
             E.M.R
           </button>
@@ -7189,7 +7664,7 @@ export default function App() {
               setActiveTopMenu('간호');
               setActiveTab('nursing');
             }}
-            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '간호' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+            className={`font-bold text-sm px-3 py-0.5 rounded transition-all ${activeTopMenu === '간호' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
             간호
           </button>
@@ -7198,7 +7673,7 @@ export default function App() {
               setActiveTopMenu('지원부서');
               setActiveTab('support_dept');
             }}
-            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '지원부서' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+            className={`font-bold text-sm px-3 py-0.5 rounded transition-all ${activeTopMenu === '지원부서' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
             지원부서
           </button>
@@ -7206,7 +7681,7 @@ export default function App() {
             onClick={() => {
               setActiveTopMenu('제증명 관리');
             }}
-            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '제증명 관리' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+            className={`font-bold text-sm px-3 py-0.5 rounded transition-all ${activeTopMenu === '제증명 관리' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
             제증명 관리
           </button>
@@ -7219,14 +7694,14 @@ export default function App() {
                 setShowSettings(true);
               }
             }}
-            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '환경설정' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+            className={`font-bold text-sm px-3 py-0.5 rounded transition-all ${activeTopMenu === '환경설정' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
             환경설정
           </button>
           <div className="relative">
             <button 
               onClick={() => setShowActiveWindowMenu(!showActiveWindowMenu)}
-              className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all flex items-center gap-1 ${isActiveWindowOn ? 'bg-blue-600 text-white' : 'text-black hover:bg-gray-300'}`}
+              className={`font-bold text-sm px-3 py-0.5 rounded transition-all flex items-center gap-1 ${isActiveWindowOn ? 'bg-blue-600 text-white' : 'text-black hover:bg-gray-300'}`}
             >
               활성창
               <ChevronDown size={14} />
@@ -7261,7 +7736,7 @@ export default function App() {
               setFormData(INITIAL_FORM_DATA);
               setActiveTab('none');
             }}
-            className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === '종료' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
+            className={`font-bold text-sm px-3 py-0.5 rounded transition-all ${activeTopMenu === '종료' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
             종료
           </button>
@@ -7587,19 +8062,19 @@ export default function App() {
         <div className="flex items-center gap-1 ml-1">
           <button 
             onClick={() => setShowSettings(true)}
-            className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
+            className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-xs font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
           >
             <Settings size={16} /> 환경설정
           </button>
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0] text-red-600"
+            className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-xs font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0] text-red-600"
           >
             <LogOut size={16} /> 로그아웃
           </button>
           <button 
             onClick={() => handleSave()}
-            className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-[13px] font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
+            className="flex items-center gap-1 bg-[#E0E0E0] border border-[#707070] px-3 py-2 text-xs font-bold hover:bg-[#F0F0F0] active:bg-[#D0D0D0]"
           >
             <Save size={16} /> 저장
           </button>
@@ -8262,13 +8737,13 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
           <table className="w-full border-collapse border-2 border-black">
             <thead>
               <tr className="bg-gray-100 border-b-2 border-black">
-                <th className="border border-black p-1 text-[10px] w-12 text-center">No.</th>
-                <th className="border border-black p-1 text-[10px] w-20 text-center">종류</th>
-                <th className="border border-black p-1 text-[10px] w-24 text-center">처방일자</th>
-                <th className="border border-black p-1 text-[10px] w-20 text-center">처방자</th>
-                <th className="border border-black p-1 text-[10px] text-center">내용</th>
-                <th className="border border-black p-1 text-[10px] w-40 text-center">주의사항</th>
-                <th className="border border-black p-1 text-[10px] w-24 text-center">상태</th>
+                <th className="border border-black p-1 text-[12px] w-12 text-center">No.</th>
+                <th className="border border-black p-1 text-[12px] w-20 text-center">종류</th>
+                <th className="border border-black p-1 text-[12px] w-24 text-center">처방일자</th>
+                <th className="border border-black p-1 text-[12px] w-20 text-center">처방자</th>
+                <th className="border border-black p-1 text-[12px] text-center">내용</th>
+                <th className="border border-black p-1 text-[12px] w-40 text-center">주의사항</th>
+                <th className="border border-black p-1 text-[12px] w-24 text-center">상태</th>
               </tr>
             </thead>
             <tbody>
@@ -8277,14 +8752,14 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
                   const statusInfo = PRESCRIPTION_STATUSES.find(s => s.name === record.status) || PRESCRIPTION_STATUSES[0];
                   return (
                     <tr key={record.id} className="border-b border-black">
-                      <td className="border border-black p-1 text-[10px] text-center font-bold">{i + 1}</td>
-                      <td className="border border-black p-1 text-[10px] text-center">{record.type}</td>
-                      <td className="border border-black p-1 text-[10px] text-center">{record.date}</td>
-                      <td className="border border-black p-1 text-[10px] text-center">{record.prescriber}</td>
-                      <td className="border border-black p-1 text-[10px] whitespace-pre-wrap">{record.content}</td>
-                      <td className="border border-black p-1 text-[10px] whitespace-pre-wrap">{record.precautions}</td>
+                      <td className="border border-black p-1 text-[12px] text-center font-bold">{i + 1}</td>
+                      <td className="border border-black p-1 text-[12px] text-center">{record.type}</td>
+                      <td className="border border-black p-1 text-[12px] text-center">{record.date}</td>
+                      <td className="border border-black p-1 text-[12px] text-center">{record.prescriber}</td>
+                      <td className="border border-black p-1 text-[12px] whitespace-pre-wrap">{record.content}</td>
+                      <td className="border border-black p-1 text-[12px] whitespace-pre-wrap">{record.precautions}</td>
                       <td 
-                        className="border border-black p-1 text-[10px] text-center font-bold"
+                        className="border border-black p-1 text-[12px] text-center font-bold"
                         style={{ backgroundColor: statusInfo.color, color: statusInfo.textColor }}
                       >
                         {record.status}
@@ -8295,13 +8770,13 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
               ) : (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    <td className="border border-black p-1 text-[10px] h-8"></td>
-                    <td className="border border-black p-1 text-[10px] h-8"></td>
-                    <td className="border border-black p-1 text-[10px] h-8"></td>
-                    <td className="border border-black p-1 text-[10px] h-8"></td>
-                    <td className="border border-black p-1 text-[10px] h-8"></td>
-                    <td className="border border-black p-1 text-[10px] h-8"></td>
-                    <td className="border border-black p-1 text-[10px] h-8"></td>
+                    <td className="border border-black p-1 text-[12px] h-8"></td>
+                    <td className="border border-black p-1 text-[12px] h-8"></td>
+                    <td className="border border-black p-1 text-[12px] h-8"></td>
+                    <td className="border border-black p-1 text-[12px] h-8"></td>
+                    <td className="border border-black p-1 text-[12px] h-8"></td>
+                    <td className="border border-black p-1 text-[12px] h-8"></td>
+                    <td className="border border-black p-1 text-[12px] h-8"></td>
                   </tr>
                 ))
               )}

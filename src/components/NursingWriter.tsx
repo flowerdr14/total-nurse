@@ -145,7 +145,7 @@ const NursingWriter: React.FC<NursingWriterProps> = ({ onSave }) => {
 
   return (
     <div className="flex flex-col h-full bg-white border-t-2 border-black">
-      <div className="bg-[#999] text-white px-3 py-1 font-bold text-lg flex justify-between items-center">
+      <div className="bg-[#999] text-white px-3 py-1 font-bold text-sm flex justify-between items-center">
         <span>간호기록 작성</span>
         <input 
           type="time" 
