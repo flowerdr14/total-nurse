@@ -1545,11 +1545,17 @@ export default function App() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const user = ACCOUNTS[loginId];
-    if (user && user.pw === loginPw) {
+    const cleanId = loginId.trim().toLowerCase();
+    const cleanPw = loginPw.trim();
+    
+    // Find matching account key (case-insensitive and trimmed)
+    const matchedKey = Object.keys(ACCOUNTS).find(k => k.trim().toLowerCase() === cleanId);
+    const user = matchedKey ? ACCOUNTS[matchedKey] : null;
+
+    if (user && user.pw.trim() === cleanPw) {
       setIsLoggedIn(true);
       if (autoLogin) {
-        localStorage.setItem('autoLoginUser', JSON.stringify({ id: loginId, pw: loginPw }));
+        localStorage.setItem('autoLoginUser', JSON.stringify({ id: matchedKey, pw: cleanPw }));
       } else {
         localStorage.removeItem('autoLoginUser');
       }
@@ -1578,11 +1584,16 @@ export default function App() {
     if (savedUser) {
       try {
         const { id, pw } = JSON.parse(savedUser);
-        const user = ACCOUNTS[id];
-        if (user && user.pw === pw) {
-          setLoginId(id);
+        const cleanId = id.trim().toLowerCase();
+        const cleanPw = pw.trim();
+        const matchedKey = Object.keys(ACCOUNTS).find(k => k.trim().toLowerCase() === cleanId);
+        const user = matchedKey ? ACCOUNTS[matchedKey] : null;
+        if (user && user.pw.trim() === cleanPw) {
+          setLoginId(matchedKey || id);
           setLoginPw(pw);
           setIsLoggedIn(true);
+        } else {
+          localStorage.removeItem('autoLoginUser');
         }
       } catch (e) {
         console.error("Auto-login error:", e);
