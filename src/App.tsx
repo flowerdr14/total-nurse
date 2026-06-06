@@ -1419,6 +1419,20 @@ const generateDeathCertificateHTML = (cert: CertificateRecord) => {
   `;
 };
 
+const UnderlineInput = ({ label, value, onChange, width = "w-full", placeholder = "" }: any) => (
+  <div className={`flex items-center gap-2 ${width}`}>
+    {label && <span className="text-gray-600 shrink-0">{label}</span>}
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="flex-1 border-b border-gray-400 focus:border-blue-500 outline-none px-1 py-0.5 bg-transparent text-[13px]"
+      spellCheck={false}
+    />
+  </div>
+);
+
 export default function App() {
   const [activeTopMenu, setActiveTopMenu] = useState<string>('E.M.R');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -6107,20 +6121,6 @@ export default function App() {
       }
     };
 
-    const UnderlineInput = ({ label, value, onChange, width = "w-full", placeholder = "" }: any) => (
-      <div className={`flex items-center gap-2 ${width}`}>
-        {label && <span className="text-gray-600 shrink-0">{label}</span>}
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="flex-1 border-b border-gray-400 focus:border-blue-500 outline-none px-1 py-0.5 bg-transparent text-[13px]"
-          spellCheck={false}
-        />
-      </div>
-    );
-
     const renderAdmissionNursingRecord = () => {
       return (
         <div className="flex-1 flex flex-col overflow-y-auto p-8 bg-white font-['Gulim','굴림',sans-serif]">
@@ -7654,16 +7654,23 @@ export default function App() {
                     const chartNo = p.chartNo || '';
                     const isDischarged = p.dischargeNote || p.dischargeReason || p.dischargeDiagnosis || p.dischargeCC || p.dischargeMainDx || p.dischargeDate || p.dischargeProgress || p.dischargeStatus || p.dischargePlan || (p.dischargeSoapBlocks && p.dischargeSoapBlocks.length > 0);
                     
+                    const lowerDept = dept.toLowerCase();
+                    const isOBGY = lowerDept.includes('ob') || lowerDept.includes('gy') || dept.includes('산부인과');
+                    const isPED = lowerDept.includes('ped') || lowerDept.includes('pes') || dept.includes('소아') || dept.includes('소청');
+
                     if (isDischarged) grouped['퇴원완료'].push(p);
                     else if (chartNo.startsWith('ER')) grouped['EM응급실'].push(p);
                     else if (room.includes('ICU')) grouped['ICU'].push(p);
                     else if (room.includes('PACU')) grouped['PACU'].push(p);
-                    else if (room.includes('101') || room.includes('102') || room.includes('103') || room.includes('104')) {
-                      if (dept === 'PED') grouped['PED100병동'].push(p);
-                      else if (dept === 'OB') grouped['OB100병동'].push(p);
+                    else if (
+                      room.includes('101') || room.includes('102') || room.includes('103') || room.includes('104') ||
+                      room.includes('105') || room.includes('106') || room.includes('107') || room.includes('108')
+                    ) {
+                      if (isPED) grouped['PED100병동'].push(p);
+                      else if (isOBGY) grouped['OB100병동'].push(p);
                       else grouped['100병동'].push(p);
                     }
-                    else if (dept === 'OB' && room.includes('산후')) grouped['OB산후병동'].push(p);
+                    else if (isOBGY && room.includes('산후')) grouped['OB산후병동'].push(p);
                     else grouped['기타'].push(p);
                   });
 
@@ -7676,9 +7683,9 @@ export default function App() {
                     
                     const capacities: Record<string, number> = {
                       'ICU': 6,
-                      '100병동': 4,
-                      'PED100병동': 4,
-                      'OB100병동': 2,
+                      '100병동': 12,
+                      'PED100병동': 12,
+                      'OB100병동': 12,
                       'OB산후병동': 2,
                       'PACU': 3,
                       'EM응급실': 6,
