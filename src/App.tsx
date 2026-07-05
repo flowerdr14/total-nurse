@@ -410,6 +410,14 @@ export interface Patient {
   subDxCode: string;
   subDxName: string;
   
+  // Medical Info
+  medicalDept?: string;
+  attendingProfessor?: string;
+  primaryPhysician?: string;
+  wardOutDate?: string;
+  wardOutTime?: string;
+  initialExamDate?: string;
+  
   // Discharge Nursing Record Fields
   dischargeType: string;
   dischargeFollowUpDate: string;
@@ -948,6 +956,12 @@ const INITIAL_FORM_DATA: Patient = {
   dischargeMedication: '',
   dietRecords: [],
   currentDiet: '일반식',
+  medicalDept: '',
+  attendingProfessor: '',
+  primaryPhysician: '',
+  wardOutDate: '',
+  wardOutTime: '',
+  initialExamDate: '',
   isFasting: false,
   dietNote: '',
   surgeryLabNote: '',
@@ -1000,9 +1014,7 @@ const INITIAL_FORM_DATA: Patient = {
   nursingNarrativeNotes: [],
   nursingStructuredRecords: [],
   nursingPrescriptionNote: '',
-  clinicalPathologyRecords: [
-    { id: '1', time: '09:00 AM', nameKo: '경피적혈액산소포화도측정[1일당]', nameEn: 'Percutaneous Blood O2 Saturation Monitoring' }
-  ],
+  clinicalPathologyRecords: [],
   imagingRecordItems: [],
   imagingImages: [],
   nursingSubTab: '간호 기록지',
@@ -1159,13 +1171,14 @@ const InputField = ({ label, value, onChange, readOnly = false, labelWidth = "w-
   </div>
 );
 
-const UnderlineInputField = ({ label, value, onChange, unit, labelWidth = "w-24" }: { label: string, value: string, onChange: (v: string) => void, unit?: string, labelWidth?: string }) => (
+const UnderlineInputField = ({ label, value, onChange, unit, labelWidth = "w-24", placeholder = "" }: { label: string, value: string, onChange: (v: string) => void, unit?: string, labelWidth?: string, placeholder?: string }) => (
   <div className="flex items-center gap-2 text-[14px]">
     <span className={`${labelWidth} font-bold shrink-0`}>{label}</span>
     <input 
       type="text" 
       value={value || ''} 
       onChange={(e) => onChange(e.target.value)} 
+      placeholder={placeholder}
       className="flex-1 border-b border-black focus:outline-none h-8 bg-transparent"
       spellCheck={false}
     />
@@ -1469,6 +1482,20 @@ export default function App() {
   const [showCalculator, setShowCalculator] = useState(false);
   const [printType, setPrintType] = useState<TabType | null>(null);
   const lastSyncedIdRef = useRef<string | null>(null);
+
+  const [showDietRequestModal, setShowDietRequestModal] = useState(false);
+  const [dietRequesterType, setDietRequesterType] = useState<'환자' | '보호자'>('환자');
+  const [dietRequestMeals, setDietRequestMeals] = useState({ breakfast: false, lunch: false, dinner: false });
+  const [dietRequestCalories, setDietRequestCalories] = useState('');
+  const [dietRequestBase, setDietRequestBase] = useState<Record<string, boolean>>({
+    NPO: false, SOW: false, AQ: false, LD: false, SD: false, SBD: false, RD: false, TD: false, 치료식: false, 소아: false
+  });
+  const [dietRequestTreatment, setDietRequestTreatment] = useState<Record<string, boolean>>({
+    '위절제밥': false, '위절제죽': false, '저섬유밥': false,
+    '신부전 밥': false, '신부전 죽': false, '신증후군 밥': false, '신증후군 죽': false, '신부전 당뇨 밥': false, '신부전 당뇨 죽': false, '혈액투석식 밥': false, '혈액투석식 죽': false, '복막투석식 밥': false,
+    '저단백 간질환 밥': false, '저단백 간질환 죽': false, '중단백 간질환 밥': false, '중단백 간질환 죽': false, '저단백 간질환당뇨 밥': false, '저단백 간질환당뇨 죽': false, '고단백 고열량 간질환 밥': false,
+    '저잔사 미음': false, '비만 수술 후 식사 (맑은 유동식)': false, '비만 수술 후 식사 (일반 유동식)': false
+  });
 
   const [nursingIsWriting, setNursingIsWriting] = useState(false);
   const [activeOrderForm, setActiveOrderForm] = useState<string | null>(null);
@@ -3727,6 +3754,64 @@ export default function App() {
       </div>
 
       <div className="flex flex-col gap-2">
+        <SectionHeader label="진료정보" />
+        <div className="flex flex-col gap-3 px-1">
+          <UnderlineInputField 
+            label="진료과" 
+            value={formData.medicalDept || ''} 
+            onChange={(v) => updateField('medicalDept', v)} 
+            labelWidth="w-24"
+          />
+          <UnderlineInputField 
+            label="담당교수" 
+            value={formData.attendingProfessor || ''} 
+            onChange={(v) => updateField('attendingProfessor', v)} 
+            labelWidth="w-24"
+          />
+          <UnderlineInputField 
+            label="주치의" 
+            value={formData.primaryPhysician || ''} 
+            onChange={(v) => updateField('primaryPhysician', v)} 
+            labelWidth="w-24"
+          />
+          <div className="flex items-center gap-2 text-[14px]">
+            <span className="w-24 font-bold shrink-0">Ward Out</span>
+            <div className="flex-1 flex items-center gap-2">
+              <div className="flex-1 flex items-center gap-1.5 border-b border-black h-8 pb-1">
+                <Calendar size={15} className="text-black shrink-0" />
+                <input 
+                  type="text" 
+                  value={formData.wardOutDate || ''} 
+                  onChange={(e) => updateField('wardOutDate', e.target.value)} 
+                  placeholder="YYYY-MM-DD" 
+                  className="w-full focus:outline-none text-[13px] bg-transparent"
+                  spellCheck={false}
+                />
+              </div>
+              <div className="flex-1 flex items-center gap-1.5 border-b border-black h-8 pb-1">
+                <Clock size={15} className="text-black shrink-0" />
+                <input 
+                  type="text" 
+                  value={formData.wardOutTime || ''} 
+                  onChange={(e) => updateField('wardOutTime', e.target.value)} 
+                  placeholder="HH-MM" 
+                  className="w-full focus:outline-none text-[13px] bg-transparent"
+                  spellCheck={false}
+                />
+              </div>
+            </div>
+          </div>
+          <UnderlineInputField 
+            label="초진일자" 
+            value={formData.initialExamDate || ''} 
+            onChange={(v) => updateField('initialExamDate', v)} 
+            labelWidth="w-24"
+            placeholder="YYYY-MM-DD"
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
         <SectionHeader label="Progress" />
         <button 
           onClick={addSoapBlock}
@@ -4386,6 +4471,319 @@ export default function App() {
               placeholder="식욕 부진, 연하 곤란, 오심/구토 등 기재"
               height="120px"
             />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const DietRequestModal = () => {
+    if (!showDietRequestModal) return null;
+
+    const getSelectedDietText = () => {
+      const bases = Object.entries(dietRequestBase)
+        .filter(([name, checked]) => checked && name !== '치료식')
+        .map(([name]) => name);
+      
+      const treatments = Object.entries(dietRequestTreatment)
+        .filter(([_, checked]) => checked)
+        .map(([name]) => name);
+
+      const allSelections = [...bases, ...treatments];
+      if (allSelections.length === 0) return '';
+      return allSelections.join(', ');
+    };
+
+    const dietText = getSelectedDietText();
+
+    const handleApply = () => {
+      const appliedMeals = [];
+      if (dietRequestMeals.breakfast) appliedMeals.push('아침');
+      if (dietRequestMeals.lunch) appliedMeals.push('점심');
+      if (dietRequestMeals.dinner) appliedMeals.push('저녁');
+
+      if (appliedMeals.length === 0) {
+        alert('신청할 식사(조식, 중식, 석식)를 선택해주세요.');
+        return;
+      }
+
+      if (!dietText) {
+        alert('선택된 식이 종류가 없습니다. 기본 식사 또는 치료식을 선택해주세요.');
+        return;
+      }
+
+      const note = `${dietRequesterType}용 | ${dietRequestCalories ? `${dietRequestCalories} kcal/day` : ''}`;
+
+      // Add a diet record for each selected meal
+      const newRecords = appliedMeals.map(mealType => ({
+        date: new Date().toISOString().split('T')[0],
+        type: mealType,
+        dietName: dietText,
+        amount: 'Full',
+        note: note
+      }));
+
+      const updatedRecords = [...(formData.dietRecords || []), ...newRecords];
+      updateField('dietRecords', updatedRecords);
+      updateField('currentDiet', dietText);
+      updateField('isFasting', dietRequestBase.NPO);
+      updateField('dietNote', note);
+
+      alert('식이신청이 완료되었습니다.');
+      setShowDietRequestModal(false);
+    };
+
+    return (
+      <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 font-['Gulim','굴림',sans-serif]">
+        <div className="bg-white w-[90vw] max-w-4xl max-h-[90vh] border-4 border-black shadow-[10px_10px_0_0_rgba(0,0,0,1)] flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="bg-blue-900 text-white px-4 py-3 flex items-center justify-between border-b-4 border-black shrink-0">
+            <span className="font-black text-xl">식이 신청 (Diet Request)</span>
+            <button onClick={() => setShowDietRequestModal(false)} className="hover:bg-white/20 p-1 rounded transition-colors text-white font-bold">
+              ✕
+            </button>
+          </div>
+
+          {/* Modal Body */}
+          <div className="p-6 overflow-y-auto space-y-6">
+            
+            {/* Patient Info Row */}
+            <div className="grid grid-cols-4 gap-4 bg-gray-50 p-4 border border-gray-300 rounded-sm text-sm">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-gray-600 shrink-0">등록번호</span>
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={formData.chartNo} 
+                  className="w-full border border-gray-300 bg-gray-100 px-2 py-1 font-bold text-center" 
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-gray-600 shrink-0">환자명</span>
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={formData.name} 
+                  className="w-full border border-gray-300 bg-gray-100 px-2 py-1 font-bold text-center" 
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-gray-600 shrink-0">나이</span>
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={formData.age} 
+                  className="w-full border border-gray-300 bg-gray-100 px-2 py-1 font-bold text-center" 
+                />
+              </div>
+              <div className="flex items-center gap-4 justify-center">
+                <span className="font-bold text-gray-600">구분</span>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="requesterType" 
+                      checked={dietRequesterType === '환자'} 
+                      onChange={() => setDietRequesterType('환자')}
+                      className="accent-blue-900 w-4 h-4" 
+                    />
+                    <span className="text-sm font-bold">환자</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="requesterType" 
+                      checked={dietRequesterType === '보호자'} 
+                      onChange={() => setDietRequesterType('보호자')}
+                      className="accent-blue-900 w-4 h-4" 
+                    />
+                    <span className="text-sm font-bold">보호자</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Three Boxes: 조식 / 중식 / 석식 */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="border border-gray-300 rounded-sm p-3 bg-gray-50/50 flex flex-col min-h-[100px]">
+                <div className="font-bold border-b border-gray-300 pb-1 mb-2 text-blue-900 text-sm flex items-center justify-between">
+                  <span>조식</span>
+                  {dietRequestMeals.breakfast && <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-bold">신청됨</span>}
+                </div>
+                <div className="text-xs text-gray-600 font-medium flex-1 overflow-y-auto">
+                  {dietRequestMeals.breakfast ? (dietText || '식이를 선택하세요.') : '조식 목록 (미신청)'}
+                </div>
+              </div>
+
+              <div className="border border-gray-300 rounded-sm p-3 bg-gray-50/50 flex flex-col min-h-[100px]">
+                <div className="font-bold border-b border-gray-300 pb-1 mb-2 text-blue-900 text-sm flex items-center justify-between">
+                  <span>중식</span>
+                  {dietRequestMeals.lunch && <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-bold">신청됨</span>}
+                </div>
+                <div className="text-xs text-gray-600 font-medium flex-1 overflow-y-auto">
+                  {dietRequestMeals.lunch ? (dietText || '식이를 선택하세요.') : '중식 목록 (미신청)'}
+                </div>
+              </div>
+
+              <div className="border border-gray-300 rounded-sm p-3 bg-gray-50/50 flex flex-col min-h-[100px]">
+                <div className="font-bold border-b border-gray-300 pb-1 mb-2 text-blue-900 text-sm flex items-center justify-between">
+                  <span>석식</span>
+                  {dietRequestMeals.dinner && <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-bold">신청됨</span>}
+                </div>
+                <div className="text-xs text-gray-600 font-medium flex-1 overflow-y-auto">
+                  {dietRequestMeals.dinner ? (dietText || '식이를 선택하세요.') : '석식 목록 (미신청)'}
+                </div>
+              </div>
+            </div>
+
+            {/* 식사 선택 */}
+            <div className="border border-gray-300 p-4 rounded-sm space-y-3">
+              <div className="font-bold text-sm text-gray-800 border-b pb-2 flex justify-between items-center">
+                <span>식사 선택</span>
+                <div className="flex items-center gap-2 text-xs font-normal">
+                  <span className="text-gray-600">1일 합계 칼로리:</span>
+                  <input 
+                    type="text" 
+                    placeholder="직접 입력" 
+                    value={dietRequestCalories} 
+                    onChange={(e) => setDietRequestCalories(e.target.value)}
+                    className="border border-gray-300 px-2 py-0.5 w-24 text-right rounded" 
+                  />
+                  <span className="text-gray-600">KCAL/day</span>
+                </div>
+              </div>
+              <div className="flex gap-6">
+                {(Object.keys(dietRequestMeals) as Array<keyof typeof dietRequestMeals>).map((mealKey) => {
+                  const mealLabel = mealKey === 'breakfast' ? '조식' : mealKey === 'lunch' ? '중식' : '석식';
+                  return (
+                    <label key={mealKey} className="flex items-center gap-2 cursor-pointer font-bold text-sm">
+                      <input 
+                        type="checkbox" 
+                        checked={dietRequestMeals[mealKey]} 
+                        onChange={(e) => setDietRequestMeals({ ...dietRequestMeals, [mealKey]: e.target.checked })}
+                        className="w-4 h-4 accent-blue-900" 
+                      />
+                      <span>{mealLabel}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 기본 식사 */}
+            <div className="border border-gray-300 p-4 rounded-sm space-y-3">
+              <div className="font-bold text-sm text-gray-800 border-b pb-2">기본 식사</div>
+              <div className="grid grid-cols-5 gap-3">
+                {Object.keys(dietRequestBase).map((baseKey) => (
+                  <label key={baseKey} className="flex items-center gap-2 cursor-pointer text-sm">
+                    <input 
+                      type="checkbox" 
+                      checked={dietRequestBase[baseKey]} 
+                      onChange={(e) => {
+                        setDietRequestBase({ ...dietRequestBase, [baseKey]: e.target.checked });
+                      }}
+                      className="w-4 h-4 accent-blue-900" 
+                    />
+                    <span className="font-medium text-gray-700">{baseKey}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* 치료식 */}
+            <div className="border border-gray-300 p-4 rounded-sm space-y-4">
+              <div className="font-bold text-sm text-gray-800 border-b pb-2">치료식</div>
+              <div className="grid grid-cols-3 gap-6">
+                
+                {/* 장 질환 식사 */}
+                <div className="space-y-2">
+                  <div className="font-bold text-xs text-blue-900 border-b pb-1">장 질환 식사</div>
+                  <div className="flex flex-col gap-1.5">
+                    {['위절제밥', '위절제죽', '저섬유밥'].map((name) => (
+                      <label key={name} className="flex items-center gap-2 cursor-pointer text-xs">
+                        <input 
+                          type="checkbox" 
+                          checked={!!dietRequestTreatment[name]} 
+                          onChange={(e) => setDietRequestTreatment({ ...dietRequestTreatment, [name]: e.target.checked })}
+                          className="w-3.5 h-3.5 accent-blue-900" 
+                        />
+                        <span className="text-gray-700 font-medium">{name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 신장 질환 식사 */}
+                <div className="space-y-2">
+                  <div className="font-bold text-xs text-blue-900 border-b pb-1">신장 질환 식사</div>
+                  <div className="flex flex-col gap-1.5">
+                    {['신부전 밥', '신부전 죽', '신증후군 밥', '신증후군 죽', '신부전 당뇨 밥', '신부전 당뇨 죽', '혈액투석식 밥', '혈액투석식 죽', '복막투석식 밥'].map((name) => (
+                      <label key={name} className="flex items-center gap-2 cursor-pointer text-xs">
+                        <input 
+                          type="checkbox" 
+                          checked={!!dietRequestTreatment[name]} 
+                          onChange={(e) => setDietRequestTreatment({ ...dietRequestTreatment, [name]: e.target.checked })}
+                          className="w-3.5 h-3.5 accent-blue-900" 
+                        />
+                        <span className="text-gray-700 font-medium">{name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 간 질환 식사 */}
+                <div className="space-y-2">
+                  <div className="font-bold text-xs text-blue-900 border-b pb-1">간 질환 식사</div>
+                  <div className="flex flex-col gap-1.5">
+                    {['중단백 간질환 밥', '중단백 간질환 죽', '저단백 간질환 밥', '저단백 간질환 죽', '저단백 간질환당뇨 밥', '저단백 간질환당뇨 죽', '고단백 고열량 간질환 밥'].map((name) => (
+                      <label key={name} className="flex items-center gap-2 cursor-pointer text-xs">
+                        <input 
+                          type="checkbox" 
+                          checked={!!dietRequestTreatment[name]} 
+                          onChange={(e) => setDietRequestTreatment({ ...dietRequestTreatment, [name]: e.target.checked })}
+                          className="w-3.5 h-3.5 accent-blue-900" 
+                        />
+                        <span className="text-gray-700 font-medium">{name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Bottom treatment diet list items */}
+              <div className="border-t pt-3 grid grid-cols-3 gap-4">
+                {['저잔사 미음', '비만 수술 후 식사 (맑은 유동식)', '비만 수술 후 식사 (일반 유동식)'].map((name) => (
+                  <label key={name} className="flex items-center gap-2 cursor-pointer text-xs">
+                    <input 
+                      type="checkbox" 
+                      checked={!!dietRequestTreatment[name]} 
+                      onChange={(e) => setDietRequestTreatment({ ...dietRequestTreatment, [name]: e.target.checked })}
+                      className="w-3.5 h-3.5 accent-blue-900" 
+                    />
+                    <span className="text-gray-700 font-medium">{name}</span>
+                  </label>
+                ))}
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* Modal Footer */}
+          <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 shrink-0">
+            <button 
+              onClick={() => setShowDietRequestModal(false)}
+              className="px-5 py-2 border border-gray-400 text-sm font-bold rounded-sm hover:bg-gray-100"
+            >
+              닫기
+            </button>
+            <button 
+              onClick={handleApply}
+              className="px-5 py-2 bg-blue-900 text-white text-sm font-bold rounded-sm hover:bg-blue-950 border border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)]"
+            >
+              신청
+            </button>
           </div>
         </div>
       </div>
@@ -6135,7 +6533,7 @@ export default function App() {
               <UnderlineInput label="성명" value={formData.name} onChange={(v: string) => updateField('name', v)} />
               <UnderlineInput label="연령/성별" value={`${formData.age}/${formData.gender}`} onChange={() => {}} />
               <UnderlineInput label="진료과" value={formData.dept} onChange={(v: string) => updateField('dept', v)} />
-              <UnderlineInput label="담당의" value={formData.assignedProfessor || '이영진'} onChange={(v: string) => updateField('assignedProfessor', v)} />
+              <UnderlineInput label="담당의" value={formData.assignedProfessor || ''} onChange={(v: string) => updateField('assignedProfessor', v)} />
               <UnderlineInput label="기록자" value={formData.recorder} onChange={(v: string) => updateField('recorder', v)} />
               <UnderlineInput label="정보제공자" value={formData.infoProvider} onChange={(v: string) => updateField('infoProvider', v)} />
               <UnderlineInput label="입원일시" value={formData.admissionDate} onChange={(v: string) => updateField('admissionDate', v)} />
@@ -6442,13 +6840,57 @@ export default function App() {
                     </div>
                     <div className="flex-1 overflow-hidden">
                       <NursingWriter onSave={(data: any) => {
+                        const cleanHtml = (html: string) => {
+                          if (!html) return '';
+                          const stripped = html.replace(/<[^>]*>/g, '').trim();
+                          if (stripped === '') return '';
+                          return html.trim();
+                        };
                         const formatContent = () => {
                           const tab = data.activeTab;
                           if (tab === '서술기록') return `(${tab}) ${data.narrative}`;
                           if (tab === '특기사항') return `(${tab}) ${data.specialNotes}`;
-                          if (tab === 'NANDA') return `(${tab}) 영역: ${data.nandaData.domain}, 진단명: ${data.nandaData.diagnosis}, 자료: ${data.nandaData.data}, 목표: ${data.nandaData.goal}, 계획: ${data.nandaData.plan}, 수행: ${data.nandaData.interventions}`;
-                          if (tab === 'SOAPIE') return `(${tab}) S: ${data.soapieData.s}, O: ${data.soapieData.o}, A: ${data.soapieData.a}, P: ${data.soapieData.p}, I: ${data.soapieData.i}, E: ${data.soapieData.e}`;
-                          if (tab === 'Focus DAR') return `(${tab}) Focus: ${data.darData.focus}, D: ${data.darData.d}, A: ${data.darData.a}, R: ${data.darData.r}`;
+                          if (tab === 'NANDA') {
+                            const parts = [];
+                            if (data.nandaData.domain) parts.push(`영역: ${data.nandaData.domain}`);
+                            if (data.nandaData.diagnosis) parts.push(`진단명: ${data.nandaData.diagnosis}`);
+                            const dataClean = cleanHtml(data.nandaData.data);
+                            if (dataClean) parts.push(`자료: ${dataClean}`);
+                            const goalClean = cleanHtml(data.nandaData.goal);
+                            if (goalClean) parts.push(`목표: ${goalClean}`);
+                            const planClean = cleanHtml(data.nandaData.plan);
+                            if (planClean) parts.push(`계획: ${planClean}`);
+                            const interventionsClean = cleanHtml(data.nandaData.interventions);
+                            if (interventionsClean) parts.push(`수행: ${interventionsClean}`);
+                            return `(${tab}) ${parts.join(', ')}`;
+                          }
+                          if (tab === 'SOAPIE') {
+                            const parts = [];
+                            const sClean = cleanHtml(data.soapieData.s);
+                            if (sClean) parts.push(`S: ${sClean}`);
+                            const oClean = cleanHtml(data.soapieData.o);
+                            if (oClean) parts.push(`O: ${oClean}`);
+                            const aClean = cleanHtml(data.soapieData.a);
+                            if (aClean) parts.push(`A: ${aClean}`);
+                            const pClean = cleanHtml(data.soapieData.p);
+                            if (pClean) parts.push(`P: ${pClean}`);
+                            const iClean = cleanHtml(data.soapieData.i);
+                            if (iClean) parts.push(`I: ${iClean}`);
+                            const eClean = cleanHtml(data.soapieData.e);
+                            if (eClean) parts.push(`E: ${eClean}`);
+                            return `(${tab}) ${parts.join(', ')}`;
+                          }
+                          if (tab === 'Focus DAR') {
+                            const parts = [];
+                            if (data.darData.focus) parts.push(`Focus: ${data.darData.focus}`);
+                            const dClean = cleanHtml(data.darData.d);
+                            if (dClean) parts.push(`D: ${dClean}`);
+                            const aClean = cleanHtml(data.darData.a);
+                            if (aClean) parts.push(`A: ${aClean}`);
+                            const rClean = cleanHtml(data.darData.r);
+                            if (rClean) parts.push(`R: ${rClean}`);
+                            return `(${tab}) ${parts.join(', ')}`;
+                          }
                           return `(${tab}) ${JSON.stringify(data)}`;
                         };
                         const newNote = {
@@ -6991,8 +7433,15 @@ export default function App() {
           return (
             <div className="flex-1 flex flex-col p-8 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
               <div className="max-w-5xl mx-auto w-full space-y-8">
-                <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold border-b-2 border-black inline-block pb-1">식이/영양 기록지</h2>
+                <div className="flex justify-between items-center mb-6 border-b-2 border-black pb-2">
+                  <div className="w-24"></div>
+                  <h2 className="text-2xl font-bold inline-block">식이/영양 기록지</h2>
+                  <button 
+                    onClick={() => setShowDietRequestModal(true)}
+                    className="bg-blue-900 text-white font-bold text-sm px-4 py-1.5 border border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] hover:bg-blue-950 transition-colors"
+                  >
+                    식이신청
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-3 gap-6">
@@ -8078,6 +8527,8 @@ export default function App() {
       {showPatientModal && (
         <PatientDetailModal />
       )}
+
+      <DietRequestModal />
 
       {showCalculator && (
         <Calculator onClose={() => setShowCalculator(false)} />
