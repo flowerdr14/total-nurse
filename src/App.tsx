@@ -3552,7 +3552,7 @@ export default function App() {
         <div className="flex flex-col gap-3 px-1">
           <UnderlineInputField label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} />
           <UnderlineInputField label="병실" value={formData.room} onChange={(v) => updateField('room', v)} />
-          <UnderlineInputField label="전문의" value={formData.assignedProfessor} onChange={(v) => updateField('assignedProfessor', v)} />
+          <UnderlineInputField label="전문의" value={formData.assignedProfessor || formData.doctor || ''} onChange={(v) => { updateField('assignedProfessor', v); updateField('doctor', v); }} />
           <UnderlineInputField label="이름" value={formData.name} onChange={(v) => updateField('name', v)} />
           
           <div className="flex items-center gap-2">
@@ -5235,7 +5235,19 @@ export default function App() {
                 <td className="border-r border-black p-1 font-bold">{formData.name || '신규환자'}</td>
                 <td className="border-r border-black p-1">{formData.room || '-'}</td>
                 <td className="border-r border-black p-1">{formData.age || '0'}</td>
-                <td className="border-r border-black p-1">{formData.doctor || '미정'}</td>
+                <td className="border-r border-black p-1">
+                  <input 
+                    type="text" 
+                    value={formData.assignedProfessor || formData.doctor || ''} 
+                    onChange={(e) => {
+                      updateField('assignedProfessor', e.target.value);
+                      updateField('doctor', e.target.value);
+                    }}
+                    className="w-full text-center focus:outline-none bg-transparent"
+                    placeholder="미정"
+                    spellCheck={false}
+                  />
+                </td>
                 <td className="border-r border-black p-1">
                   <input 
                     type="text" 
@@ -8821,7 +8833,7 @@ const PrintForm = ({ patient, type }: { patient: Patient, type: TabType }) => {
             {[
               ['차트번호', patient.chartNo],
               ['병실', patient.room],
-              ['전문의', patient.doctor],
+              ['전문의', patient.assignedProfessor || patient.doctor || ''],
               ['성명', patient.name],
               ['나이', patient.age],
               ['거주지', patient.address],
