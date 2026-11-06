@@ -11,7 +11,8 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer 
+  ResponsiveContainer,
+  Legend
 } from 'recharts';
 import NursingDashboard from './components/NursingDashboard';
 import NursingWriter from './components/NursingWriter';
@@ -303,6 +304,10 @@ export interface Patient {
   prescriptionRecords?: PrescriptionRecord[];
   vsHistory?: { date: string, hr: string, rr: string, bt: string, bp: string, author: string }[];
   ioHistory?: { date: string, input: string, inputContent: string, output: string, outputContent: string, author: string }[];
+  soapSecondaryNote?: string;
+  nursingSecondaryNote?: string;
+  summaryBannerYellow?: string;
+  summaryBannerBlue?: string;
   
   // Sidebar SOAP fields
   sidebarS: string;
@@ -873,6 +878,10 @@ const INITIAL_FORM_DATA: Patient = {
   prescriptionRecords: [],
   vsHistory: [],
   ioHistory: [],
+  soapSecondaryNote: '',
+  nursingSecondaryNote: '',
+  summaryBannerYellow: '',
+  summaryBannerBlue: '',
   sidebarS: '',
   sidebarO: '',
   sidebarA: '',
@@ -5198,10 +5207,479 @@ export default function App() {
     );
   };
 
+  const renderDefaultPatientView = () => {
+    return (
+      <div className="flex-1 flex flex-col p-4 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
+        {/* 환자기본정보 Header Banner */}
+        <div className="bg-[#FF00FF] text-white font-black px-2 py-1 text-sm mb-1 tracking-wide">
+          환자기본정보
+        </div>
+
+        {/* 환자기본정보 Table */}
+        <div className="border border-black mb-3">
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="bg-gray-100 border-b border-black text-center font-bold">
+                <th className="border-r border-black p-1 w-[12%]">환자번호</th>
+                <th className="border-r border-black p-1 w-[12%]">환자명</th>
+                <th className="border-r border-black p-1 w-[10%]">병실</th>
+                <th className="border-r border-black p-1 w-[10%]">나이</th>
+                <th className="border-r border-black p-1 w-[12%]">주치의</th>
+                <th className="border-r border-black p-1 w-[18%]">주민등록번호</th>
+                <th className="p-1">거주지</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="text-center h-8 bg-white font-medium">
+                <td className="border-r border-black p-1 font-bold">{formData.chartNo || '00000000'}</td>
+                <td className="border-r border-black p-1 font-bold">{formData.name || '신규환자'}</td>
+                <td className="border-r border-black p-1">{formData.room || '-'}</td>
+                <td className="border-r border-black p-1">{formData.age || '0'}</td>
+                <td className="border-r border-black p-1">{formData.doctor || '미정'}</td>
+                <td className="border-r border-black p-1">
+                  <input 
+                    type="text" 
+                    value={formData.residentId} 
+                    onChange={(e) => updateField('residentId', e.target.value)}
+                    className="w-full text-center focus:outline-none bg-transparent"
+                    placeholder="880404-2******"
+                    spellCheck={false}
+                  />
+                </td>
+                <td className="p-1">
+                  <input 
+                    type="text" 
+                    value={formData.address} 
+                    onChange={(e) => updateField('address', e.target.value)}
+                    className="w-full focus:outline-none bg-transparent px-1"
+                    placeholder="서울특별시 강남구..."
+                    spellCheck={false}
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Middle Section: SOAP & 간호기록 & Right Box (환자차트번호 / 목표활력징후 / MEMO) */}
+        <div className="flex gap-2 mb-3">
+          {/* Left Block: SOAP / 간호기록 with yellow & blue sub-blocks */}
+          <div className="flex-1 flex flex-col border-2 border-black">
+            {/* Headers */}
+            <div className="grid grid-cols-2 border-b-2 border-black bg-[#9ca3af]">
+              <div className="text-white font-black text-center py-1 text-base border-r-2 border-black tracking-wider">SOAP</div>
+              <div className="text-white font-black text-center py-1 text-base tracking-wider">간호기록</div>
+            </div>
+
+            {/* Top 2 boxes: Yellow & Blue */}
+            <div className="grid grid-cols-2 flex-1">
+              {/* SOAP Column */}
+              <div className="border-r-2 border-black flex flex-col">
+                <div className="bg-[#FFFFCC] p-1.5 min-h-[65px] flex-1 border-b-2 border-black">
+                  <textarea 
+                    value={formData.soapNote} 
+                    onChange={(e) => updateField('soapNote', e.target.value)}
+                    className="w-full h-full bg-transparent focus:outline-none resize-none text-xs font-medium leading-snug"
+                    placeholder="SOAP 기록..."
+                    spellCheck={false}
+                  />
+                </div>
+                <div className="bg-[#87CEEB] p-1.5 min-h-[55px]">
+                  <textarea 
+                    value={formData.soapSecondaryNote || ''} 
+                    onChange={(e) => updateField('soapSecondaryNote', e.target.value)}
+                    className="w-full h-full bg-transparent focus:outline-none resize-none text-xs font-medium leading-snug"
+                    placeholder=""
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+
+              {/* 간호기록 Column */}
+              <div className="flex flex-col">
+                <div className="bg-[#FFFFCC] p-1.5 min-h-[65px] flex-1 border-b-2 border-black">
+                  <textarea 
+                    value={formData.nursingNote || ''} 
+                    onChange={(e) => updateField('nursingNote', e.target.value)}
+                    className="w-full h-full bg-transparent focus:outline-none resize-none text-xs font-medium leading-snug"
+                    placeholder="간호기록..."
+                    spellCheck={false}
+                  />
+                </div>
+                <div className="bg-[#87CEEB] p-1.5 min-h-[55px]">
+                  <textarea 
+                    value={formData.nursingSecondaryNote || ''} 
+                    onChange={(e) => updateField('nursingSecondaryNote', e.target.value)}
+                    className="w-full h-full bg-transparent focus:outline-none resize-none text-xs font-medium leading-snug"
+                    placeholder=""
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Full-width Yellow Strip */}
+            <div className="bg-[#FFFFCC] border-t-2 border-black h-8 px-2 flex items-center">
+              <input 
+                type="text" 
+                value={formData.summaryBannerYellow || ''} 
+                onChange={(e) => updateField('summaryBannerYellow', e.target.value)}
+                className="w-full h-full bg-transparent focus:outline-none text-xs font-bold"
+                placeholder=""
+                spellCheck={false}
+              />
+            </div>
+
+            {/* Bottom Full-width Sky Blue Strip */}
+            <div className="bg-[#87CEEB] border-t-2 border-black h-8 px-2 flex items-center">
+              <input 
+                type="text" 
+                value={formData.summaryBannerBlue || ''} 
+                onChange={(e) => updateField('summaryBannerBlue', e.target.value)}
+                className="w-full h-full bg-transparent focus:outline-none text-xs font-bold"
+                placeholder=""
+                spellCheck={false}
+              />
+            </div>
+          </div>
+
+          {/* Right Block: 환자차트번호 / 목표활력징후 / MEMO */}
+          <div className="w-80 flex flex-col border-2 border-black bg-white shrink-0">
+            {/* 환자차트번호 */}
+            <div className="flex border-b-2 border-black h-9">
+              <div className="w-32 bg-[#bfbfbf] text-black font-black flex items-center justify-center text-xs border-r-2 border-black px-1 shrink-0">
+                환자차트번호
+              </div>
+              <div className="flex-1 bg-white flex items-center justify-center font-bold text-sm">
+                {formData.chartNo || '00000000'}
+              </div>
+            </div>
+
+            {/* 목표활력징후 */}
+            <div className="flex border-b-2 border-black h-9">
+              <div className="w-32 bg-[#bfbfbf] text-black font-black flex items-center justify-center text-xs border-r-2 border-black px-1 shrink-0">
+                목표활력징후
+              </div>
+              <div className="flex-1 bg-white p-1 flex items-center">
+                <input 
+                  type="text" 
+                  value={formData.targetValue} 
+                  onChange={(e) => updateField('targetValue', e.target.value)}
+                  placeholder="BP 120/80 HR 75"
+                  className="w-full h-full focus:outline-none text-center font-bold text-xs"
+                  spellCheck={false}
+                />
+              </div>
+            </div>
+
+            {/* MEMO */}
+            <div className="flex flex-1 min-h-[110px]">
+              <div className="w-32 bg-[#bfbfbf] text-black font-black flex items-center justify-center text-base border-r-2 border-black px-1 shrink-0">
+                MEMO
+              </div>
+              <div className="flex-1 bg-[#FFFFCC] p-1.5">
+                <textarea 
+                  value={formData.labMemo} 
+                  onChange={(e) => updateField('labMemo', e.target.value)}
+                  className="w-full h-full bg-transparent focus:outline-none resize-none text-xs font-bold leading-tight"
+                  placeholder="특이사항 메모..."
+                  spellCheck={false}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Graph Tab & Graph Box */}
+        <div className="flex flex-col mb-3">
+          <div className="flex items-end">
+            <div className="border-2 border-black border-b-0 rounded-t-sm px-6 py-1 bg-white font-black text-sm -mb-[2px] z-10">
+              그래프
+            </div>
+          </div>
+          <div className="border-2 border-black bg-white p-2 h-[160px] min-h-[150px] relative overflow-hidden flex flex-col justify-center">
+            {(() => {
+              const vsData = (formData.vsHistory || [])
+                .filter(v => v.hr || v.bp || v.bt || v.rr)
+                .map((v, idx) => {
+                  const bpParts = (v.bp || '').split('/');
+                  const sbp = bpParts[0] ? parseInt(bpParts[0], 10) : null;
+                  const dbp = bpParts[1] ? parseInt(bpParts[1], 10) : null;
+                  const hr = v.hr ? parseInt(v.hr, 10) : null;
+                  const bt = v.bt ? parseFloat(v.bt) : null;
+                  return {
+                    name: v.date ? v.date.split(' ')[0] : `#${idx + 1}`,
+                    time: v.date || `#${idx + 1}`,
+                    HR: isNaN(hr as any) ? undefined : hr,
+                    SBP: isNaN(sbp as any) ? undefined : sbp,
+                    DBP: isNaN(dbp as any) ? undefined : dbp,
+                    BT: isNaN(bt as any) ? undefined : bt,
+                  };
+                });
+
+              if (vsData.length > 0) {
+                return (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={vsData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} domain={['dataMin - 10', 'dataMax + 10']} />
+                      <Tooltip contentStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
+                      <Legend wrapperStyle={{ fontSize: '11px' }} />
+                      <Line type="monotone" dataKey="SBP" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} name="수축기혈압(SBP)" />
+                      <Line type="monotone" dataKey="DBP" stroke="#60a5fa" strokeWidth={2} dot={{ r: 3 }} name="이완기혈압(DBP)" />
+                      <Line type="monotone" dataKey="HR" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="심박수(HR)" />
+                      <Line type="monotone" dataKey="BT" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="체온(BT)" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                );
+              }
+
+              return (
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 text-xs font-bold gap-1 bg-gray-50/50">
+                  <div className="text-gray-400 font-bold">활력징후(V/S) 추세선 그래프</div>
+                  <div className="text-[11px] text-gray-400">아래 [기록 추가] 버튼을 눌러 V/S 수치를 입력하면 실시간 그래프가 연동되어 표시됩니다.</div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* Bottom Tabs & Record Table Section */}
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex items-end justify-between mb-0">
+            <div className="flex gap-1">
+              {['V/S 체크', 'I/O 체크', '검사결과 그래프', '검사결과 기록지', '처방내역'].map(t => (
+                <button 
+                  key={t}
+                  onClick={() => setLabSubTab(t)}
+                  className={`px-5 py-1 font-bold border-2 border-black rounded-t-lg transition-colors text-xs ${
+                    labSubTab === t ? 'bg-white border-b-white -mb-[2px] z-10' : 'bg-[#cccccc] hover:bg-[#bbbbbb] text-black'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <button 
+              onClick={() => {
+                if (labSubTab === 'V/S 체크') addVSRecord();
+                else if (labSubTab === 'I/O 체크') addIORecord();
+                else if (labSubTab === '검사결과 기록지') {
+                  updateField('labRows', [...formData.labRows, Array(12).fill('')]);
+                } else if (labSubTab === '처방내역') {
+                  const newRecord = {
+                    id: Date.now().toString(),
+                    type: '정규',
+                    date: new Date().toISOString().split('T')[0],
+                    prescriber: formData.doctor || '담당의',
+                    content: '',
+                    precautions: '',
+                    status: '대기중'
+                  };
+                  updateField('prescriptionRecords', [...(formData.prescriptionRecords || []), newRecord]);
+                }
+              }}
+              className="bg-[#a6a6a6] hover:bg-[#8f8f8f] text-white px-5 py-1 font-bold border-2 border-black rounded-t-lg text-xs"
+            >
+              기록 추가
+            </button>
+          </div>
+
+          <div className="flex-1 border-2 border-black p-0 bg-white overflow-y-auto min-h-[160px] max-h-[260px]">
+            {labSubTab === 'V/S 체크' && (
+              <table className="w-full border-collapse text-[12px]">
+                <thead>
+                  <tr className="bg-gray-100 border-b border-black text-center font-bold">
+                    <th className="border-r border-black p-2 w-44">확인 일자</th>
+                    <th className="border-r border-black p-2">HR</th>
+                    <th className="border-r border-black p-2">RR</th>
+                    <th className="border-r border-black p-2">BT</th>
+                    <th className="border-r border-black p-2">BP</th>
+                    <th className="p-2 w-36">담당자</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(formData.vsHistory && formData.vsHistory.length > 0) ? (
+                    formData.vsHistory.map((record, i) => (
+                      <tr key={i} className="border-b border-black text-center h-9">
+                        <td className="border-r border-black p-0">
+                          <input value={record.date} onChange={(e) => updateVSRecord(i, 'date', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                        </td>
+                        <td className="border-r border-black p-0">
+                          <input value={record.hr} onChange={(e) => updateVSRecord(i, 'hr', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                        </td>
+                        <td className="border-r border-black p-0">
+                          <input value={record.rr} onChange={(e) => updateVSRecord(i, 'rr', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                        </td>
+                        <td className="border-r border-black p-0">
+                          <input value={record.bt} onChange={(e) => updateVSRecord(i, 'bt', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                        </td>
+                        <td className="border-r border-black p-0">
+                          <input value={record.bp} onChange={(e) => updateVSRecord(i, 'bp', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                        </td>
+                        <td className="p-0">
+                          <input value={record.author} onChange={(e) => updateVSRecord(i, 'author', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr className="border-b border-black text-center h-16">
+                      <td colSpan={6} className="text-gray-400 font-bold">
+                        활력징후 기록이 없습니다. 우측 상단의 [기록 추가] 버튼을 눌러 추가하세요.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+
+            {labSubTab === 'I/O 체크' && (
+              <table className="w-full border-collapse text-[12px]">
+                <thead>
+                  <tr className="bg-gray-100 border-b border-black text-center font-bold">
+                    <th className="border-r border-black p-2 w-44">확인 일자</th>
+                    <th className="border-r border-black p-2">Input</th>
+                    <th className="border-r border-black p-2">Input 내용물</th>
+                    <th className="border-r border-black p-2">Output</th>
+                    <th className="border-r border-black p-2">Output 내용물</th>
+                    <th className="p-2 w-36">담당자</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(formData.ioHistory && formData.ioHistory.length > 0) ? (
+                    formData.ioHistory.map((record, i) => (
+                      <tr key={i} className="border-b border-black text-center h-9">
+                        <td className="border-r border-black p-0">
+                          <input value={record.date} onChange={(e) => updateIORecord(i, 'date', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                        </td>
+                        <td className="border-r border-black p-0">
+                          <input value={record.input} onChange={(e) => updateIORecord(i, 'input', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                        </td>
+                        <td className="border-r border-black p-0">
+                          <input value={record.inputContent} onChange={(e) => updateIORecord(i, 'inputContent', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                        </td>
+                        <td className="border-r border-black p-0">
+                          <input value={record.output} onChange={(e) => updateIORecord(i, 'output', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                        </td>
+                        <td className="border-r border-black p-0">
+                          <input value={record.outputContent} onChange={(e) => updateIORecord(i, 'outputContent', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                        </td>
+                        <td className="p-0">
+                          <input value={record.author} onChange={(e) => updateIORecord(i, 'author', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr className="border-b border-black text-center h-16">
+                      <td colSpan={6} className="text-gray-400 font-bold">
+                        I/O 기록이 없습니다. 우측 상단의 [기록 추가] 버튼을 눌러 추가하세요.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+
+            {labSubTab === '검사결과 그래프' && (
+              <div className="p-8 flex items-center justify-center h-full">
+                <div className="text-lg font-bold text-gray-400">검사결과 수치 연동 그래프 영역</div>
+              </div>
+            )}
+
+            {labSubTab === '검사결과 기록지' && (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[10px]">
+                  <thead>
+                    <tr className="bg-gray-200 border-b border-black">
+                      {['검사일자', 'CBC', 'UA', '감염', 'LFT', 'PFT', 'TUMOR', 'ABGA', 'CRP', 'ESR', '특수혈액', '기타'].map(h => (
+                        <th key={h} className="border-r border-black p-1 text-center font-bold">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {formData.labRows.map((row, i) => (
+                      <tr key={i} className={`border-b border-black ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                        {row.map((cell, j) => (
+                          <td key={j} className="border-r border-black p-0 h-8">
+                            <input 
+                              type="text" 
+                              value={cell} 
+                              onChange={(e) => updateLabCell(i, j, e.target.value)}
+                              className="w-full h-full bg-transparent px-1 text-center focus:outline-none"
+                              spellCheck={false}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {labSubTab === '처방내역' && (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[11px]">
+                  <thead>
+                    <tr className="bg-gray-200 border-b border-black font-bold text-center">
+                      <th className="border-r border-black p-1.5 w-28">처방일자</th>
+                      <th className="border-r border-black p-1.5 w-20">구분</th>
+                      <th className="border-r border-black p-1.5">처방내용</th>
+                      <th className="border-r border-black p-1.5">주의사항</th>
+                      <th className="border-r border-black p-1.5 w-20">상태</th>
+                      <th className="p-1.5 w-24">처방의</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(formData.prescriptionRecords && formData.prescriptionRecords.length > 0) ? (
+                      formData.prescriptionRecords.map((record, i) => (
+                        <tr key={i} className="border-b border-black text-center h-8">
+                          <td className="border-r border-black p-0">
+                            <input value={record.date} onChange={(e) => updatePrescriptionRecord(record.id, 'date', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                          </td>
+                          <td className="border-r border-black p-0">
+                            <input value={record.type} onChange={(e) => updatePrescriptionRecord(record.id, 'type', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                          </td>
+                          <td className="border-r border-black p-0">
+                            <input value={record.content} onChange={(e) => updatePrescriptionRecord(record.id, 'content', e.target.value)} className="w-full h-full text-left px-2 focus:outline-none" spellCheck={false} />
+                          </td>
+                          <td className="border-r border-black p-0">
+                            <input value={record.precautions} onChange={(e) => updatePrescriptionRecord(record.id, 'precautions', e.target.value)} className="w-full h-full text-left px-2 focus:outline-none" spellCheck={false} />
+                          </td>
+                          <td className="border-r border-black p-0">
+                            <input value={record.status} onChange={(e) => updatePrescriptionRecord(record.id, 'status', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                          </td>
+                          <td className="p-0">
+                            <input value={record.prescriber} onChange={(e) => updatePrescriptionRecord(record.id, 'prescriber', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} />
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr className="border-b border-black text-center h-16">
+                        <td colSpan={6} className="text-gray-400 font-bold">
+                          처방 내역이 없습니다. 우측 상단의 [기록 추가] 버튼을 눌러 추가하세요.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     if (activeTab === 'none') {
+      if (selectedPatientId || formData.id) {
+        return renderDefaultPatientView();
+      }
       return (
-        <div className="flex-1 flex items-center justify-center bg-white">
+        <div className="flex-1 flex items-center justify-center bg-white text-gray-400 font-bold">
+          환자를 선택해주세요.
         </div>
       );
     }
@@ -5606,349 +6084,7 @@ export default function App() {
           </div>
         );
       case 'lab':
-        return (
-          <div className="flex-1 flex flex-col p-4 bg-white overflow-y-auto font-['Gulim','굴림',sans-serif]">
-            {/* Patient Basic Info Header */}
-            <div className="bg-[#FF00FF] text-white font-bold px-2 py-1 text-sm mb-2">환자기본정보</div>
-            <div className="border border-black mb-4">
-              <table className="w-full border-collapse text-[11px]">
-                <thead>
-                  <tr className="bg-gray-100 border-b border-black">
-                    <th className="border-r border-black p-1 w-[12%]">환자번호</th>
-                    <th className="border-r border-black p-1 w-[12%]">환자명</th>
-                    <th className="border-r border-black p-1 w-[12%]">병실</th>
-                    <th className="border-r border-black p-1 w-[12%]">나이</th>
-                    <th className="border-r border-black p-1 w-[12%]">주치의</th>
-                    <th className="border-r border-black p-1 w-[15%]">주민등록번호</th>
-                    <th className="p-1">거주지</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="text-center h-8">
-                    <td className="border-r border-black p-1">{formData.chartNo || '00000000'}</td>
-                    <td className="border-r border-black p-1">{formData.name || '신규환자'}</td>
-                    <td className="border-r border-black p-1">{formData.room || '-'}</td>
-                    <td className="border-r border-black p-1">{formData.age || '0'}</td>
-                    <td className="border-r border-black p-1">{formData.doctor || '미정'}</td>
-                    <td className="border-r border-black p-1">
-                      <input 
-                        type="text" 
-                        value={formData.residentId} 
-                        onChange={(e) => updateField('residentId', e.target.value)}
-                        className="w-full text-center focus:outline-none bg-transparent"
-                        placeholder="880404-2******"
-                        spellCheck={false}
-                      />
-                    </td>
-                    <td className="p-1">
-                      <input 
-                        type="text" 
-                        value={formData.address} 
-                        onChange={(e) => updateField('address', e.target.value)}
-                        className="w-full focus:outline-none bg-transparent"
-                        placeholder="서울특별시 강남구..."
-                        spellCheck={false}
-                      />
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* SOAP / Nursing Record Section */}
-            <div className="flex gap-2 mb-4">
-              <div className="flex-1 flex flex-col border-2 border-black">
-                <div className="bg-gray-400 text-white font-bold text-center py-1 text-lg border-b-2 border-black">SOAP</div>
-                <div className="flex-1 bg-[#FFFFCC] p-1 min-h-[80px]">
-                  <textarea 
-                    value={formData.soapNote} 
-                    onChange={(e) => updateField('soapNote', e.target.value)}
-                    className="w-full h-full bg-transparent focus:outline-none resize-none text-sm"
-                    placeholder="SOAP 기록..."
-                    spellCheck={false}
-                  />
-                </div>
-                <div className="h-10 bg-[#87CEEB] border-t-2 border-black">
-                  {/* Additional blue section as per image */}
-                </div>
-              </div>
-              <div className="flex-1 flex flex-col border-2 border-black">
-                <div className="bg-gray-400 text-white font-bold text-center py-1 text-lg border-b-2 border-black">간호기록</div>
-                <div className="flex-1 bg-[#FFFFCC] p-1 min-h-[80px]">
-                  <textarea 
-                    value={formData.nursingNote || ''} 
-                    onChange={(e) => updateField('nursingNote', e.target.value)}
-                    className="w-full h-full bg-transparent focus:outline-none resize-none text-sm"
-                    placeholder="간호기록..."
-                    spellCheck={false}
-                  />
-                </div>
-                <div className="h-10 bg-[#87CEEB] border-t-2 border-black">
-                  {/* Additional blue section as per image */}
-                </div>
-              </div>
-              <div className="w-64 flex flex-col border-2 border-black overflow-hidden">
-                <div className="flex border-b-2 border-black h-12">
-                  <div className="w-24 bg-gray-400 text-black font-bold flex items-center justify-center text-xs border-r-2 border-black text-center px-1">환자차트 번호</div>
-                  <div className="flex-1 bg-white flex items-center justify-center font-bold text-sm">{formData.chartNo}</div>
-                </div>
-                <div className="flex border-b-2 border-black h-12">
-                  <div className="w-24 bg-gray-400 text-black font-bold flex items-center justify-center text-xs border-r-2 border-black text-center px-1">목표수치</div>
-                  <div className="flex-1 bg-white p-1">
-                    <input 
-                      type="text" 
-                      value={formData.targetValue} 
-                      onChange={(e) => updateField('targetValue', e.target.value)}
-                      className="w-full h-full focus:outline-none text-center font-bold"
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-1">
-                  <div className="w-24 bg-gray-400 text-black font-bold flex items-center justify-center text-xs border-r-2 border-black text-center px-1">메모</div>
-                  <div className="flex-1 bg-[#FFFFCC] p-1">
-                    <textarea 
-                      value={formData.labMemo} 
-                      onChange={(e) => updateField('labMemo', e.target.value)}
-                      className="w-full h-full bg-transparent focus:outline-none resize-none text-xs font-bold"
-                      spellCheck={false}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Chemo Section */}
-            <div className="flex gap-2 mb-4">
-              <div className="flex-1 flex border-2 border-black">
-                <table className="w-full border-collapse text-[11px]">
-                  <thead>
-                    <tr className="bg-gray-300 border-b-2 border-black">
-                      <th className="border-r-2 border-black p-1">Cycle</th>
-                      <th className="border-r-2 border-black p-1">Day</th>
-                      <th className="border-r-2 border-black p-1">Drug</th>
-                      <th className="p-1">Does</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="h-8">
-                      <td className="border-r-2 border-black p-0">
-                        <input 
-                          value={chemoSearch.cycle}
-                          onChange={(e) => setChemoSearch(prev => ({ ...prev, cycle: e.target.value }))}
-                          className="w-full h-full text-center focus:outline-none" 
-                          spellCheck={false}
-                        />
-                      </td>
-                      <td className="border-r-2 border-black p-0">
-                        <input 
-                          value={chemoSearch.day}
-                          onChange={(e) => setChemoSearch(prev => ({ ...prev, day: e.target.value }))}
-                          className="w-full h-full text-center focus:outline-none" 
-                          spellCheck={false}
-                        />
-                      </td>
-                      <td className="border-r-2 border-black p-0">
-                        <input 
-                          value={chemoSearch.drug}
-                          onChange={(e) => setChemoSearch(prev => ({ ...prev, drug: e.target.value }))}
-                          className="w-full h-full text-center focus:outline-none" 
-                          spellCheck={false}
-                        />
-                      </td>
-                      <td className="p-0">
-                        <input 
-                          value={chemoSearch.dose}
-                          onChange={(e) => setChemoSearch(prev => ({ ...prev, dose: e.target.value }))}
-                          className="w-full h-full text-center focus:outline-none" 
-                          spellCheck={false}
-                        />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <button 
-                onClick={handleChemoSearch}
-                className="w-16 bg-gray-400 border-2 border-black flex items-center justify-center text-white font-bold text-center text-sm hover:bg-gray-500 transition-colors"
-              >
-                기록<br/>조회
-              </button>
-              <div className="flex-1 flex border-2 border-black bg-white">
-                <table className="w-full border-collapse text-[11px]">
-                  <thead>
-                    <tr className="bg-gray-300 border-b-2 border-black">
-                      <th className="border-r-2 border-black p-1">Cycle</th>
-                      <th className="border-r-2 border-black p-1">Day</th>
-                      <th className="border-r-2 border-black p-1">Drug</th>
-                      <th className="p-1">Does</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="h-8 text-center font-bold">
-                      <td className="border-r-2 border-black p-1">{chemoResult.cycle}</td>
-                      <td className="border-r-2 border-black p-1">{chemoResult.day}</td>
-                      <td className="border-r-2 border-black p-1">{chemoResult.drug}</td>
-                      <td className="p-1">{chemoResult.dose}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Imaging / Diagnostic Tabs */}
-            <div className="flex flex-col border-2 border-black mb-4">
-              <div className="flex border-b-2 border-black">
-                {['영상검사', '진단검사'].map(t => (
-                  <button 
-                    key={t}
-                    onClick={() => setImagingTab(t as any)}
-                    className={`px-4 py-1 font-bold border-r-2 border-black transition-colors ${imagingTab === t ? 'bg-white' : 'bg-gray-300 hover:bg-gray-200'}`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-              <div className="flex h-48">
-                <div className="flex-1 border-r-2 border-black p-2 overflow-y-auto">
-                  <RichEditor 
-                    value={imagingTab === '영상검사' ? formData.imagingNote : formData.diagnosticNote}
-                    onChange={(val) => updateField(imagingTab === '영상검사' ? 'imagingNote' : 'diagnosticNote', val)}
-                    height="100%"
-                  />
-                </div>
-                <div className="w-1/2 flex flex-col items-center justify-center p-4 bg-white relative group">
-                  <div className="text-xl font-bold text-gray-400">검사 이미지 업로드</div>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={imagingTab === '영상검사' ? handlePhotoUpload : handleDiagnosticPhotoUpload}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                  />
-                  <div className="flex flex-wrap gap-2 mt-4 overflow-y-auto max-h-32">
-                    {(imagingTab === '영상검사' ? formData.imagingPhotos : formData.diagnosticPhotos || []).map((photo, idx) => (
-                      <img key={idx} src={photo} className="w-16 h-16 object-cover border border-black" referrerPolicy="no-referrer" />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Lab Sub-tabs Section */}
-            <div className="flex flex-col flex-1 min-h-0">
-              <div className="flex items-end justify-between mb-0">
-                <div className="flex gap-1">
-                  {['V/S 체크', 'I/O 체크', '검사결과 그래프', '검사결과 기록지'].map(t => (
-                    <button 
-                      key={t}
-                      onClick={() => setLabSubTab(t)}
-                      className={`px-6 py-1 font-bold border-2 border-black rounded-t-lg transition-colors ${labSubTab === t ? 'bg-white border-b-white -mb-[2px] z-10' : 'bg-gray-300 hover:bg-gray-200'}`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-                <button 
-                  onClick={() => {
-                    if (labSubTab === 'V/S 체크') addVSRecord();
-                    else if (labSubTab === 'I/O 체크') addIORecord();
-                  }}
-                  className="bg-gray-300 text-white px-4 py-1 font-bold border-2 border-black rounded-t-lg hover:bg-gray-400 mb-0"
-                >
-                  기록 추가
-                </button>
-              </div>
-              <div className="flex-1 border-2 border-black p-0 bg-white overflow-y-auto">
-                {labSubTab === 'V/S 체크' && (
-                  <table className="w-full border-collapse text-[12px]">
-                    <thead>
-                      <tr className="bg-gray-100 border-b border-black">
-                        <th className="border-r border-black p-2 w-40">확인일자</th>
-                        <th className="border-r border-black p-2">HR</th>
-                        <th className="border-r border-black p-2">RR</th>
-                        <th className="border-r border-black p-2">BT</th>
-                        <th className="border-r border-black p-2">BP</th>
-                        <th className="p-2 w-32">담당자</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(formData.vsHistory || []).map((record, i) => (
-                        <tr key={i} className="border-b border-black text-center h-10">
-                          <td className="border-r border-black p-0"><input value={record.date} onChange={(e) => updateVSRecord(i, 'date', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
-                          <td className="border-r border-black p-0"><input value={record.hr} onChange={(e) => updateVSRecord(i, 'hr', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
-                          <td className="border-r border-black p-0"><input value={record.rr} onChange={(e) => updateVSRecord(i, 'rr', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
-                          <td className="border-r border-black p-0"><input value={record.bt} onChange={(e) => updateVSRecord(i, 'bt', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
-                          <td className="border-r border-black p-0"><input value={record.bp} onChange={(e) => updateVSRecord(i, 'bp', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
-                          <td className="p-0"><input value={record.author} onChange={(e) => updateVSRecord(i, 'author', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-                {labSubTab === 'I/O 체크' && (
-                  <table className="w-full border-collapse text-[12px]">
-                    <thead>
-                      <tr className="bg-gray-100 border-b border-black">
-                        <th className="border-r border-black p-2 w-40">확인일자</th>
-                        <th className="border-r border-black p-2">Input</th>
-                        <th className="border-r border-black p-2">Input 내용물</th>
-                        <th className="border-r border-black p-2">Output</th>
-                        <th className="border-r border-black p-2">Output 내용물</th>
-                        <th className="p-2 w-32">담당자</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(formData.ioHistory || []).map((record, i) => (
-                        <tr key={i} className="border-b border-black text-center h-10">
-                          <td className="border-r border-black p-0"><input value={record.date} onChange={(e) => updateIORecord(i, 'date', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
-                          <td className="border-r border-black p-0"><input value={record.input} onChange={(e) => updateIORecord(i, 'input', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
-                          <td className="border-r border-black p-0"><input value={record.inputContent} onChange={(e) => updateIORecord(i, 'inputContent', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
-                          <td className="border-r border-black p-0"><input value={record.output} onChange={(e) => updateIORecord(i, 'output', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
-                          <td className="border-r border-black p-0"><input value={record.outputContent} onChange={(e) => updateIORecord(i, 'outputContent', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
-                          <td className="p-0"><input value={record.author} onChange={(e) => updateIORecord(i, 'author', e.target.value)} className="w-full h-full text-center focus:outline-none" spellCheck={false} /></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-                {labSubTab === '검사결과 그래프' && (
-                  <div className="p-8 flex items-center justify-center h-full">
-                    <div className="text-2xl font-bold text-gray-400">실시간 그래프 추가</div>
-                  </div>
-                )}
-                {labSubTab === '검사결과 기록지' && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-[10px]">
-                      <thead>
-                        <tr className="bg-gray-200 border-b border-black">
-                          {['검사일자', 'CBC', 'UA', '감염', 'LFT', 'PFT', 'TUMOR', 'ABGA', 'CRP', 'ESR', '특수혈액', '기타'].map(h => (
-                            <th key={h} className="border-r border-black p-1 text-center">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.labRows.map((row, i) => (
-                          <tr key={i} className={`border-b border-black ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                            {row.map((cell, j) => (
-                              <td key={j} className="border-r border-black p-0 h-8">
-                                <input 
-                                  type="text" 
-                                  value={cell} 
-                                  onChange={(e) => updateLabCell(i, j, e.target.value)}
-                                  className="w-full h-full bg-transparent px-1 text-center focus:outline-none"
-                                  spellCheck={false}
-                                />
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
+        return renderDefaultPatientView();
       case 'prescription':
         return (
           <div className="flex-1 flex flex-col p-4 bg-white overflow-auto">
@@ -7832,7 +7968,7 @@ export default function App() {
           <button 
             onClick={() => {
               setActiveTopMenu('E.M.R');
-              setActiveTab('admission');
+              setActiveTab('none');
             }}
             className={`font-bold text-[14px] px-3 py-0.5 rounded transition-all ${activeTopMenu === 'E.M.R' ? 'bg-[#555555] text-white' : 'text-black hover:bg-gray-300'}`}
           >
@@ -7942,15 +8078,15 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-1">
-              <TabButton label="응급기록" count={tabCounts.er} active={activeTab === 'er'} onClick={() => setActiveTab('er')} theme={currentTheme} />
-              <TabButton label="입원결과" count={tabCounts.admission} active={activeTab === 'admission'} onClick={() => setActiveTab('admission')} theme={currentTheme} />
-              <TabButton label="수술처치" count={tabCounts.surgery} active={activeTab === 'surgery'} onClick={() => setActiveTab('surgery')} theme={currentTheme} />
-              <TabButton label="협진기록" count={tabCounts.consult} active={activeTab === 'consult'} onClick={() => setActiveTab('consult')} theme={currentTheme} />
-              <TabButton label="퇴원요약" count={tabCounts.discharge} active={activeTab === 'discharge'} onClick={() => setActiveTab('discharge')} theme={currentTheme} />
-              <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} theme={currentTheme} />
-              <TabButton label="기타기록" count={tabCounts.other_record} active={activeTab === 'other_record'} onClick={() => setActiveTab('other_record')} theme={currentTheme} />
-              <TabButton label="타병원기록" count={tabCounts.other_hospital} active={activeTab === 'other_hospital'} onClick={() => setActiveTab('other_hospital')} theme={currentTheme} />
-              <TabButton label="처방" count={tabCounts.prescription} active={activeTab === 'prescription'} onClick={() => setActiveTab('prescription')} theme={currentTheme} />
+              <TabButton label="응급기록" count={tabCounts.er} active={activeTab === 'er'} onClick={() => setActiveTab(activeTab === 'er' ? 'none' : 'er')} theme={currentTheme} />
+              <TabButton label="입원결과" count={tabCounts.admission} active={activeTab === 'admission'} onClick={() => setActiveTab(activeTab === 'admission' ? 'none' : 'admission')} theme={currentTheme} />
+              <TabButton label="수술처치" count={tabCounts.surgery} active={activeTab === 'surgery'} onClick={() => setActiveTab(activeTab === 'surgery' ? 'none' : 'surgery')} theme={currentTheme} />
+              <TabButton label="협진기록" count={tabCounts.consult} active={activeTab === 'consult'} onClick={() => setActiveTab(activeTab === 'consult' ? 'none' : 'consult')} theme={currentTheme} />
+              <TabButton label="퇴원요약" count={tabCounts.discharge} active={activeTab === 'discharge'} onClick={() => setActiveTab(activeTab === 'discharge' ? 'none' : 'discharge')} theme={currentTheme} />
+              <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab(activeTab === 'lab' ? 'none' : 'lab')} theme={currentTheme} />
+              <TabButton label="기타기록" count={tabCounts.other_record} active={activeTab === 'other_record'} onClick={() => setActiveTab(activeTab === 'other_record' ? 'none' : 'other_record')} theme={currentTheme} />
+              <TabButton label="타병원기록" count={tabCounts.other_hospital} active={activeTab === 'other_hospital'} onClick={() => setActiveTab(activeTab === 'other_hospital' ? 'none' : 'other_hospital')} theme={currentTheme} />
+              <TabButton label="처방" count={tabCounts.prescription} active={activeTab === 'prescription'} onClick={() => setActiveTab(activeTab === 'prescription' ? 'none' : 'prescription')} theme={currentTheme} />
             </div>
 
             <div className="flex items-center gap-2">
@@ -8161,20 +8297,15 @@ export default function App() {
                                 onClick={() => {
                                   if (activeTab === 'other_record') return;
                                   setSelectedPatientId(patient.id);
+                                  setShowPatientModal(false);
+                                  setNursingIsWriting(false);
                                   
-                                  if (patient.chartNo.startsWith('ER')) {
-                                    setActiveTab('er');
-                                  } else {
-                                    if (activeTopMenu === '간호') setActiveTab('nursing');
-                                    else if (activeTopMenu === '의사처방') setActiveTab('doctor_prescription');
-                                    else if (activeTopMenu === '지원부서') setActiveTab('support_dept');
-                                    else if (activeTopMenu === '활성창') setActiveTab('consent_form');
-                                    else if (activeTopMenu === 'E.M.R') setActiveTab('admission');
-                                    else setActiveTab('admission');
-                                  }
-
-                                  if (activeTopMenu !== 'E.M.R' && activeTopMenu !== '의사처방' && activeTopMenu !== '지원부서' && activeTopMenu !== '활성창' && activeTopMenu !== '간호') {
-                                    setShowPatientModal(true);
+                                  if (activeTopMenu === '의사처방') setActiveTab('doctor_prescription');
+                                  else if (activeTopMenu === '지원부서') setActiveTab('support_dept');
+                                  else if (activeTopMenu === '활성창') setActiveTab('consent_form');
+                                  else {
+                                    setActiveTopMenu('E.M.R');
+                                    setActiveTab('none');
                                   }
                                 }}
                                 disabled={activeTab === 'other_record'}
