@@ -1506,6 +1506,74 @@ export default function App() {
     '저잔사 미음': false, '비만 수술 후 식사 (맑은 유동식)': false, '비만 수술 후 식사 (일반 유동식)': false
   });
 
+  const [showChemoModal, setShowChemoModal] = useState(false);
+  const [chemoSearchQuery, setChemoSearchQuery] = useState('');
+  const [showChemoDrugSelector, setShowChemoDrugSelector] = useState(false);
+  const [showChemoPatientSelector, setShowChemoPatientSelector] = useState(false);
+  const [selectedChemoPatientId, setSelectedChemoPatientId] = useState<string | null>(null);
+  const [chemoFormData, setChemoFormData] = useState({
+    name: '',
+    chartNo: '',
+    professor: '',
+    fellow: '',
+    admissionDate: '',
+    age: '',
+    bloodType: '',
+    weight: '',
+    height: '',
+    bsa: '',
+    dose: '',
+    frequency: '',
+    singleDose: '',
+    concentration: '',
+  });
+  const [chemoTablePatients, setChemoTablePatients] = useState<Array<{
+    id: string;
+    patientId: string;
+    name: string;
+    chartNo: string;
+    bloodType: string;
+    weight: string;
+    height: string;
+    age: string;
+    bsa: string;
+    drug: string;
+    count: string;
+    regimens: string[][];
+  }>>(() => {
+    try {
+      const saved = localStorage.getItem('globalChemoTablePatients');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item: any) => {
+            const rawAge = item.age || '';
+            const digits = String(rawAge).replace(/[^0-9]/g, '');
+            return {
+              ...item,
+              age: digits ? `만 ${digits}세` : ''
+            };
+          });
+        }
+      }
+    } catch (e) {}
+    return [];
+  });
+  const [activeChemoRegimens, setActiveChemoRegimens] = useState<string[][]>([
+    ['', '', '', ''],
+    ['', '', '', ''],
+    ['', '', '', ''],
+    ['', '', '', ''],
+    ['', '', '', ''],
+  ]);
+  const [showWeightCalcModal, setShowWeightCalcModal] = useState(false);
+  const [weightCalcDosePerKg, setWeightCalcDosePerKg] = useState('5');
+  const [showBsaCalcModal, setShowBsaCalcModal] = useState(false);
+  const [showBmiCalcModal, setShowBmiCalcModal] = useState(false);
+  const [chemoToast, setChemoToast] = useState<string | null>(null);
+  const [patientSelectorSearch, setPatientSelectorSearch] = useState('');
+
+
   const [nursingIsWriting, setNursingIsWriting] = useState(false);
   const [activeOrderForm, setActiveOrderForm] = useState<string | null>(null);
   const [orderInputs, setOrderInputs] = useState<Record<string, string>>({});
@@ -4799,6 +4867,1027 @@ export default function App() {
     );
   };
 
+  const calcBSA = (h: string | number, w: string | number): string => {
+    const heightNum = parseFloat(String(h));
+    const weightNum = parseFloat(String(w));
+    if (!isNaN(heightNum) && !isNaN(weightNum) && heightNum > 0 && weightNum > 0) {
+      const bsa = Math.sqrt((heightNum * weightNum) / 3600);
+      return bsa.toFixed(2);
+    }
+    return '';
+  };
+
+  const formatAgeDisplay = (val: any): string => {
+    if (!val && val !== 0) return '';
+    const str = String(val).trim();
+    const digits = str.replace(/[^0-9]/g, '');
+    if (digits) {
+      return `만 ${digits}세`;
+    }
+    return str;
+  };
+
+  const selectChemoPatient = (p: any) => {
+    const pId = p.id || p.patientId || '';
+    setSelectedChemoPatientId(pId);
+    const calculatedBsa = p.bsa || calcBSA(p.height || '', p.weight || '');
+    const cleanWeight = p.weight ? (String(p.weight).includes('kg') ? String(p.weight) : `${p.weight}kg`) : '';
+    const cleanHeight = p.height ? (String(p.height).includes('cm') ? String(p.height) : `${p.height}cm`) : '';
+    const cleanAge = formatAgeDisplay(p.age);
+    setChemoFormData({
+      name: p.name || '',
+      chartNo: p.chartNo || '',
+      professor: p.assignedProfessor || p.doctor || p.professor || '이영진',
+      fellow: p.doctor || p.fellow || '김주원',
+      admissionDate: p.admissionDate || '2026.03.22',
+      age: cleanAge,
+      bloodType: p.bloodType || 'A (+)',
+      weight: cleanWeight,
+      height: cleanHeight,
+      bsa: calculatedBsa,
+      dose: p.dose || '',
+      frequency: p.frequency || p.count || '',
+      singleDose: p.singleDose || '',
+      concentration: p.concentration || '',
+    });
+
+    let regs: string[][] = p.regimens || p.regimenRows || [];
+    if (!regs || regs.length === 0) {
+      regs = [
+        ['', '', '', ''],
+        ['', '', '', ''],
+        ['', '', '', ''],
+        ['', '', '', ''],
+        ['', '', '', '']
+      ];
+    } else if (regs.length < 5) {
+      regs = [...regs, ...Array(5 - regs.length).fill(0).map(() => ['', '', '', ''])];
+    }
+    setActiveChemoRegimens(regs.map(r => Array.isArray(r) ? [...r] : ['', '', '', '']));
+  };
+
+  const openChemoModal = () => {
+    setChemoTablePatients(prev => {
+      const existingMap = new Map(prev.map(item => [item.chartNo || item.id, item]));
+      const list = [...prev];
+      patients.forEach(pat => {
+        const key = pat.chartNo || pat.id;
+        if (!existingMap.has(key)) {
+          const defaultRegs = pat.regimenRows && pat.regimenRows.length >= 5
+            ? pat.regimenRows
+            : [...(pat.regimenRows || []), ...Array(Math.max(0, 5 - (pat.regimenRows?.length || 0))).fill(0).map(() => ['', '', '', ''])];
+          list.push({
+            id: pat.id,
+            patientId: pat.id,
+            name: pat.name,
+            chartNo: pat.chartNo,
+            bloodType: pat.bloodType || 'A+',
+            weight: pat.weight || '',
+            height: pat.height || '',
+            age: formatAgeDisplay(pat.age),
+            bsa: calcBSA(pat.height, pat.weight),
+            drug: pat.regimenRows?.[0]?.[2] || '',
+            count: pat.regimenRows?.filter(r => r && r[2])?.length ? `${pat.regimenRows.filter(r => r && r[2]).length}회` : '',
+            regimens: defaultRegs
+          });
+        }
+      });
+      try {
+        localStorage.setItem('globalChemoTablePatients', JSON.stringify(list));
+      } catch (e) {}
+      return list;
+    });
+
+    const cur = patients.find(p => p.id === selectedPatientId) || (patients.length > 0 ? patients[0] : (formData.name ? formData : null));
+    if (cur) {
+      selectChemoPatient(cur);
+    } else {
+      setChemoFormData({
+        name: '',
+        chartNo: '',
+        professor: '',
+        fellow: '',
+        admissionDate: '',
+        age: '',
+        bloodType: '',
+        weight: '',
+        height: '',
+        bsa: '',
+        dose: '',
+        frequency: '',
+        singleDose: '',
+        concentration: '',
+      });
+      setActiveChemoRegimens([
+        ['', '', '', ''],
+        ['', '', '', ''],
+        ['', '', '', ''],
+        ['', '', '', ''],
+        ['', '', '', '']
+      ]);
+    }
+    setShowChemoModal(true);
+  };
+
+  const saveChemoRecord = () => {
+    const targetPatientId = selectedChemoPatientId || (formData.id || '');
+    const drugName = activeChemoRegimens.find(r => r && r[2])?.[2] || chemoFormData.dose || '';
+    const validCount = activeChemoRegimens.filter(r => r && r[2]).length;
+    const countStr = validCount > 0 ? `${validCount}회` : (chemoFormData.frequency || '1회');
+
+    setChemoTablePatients(prev => {
+      let found = false;
+      const updated = prev.map(p => {
+        if ((targetPatientId && (p.id === targetPatientId || p.patientId === targetPatientId)) ||
+            (chemoFormData.chartNo && p.chartNo === chemoFormData.chartNo) ||
+            (chemoFormData.name && p.name === chemoFormData.name)) {
+          found = true;
+          return {
+            ...p,
+            name: chemoFormData.name || p.name,
+            chartNo: chemoFormData.chartNo || p.chartNo,
+            bloodType: chemoFormData.bloodType || p.bloodType,
+            weight: chemoFormData.weight || p.weight,
+            height: chemoFormData.height || p.height,
+            age: formatAgeDisplay(chemoFormData.age || p.age),
+            bsa: chemoFormData.bsa || p.bsa,
+            drug: drugName || p.drug,
+            count: countStr || p.count,
+            regimens: activeChemoRegimens.map(r => [...r]),
+          };
+        }
+        return p;
+      });
+
+      if (!found && (chemoFormData.name || chemoFormData.chartNo)) {
+        updated.push({
+          id: targetPatientId || `chemo-${Date.now()}`,
+          patientId: targetPatientId || `chemo-${Date.now()}`,
+          name: chemoFormData.name,
+          chartNo: chemoFormData.chartNo,
+          bloodType: chemoFormData.bloodType || 'A+',
+          weight: chemoFormData.weight || '',
+          height: chemoFormData.height || '',
+          age: formatAgeDisplay(chemoFormData.age),
+          bsa: chemoFormData.bsa || calcBSA(chemoFormData.height, chemoFormData.weight),
+          drug: drugName,
+          count: countStr,
+          regimens: activeChemoRegimens.map(r => [...r]),
+        });
+      }
+
+      try {
+        localStorage.setItem('globalChemoTablePatients', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    if (targetPatientId) {
+      setPatients(prev => prev.map(p => {
+        if (p.id === targetPatientId || (chemoFormData.chartNo && p.chartNo === chemoFormData.chartNo)) {
+          return {
+            ...p,
+            regimenRows: activeChemoRegimens.map(r => [...r]),
+            weight: chemoFormData.weight || p.weight,
+            height: chemoFormData.height || p.height,
+          };
+        }
+        return p;
+      }));
+
+      if (formData.id === targetPatientId || (chemoFormData.chartNo && formData.chartNo === chemoFormData.chartNo)) {
+        setFormData(prev => ({
+          ...prev,
+          regimenRows: activeChemoRegimens.map(r => [...r]),
+          weight: chemoFormData.weight || prev.weight,
+          height: chemoFormData.height || prev.height,
+        }));
+      }
+    }
+
+    setChemoToast('항암 처방 기록이 성공적으로 저장되었습니다.');
+    setTimeout(() => setChemoToast(null), 2500);
+  };
+
+  const CHEMO_DRUGS_CATALOG = [
+    { name: 'Cisplatin (시스플라틴)', standardDose: '50-100 mg/m²', route: 'IV' },
+    { name: 'Carboplatin (카보플라틴)', standardDose: 'AUC 4-6', route: 'IV' },
+    { name: 'Oxaliplatin (옥살리플라틴)', standardDose: '85-130 mg/m²', route: 'IV' },
+    { name: 'Paclitaxel (파클리탁셀)', standardDose: '135-175 mg/m²', route: 'IV' },
+    { name: 'Docetaxel (도세탁셀)', standardDose: '60-100 mg/m²', route: 'IV' },
+    { name: '5-Fluorouracil (5-FU)', standardDose: '400-1000 mg/m²', route: 'IV' },
+    { name: 'Gemcitabine (젬시타빈)', standardDose: '1000-1250 mg/m²', route: 'IV' },
+    { name: 'Doxorubicin (독소루비신)', standardDose: '40-60 mg/m²', route: 'IV' },
+    { name: 'Capecitabine (젤로다)', standardDose: '1000-1250 mg/m²', route: 'PO' },
+    { name: 'Irinotecan (이리노테칸)', standardDose: '150-180 mg/m²', route: 'IV' },
+    { name: 'Cyclophosphamide (시클로포스파미드)', standardDose: '500-600 mg/m²', route: 'IV' },
+    { name: 'Methotrexate (메토트렉세이트)', standardDose: '40-100 mg/m²', route: 'IV' },
+    { name: 'Etoposide (에토포사이드)', standardDose: '50-100 mg/m²', route: 'IV' },
+    { name: 'Rituximab (리툭시맙)', standardDose: '375 mg/m²', route: 'IV' },
+    { name: 'Trastuzumab (허셉틴)', standardDose: '6-8 mg/kg', route: 'IV' },
+    { name: 'Pembrolizumab (키트루다)', standardDose: '200 mg', route: 'IV' },
+    { name: 'Nivolumab (옵디보)', standardDose: '240 mg', route: 'IV' },
+  ];
+
+  const renderChemoPrescriptionModal = () => {
+    if (!showChemoModal) return null;
+
+    const filteredPatients = chemoSearchQuery.trim() === ''
+      ? []
+      : patients.filter(p => 
+          (p.name && p.name.toLowerCase().includes(chemoSearchQuery.toLowerCase())) ||
+          (p.chartNo && p.chartNo.includes(chemoSearchQuery))
+        );
+
+    // Ensure at least 4 display rows for the middle table
+    const displayTableRows = [...chemoTablePatients];
+    while (displayTableRows.length < 4) {
+      displayTableRows.push({
+        id: `empty-${displayTableRows.length}`,
+        patientId: '',
+        name: '',
+        chartNo: '',
+        bloodType: '',
+        weight: '',
+        height: '',
+        age: '',
+        bsa: '',
+        drug: '',
+        count: '',
+        regimens: []
+      });
+    }
+
+    return (
+      <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 font-['Gulim','굴림',sans-serif]">
+        <div className="bg-[#c0c0c0] w-[1260px] max-w-[98vw] max-h-[94vh] border-2 border-white border-r-gray-800 border-b-gray-800 shadow-2xl flex flex-col overflow-hidden text-black select-none">
+          {/* Header */}
+          <div className="bg-[#3a92d8] text-white px-3.5 py-1.5 flex items-center justify-between font-bold text-sm shrink-0 shadow-sm">
+            <span className="tracking-wide">항암 처방</span>
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => {}} 
+                className="w-5 h-5 bg-[#3a92d8] hover:bg-[#2572b0] border border-white/60 flex items-center justify-center text-xs font-bold"
+                title="최소화"
+              >
+                _
+              </button>
+              <button 
+                onClick={() => {}} 
+                className="w-5 h-5 bg-[#3a92d8] hover:bg-[#2572b0] border border-white/60 flex items-center justify-center text-xs font-bold"
+                title="최대화"
+              >
+                □
+              </button>
+              <button 
+                onClick={() => setShowChemoModal(false)} 
+                className="w-5 h-5 bg-[#d9534f] hover:bg-[#c9302c] border border-white/60 flex items-center justify-center text-xs font-bold"
+                title="닫기"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="p-3 flex flex-col gap-2.5 overflow-y-auto">
+            {/* Top Patient Search & Info Box */}
+            <div className="bg-white border-2 border-black p-3 flex flex-col gap-2.5 relative">
+              {/* Row 1: Search & Calculator Buttons */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 relative">
+                  <span className="font-bold text-xs shrink-0">환자조회</span>
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      value={chemoSearchQuery}
+                      onChange={(e) => setChemoSearchQuery(e.target.value)}
+                      placeholder="환자명 또는 차트번호를 입력하세요"
+                      className="border border-black px-2 py-1 text-xs w-[420px] bg-white outline-none focus:bg-yellow-50"
+                    />
+                    {chemoSearchQuery.trim() !== '' && filteredPatients.length > 0 && (
+                      <div className="absolute top-full left-0 mt-0.5 w-[420px] bg-white border border-black shadow-lg z-30 max-h-48 overflow-y-auto">
+                        {filteredPatients.map(pat => (
+                          <div 
+                            key={pat.id}
+                            onClick={() => {
+                              selectChemoPatient(pat);
+                              setChemoSearchQuery('');
+                            }}
+                            className="px-2 py-1.5 text-xs hover:bg-blue-100 cursor-pointer flex justify-between border-b border-gray-200"
+                          >
+                            <span className="font-bold">{pat.name} ({pat.chartNo})</span>
+                            <span className="text-gray-600">{pat.gender}/{formatAgeDisplay(pat.age)} - {pat.dept}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button 
+                    onClick={() => setShowWeightCalcModal(true)}
+                    className="bg-[#707070] text-white text-[11px] px-3 py-1 border border-black font-bold hover:bg-[#585858] active:translate-y-px"
+                  >
+                    체중별 용량 계산기
+                  </button>
+                  <button 
+                    onClick={() => setShowCalculator(true)}
+                    className="bg-[#707070] text-white text-[11px] px-3 py-1 border border-black font-bold hover:bg-[#585858] active:translate-y-px"
+                  >
+                    일반 계산기
+                  </button>
+                  <button 
+                    onClick={() => setShowBsaCalcModal(true)}
+                    className="bg-[#707070] text-white text-[11px] px-3 py-1 border border-black font-bold hover:bg-[#585858] active:translate-y-px"
+                  >
+                    BSA 계산기
+                  </button>
+                  <button 
+                    onClick={() => setShowBmiCalcModal(true)}
+                    className="bg-[#707070] text-white text-[11px] px-3 py-1 border border-black font-bold hover:bg-[#585858] active:translate-y-px"
+                  >
+                    BMI 계산기
+                  </button>
+                </div>
+              </div>
+
+              {/* Row 2: Basic Patient Info (Read-Only) */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px]">
+                <div className="flex items-center gap-1">
+                  <span>환자명 / 차트번호:</span>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={chemoFormData.name}
+                    className="border border-black px-1.5 py-0.5 w-24 text-xs text-center bg-gray-100 cursor-not-allowed select-none font-bold"
+                  />
+                  <span>/</span>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={chemoFormData.chartNo}
+                    className="border border-black px-1.5 py-0.5 w-32 text-xs text-center bg-gray-100 cursor-not-allowed select-none font-bold"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span>담당교수 / 전공의:</span>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={chemoFormData.professor}
+                    className="border border-black px-1.5 py-0.5 w-24 text-xs text-center bg-gray-100 cursor-not-allowed select-none font-bold"
+                  />
+                  <span>/</span>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={chemoFormData.fellow}
+                    className="border border-black px-1.5 py-0.5 w-24 text-xs text-center bg-gray-100 cursor-not-allowed select-none font-bold"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span>입원일:</span>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={chemoFormData.admissionDate}
+                    className="border border-black px-1.5 py-0.5 w-28 text-xs text-center bg-gray-100 cursor-not-allowed select-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span>연령:</span>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={formatAgeDisplay(chemoFormData.age)}
+                    className="border border-black px-1.5 py-0.5 w-20 text-xs text-center bg-gray-100 cursor-not-allowed select-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span>혈액형:</span>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={chemoFormData.bloodType}
+                    className="border border-black px-1.5 py-0.5 w-20 text-xs text-center bg-gray-100 cursor-not-allowed select-none font-bold"
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Metrics (Read-only), Red BSA Box (Read-only), and ONLY Editable Dosing */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px]">
+                <div className="flex items-center gap-1">
+                  <span>체중 / 키:</span>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={chemoFormData.weight}
+                    className="border border-black px-1.5 py-0.5 w-20 text-xs text-center bg-gray-100 cursor-not-allowed select-none"
+                  />
+                  <span>/</span>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={chemoFormData.height}
+                    className="border border-black px-1.5 py-0.5 w-20 text-xs text-center bg-gray-100 cursor-not-allowed select-none"
+                  />
+                </div>
+
+                {/* Red Bordered BSA Box matching attachment (Read-only) */}
+                <div className="flex items-center gap-1">
+                  <span className="text-red-600 font-bold">BSA =</span>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={chemoFormData.bsa}
+                    className="border-2 border-red-500 text-red-600 font-bold px-1.5 py-0.5 w-20 text-xs text-center bg-red-50/50 cursor-not-allowed select-none"
+                  />
+                </div>
+
+                {/* ONLY Editable Fields in top section */}
+                <div className="flex items-center gap-1">
+                  <span className="font-bold text-black">용량 / 횟수:</span>
+                  <input 
+                    type="text" 
+                    value={chemoFormData.dose}
+                    onChange={(e) => setChemoFormData(prev => ({ ...prev, dose: e.target.value }))}
+                    className="border border-black px-1.5 py-0.5 w-24 text-xs text-center bg-white focus:bg-yellow-50 outline-none"
+                    placeholder="용량"
+                  />
+                  <span>/</span>
+                  <input 
+                    type="text" 
+                    value={chemoFormData.frequency}
+                    onChange={(e) => setChemoFormData(prev => ({ ...prev, frequency: e.target.value }))}
+                    className="border border-black px-1.5 py-0.5 w-24 text-xs text-center bg-white focus:bg-yellow-50 outline-none"
+                    placeholder="횟수"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span className="font-bold text-black">1회 용량 / 농도:</span>
+                  <input 
+                    type="text" 
+                    value={chemoFormData.singleDose}
+                    onChange={(e) => setChemoFormData(prev => ({ ...prev, singleDose: e.target.value }))}
+                    className="border border-black px-1.5 py-0.5 w-24 text-xs text-center bg-white focus:bg-yellow-50 outline-none"
+                    placeholder="1회 용량"
+                  />
+                  <span>/</span>
+                  <input 
+                    type="text" 
+                    value={chemoFormData.concentration}
+                    onChange={(e) => setChemoFormData(prev => ({ ...prev, concentration: e.target.value }))}
+                    className="border border-black px-1.5 py-0.5 w-24 text-xs text-center bg-white focus:bg-yellow-50 outline-none"
+                    placeholder="농도"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Sub Buttons (Above Middle Table, Aligned Right) */}
+            <div className="flex justify-end gap-1.5">
+              <button 
+                onClick={() => setShowChemoPatientSelector(true)}
+                className="bg-[#8c8c8c] text-white text-xs px-4 py-1 border border-black hover:bg-[#737373] font-bold active:translate-y-px"
+              >
+                환자조회
+              </button>
+              <button 
+                onClick={() => setShowChemoDrugSelector(true)}
+                className="bg-[#8c8c8c] text-white text-xs px-4 py-1 border border-black hover:bg-[#737373] font-bold active:translate-y-px"
+              >
+                약물조회
+              </button>
+              <button 
+                onClick={() => setShowBsaCalcModal(true)}
+                className="bg-[#8c8c8c] text-white text-xs px-4 py-1 border border-black hover:bg-[#737373] font-bold active:translate-y-px"
+              >
+                BSA 계산기
+              </button>
+            </div>
+
+            {/* Middle Table: Patient Chemo Summary Table */}
+            <div className="border border-black bg-white overflow-x-auto max-h-56">
+              <table className="w-full border-collapse text-xs">
+                <thead>
+                  <tr className="bg-[#a6a6a6] border-b border-black text-center font-bold">
+                    <th className="border-r border-black py-1 px-2 w-28">환자명</th>
+                    <th className="border-r border-black py-1 px-2 w-32">차트번호</th>
+                    <th className="border-r border-black py-1 px-2 w-20">혈액형</th>
+                    <th className="border-r border-black py-1 px-2 w-20">체중</th>
+                    <th className="border-r border-black py-1 px-2 w-20">키</th>
+                    <th className="border-r border-black py-1 px-2 w-20">연령</th>
+                    <th className="border-r border-black py-1 px-2 w-20">BSA</th>
+                    <th className="border-r border-black py-1 px-2">사용약물</th>
+                    <th className="py-1 px-2 w-24">횟수</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayTableRows.map((row, idx) => {
+                    const isSelected = row.chartNo && (row.chartNo === chemoFormData.chartNo || row.id === selectedChemoPatientId);
+                    return (
+                      <tr 
+                        key={row.id || idx}
+                        onClick={() => {
+                          if (row.name || row.chartNo) {
+                            selectChemoPatient(row);
+                          }
+                        }}
+                        className={`border-b border-gray-300 text-center h-7.5 transition-colors ${
+                          isSelected ? 'bg-blue-100 font-bold' : row.name ? 'hover:bg-gray-100 cursor-pointer' : ''
+                        }`}
+                      >
+                        <td className="border-r border-black px-1.5">{row.name}</td>
+                        <td className="border-r border-black px-1.5">{row.chartNo}</td>
+                        <td className="border-r border-black px-1.5">{row.bloodType}</td>
+                        <td className="border-r border-black px-1.5">{row.weight ? (row.weight.includes('kg') ? row.weight : `${row.weight}kg`) : ''}</td>
+                        <td className="border-r border-black px-1.5">{row.height ? (row.height.includes('cm') ? row.height : `${row.height}cm`) : ''}</td>
+                        <td className="border-r border-black px-1.5">{formatAgeDisplay(row.age)}</td>
+                        <td className="border-r border-black px-1.5 text-red-600 font-bold">{row.bsa}</td>
+                        <td className="border-r border-black px-2 text-left truncate max-w-[280px]">{row.drug}</td>
+                        <td className="px-1.5">{row.count}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Bottom Table: Regimen (Cycle / Day / Drug / Dose) */}
+            <div className="border border-black bg-white overflow-hidden mt-1">
+              <div className="bg-[#bfbfbf] border-b border-black px-2 py-1 flex justify-between items-center text-xs font-bold">
+                <span className="text-gray-900">처방 레지멘 상세 (칸 안에서 엔터[Enter]를 누르면 새 칸이 자동 추가됩니다)</span>
+                <button 
+                  onClick={() => setActiveChemoRegimens(prev => [...prev, ['', '', '', '']])}
+                  className="bg-gray-700 text-white text-[11px] px-2.5 py-0.5 border border-black hover:bg-gray-800"
+                >
+                  + 칸 추가
+                </button>
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                <table className="w-full border-collapse text-xs">
+                  <thead className="sticky top-0 bg-[#d9d9d9] shadow-sm z-10">
+                    <tr className="border-b border-black text-center font-bold">
+                      <th className="border-r border-black py-1 px-2 w-48">Cycle</th>
+                      <th className="border-r border-black py-1 px-2 w-48">Day</th>
+                      <th className="border-r border-black py-1 px-2">Drug</th>
+                      <th className="border-r border-black py-1 px-2">Dose</th>
+                      <th className="py-1 px-1 w-10">삭제</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeChemoRegimens.map((row, rIdx) => (
+                      <tr key={rIdx} className="border-b border-gray-300 h-7.5 hover:bg-gray-50">
+                        <td className="border-r border-black p-0">
+                          <input 
+                            type="text" 
+                            value={row[0] || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setActiveChemoRegimens(prev => {
+                                const next = [...prev];
+                                next[rIdx] = [val, next[rIdx][1] || '', next[rIdx][2] || '', next[rIdx][3] || ''];
+                                return next;
+                              });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                setActiveChemoRegimens(prev => {
+                                  const next = [...prev];
+                                  next.splice(rIdx + 1, 0, ['', '', '', '']);
+                                  return next;
+                                });
+                              }
+                            }}
+                            placeholder={`Cycle ${rIdx + 1}`}
+                            className="w-full h-full px-2 text-center text-xs outline-none bg-transparent focus:bg-yellow-50"
+                          />
+                        </td>
+                        <td className="border-r border-black p-0">
+                          <input 
+                            type="text" 
+                            value={row[1] || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setActiveChemoRegimens(prev => {
+                                const next = [...prev];
+                                next[rIdx] = [next[rIdx][0] || '', val, next[rIdx][2] || '', next[rIdx][3] || ''];
+                                return next;
+                              });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                setActiveChemoRegimens(prev => {
+                                  const next = [...prev];
+                                  next.splice(rIdx + 1, 0, ['', '', '', '']);
+                                  return next;
+                                });
+                              }
+                            }}
+                            placeholder={`D${rIdx + 1}`}
+                            className="w-full h-full px-2 text-center text-xs outline-none bg-transparent focus:bg-yellow-50"
+                          />
+                        </td>
+                        <td className="border-r border-black p-0">
+                          <input 
+                            type="text" 
+                            value={row[2] || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setActiveChemoRegimens(prev => {
+                                const next = [...prev];
+                                next[rIdx] = [next[rIdx][0] || '', next[rIdx][1] || '', val, next[rIdx][3] || ''];
+                                return next;
+                              });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                setActiveChemoRegimens(prev => {
+                                  const next = [...prev];
+                                  next.splice(rIdx + 1, 0, ['', '', '', '']);
+                                  return next;
+                                });
+                              }
+                            }}
+                            placeholder="약물명 (약물조회 버튼 활용 가능)"
+                            className="w-full h-full px-2 text-xs outline-none bg-transparent focus:bg-yellow-50"
+                          />
+                        </td>
+                        <td className="border-r border-black p-0">
+                          <input 
+                            type="text" 
+                            value={row[3] || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setActiveChemoRegimens(prev => {
+                                const next = [...prev];
+                                next[rIdx] = [next[rIdx][0] || '', next[rIdx][1] || '', next[rIdx][2] || '', val];
+                                return next;
+                              });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                setActiveChemoRegimens(prev => {
+                                  const next = [...prev];
+                                  next.splice(rIdx + 1, 0, ['', '', '', '']);
+                                  return next;
+                                });
+                              }
+                            }}
+                            placeholder="용량 (예: 175 mg/m²)"
+                            className="w-full h-full px-2 text-xs outline-none bg-transparent focus:bg-yellow-50"
+                          />
+                        </td>
+                        <td className="p-0 text-center">
+                          {activeChemoRegimens.length > 1 && (
+                            <button 
+                              onClick={() => {
+                                setActiveChemoRegimens(prev => prev.filter((_, i) => i !== rIdx));
+                              }}
+                              className="text-gray-400 hover:text-red-600 font-bold px-1 text-xs"
+                              title="칸 삭제"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Bottom Button: 기록 추가하기 */}
+            <div className="flex justify-between items-center mt-1">
+              {chemoToast ? (
+                <div className="text-blue-800 font-bold text-xs bg-blue-100 px-3 py-1 border border-blue-400">
+                  {chemoToast}
+                </div>
+              ) : (
+                <div className="text-gray-600 text-[11px]">
+                  * [기록 추가하기]를 누르면 해당 환자의 항암 처방이 저장되며 일반 처방표에는 별도 기록되지 않습니다.
+                </div>
+              )}
+              <button 
+                onClick={saveChemoRecord}
+                className="bg-[#787878] text-white text-xs px-6 py-1.5 border border-black hover:bg-[#5e5e5e] font-bold active:translate-y-px shadow-sm"
+              >
+                기록 추가하기
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Submodal 1: Drug Selector Modal */}
+        {showChemoDrugSelector && (
+          <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/50">
+            <div className="bg-[#f0f0f0] w-[500px] border-2 border-black shadow-xl flex flex-col p-3">
+              <div className="flex justify-between items-center border-b-2 border-black pb-2 mb-2 font-bold text-sm bg-gray-200 p-2">
+                <span>항암 약물 선택</span>
+                <button onClick={() => setShowChemoDrugSelector(false)} className="text-red-600 font-black px-1">✕</button>
+              </div>
+              <div className="max-h-80 overflow-y-auto flex flex-col gap-1">
+                {CHEMO_DRUGS_CATALOG.map((drug, dIdx) => (
+                  <div 
+                    key={dIdx}
+                    onClick={() => {
+                      // Apply to first empty regimen row or append
+                      setActiveChemoRegimens(prev => {
+                        const next = prev.map(r => [...r]);
+                        const emptyIdx = next.findIndex(r => !r[2]);
+                        const targetIdx = emptyIdx >= 0 ? emptyIdx : 0;
+                        next[targetIdx] = [
+                          next[targetIdx][0] || '1',
+                          next[targetIdx][1] || 'D1',
+                          drug.name.split(' ')[0],
+                          drug.standardDose
+                        ];
+                        return next;
+                      });
+                      setChemoFormData(prev => ({
+                        ...prev,
+                        dose: drug.standardDose,
+                        frequency: 'q3w'
+                      }));
+                      setShowChemoDrugSelector(false);
+                    }}
+                    className="p-2 bg-white border border-gray-300 hover:bg-blue-50 cursor-pointer flex justify-between items-center text-xs"
+                  >
+                    <div>
+                      <div className="font-bold">{drug.name}</div>
+                      <div className="text-gray-500 text-[11px]">투여경로: {drug.route}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-blue-700 font-bold">{drug.standardDose}</div>
+                      <span className="text-[10px] bg-gray-200 px-1.5 py-0.5 border border-gray-400">선택</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex justify-end">
+                <button 
+                  onClick={() => setShowChemoDrugSelector(false)}
+                  className="bg-gray-400 text-white text-xs px-4 py-1 border border-black font-bold"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Submodal 2: Patient Selector Modal */}
+        {showChemoPatientSelector && (
+          <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/50">
+            <div className="bg-[#f0f0f0] w-[650px] border-2 border-black shadow-xl flex flex-col p-3">
+              <div className="flex justify-between items-center border-b-2 border-black pb-2 mb-2 font-bold text-sm bg-gray-200 p-2">
+                <span>환자 선택 (전체 환자 항암 처방 관리)</span>
+                <button onClick={() => setShowChemoPatientSelector(false)} className="text-red-600 font-black px-1">✕</button>
+              </div>
+              <div className="mb-2">
+                <input 
+                  type="text" 
+                  value={patientSelectorSearch}
+                  onChange={(e) => setPatientSelectorSearch(e.target.value)}
+                  placeholder="환자 검색 (이름 또는 차트번호 입력)"
+                  className="w-full border border-black px-2 py-1 text-xs bg-white focus:bg-yellow-50 outline-none"
+                />
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                <table className="w-full border-collapse text-xs bg-white border border-gray-300">
+                  <thead>
+                    <tr className="bg-gray-100 border-b border-gray-300 font-bold sticky top-0">
+                      <th className="p-1.5 border-r border-gray-300">환자명</th>
+                      <th className="p-1.5 border-r border-gray-300">차트번호</th>
+                      <th className="p-1.5 border-r border-gray-300">성별/나이</th>
+                      <th className="p-1.5 border-r border-gray-300">진료과</th>
+                      <th className="p-1.5 border-r border-gray-300">담당교수</th>
+                      <th className="p-1.5">선택</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {patients
+                      .filter(p => !patientSelectorSearch.trim() || 
+                        (p.name && p.name.toLowerCase().includes(patientSelectorSearch.toLowerCase())) ||
+                        (p.chartNo && p.chartNo.includes(patientSelectorSearch))
+                      )
+                      .map(p => (
+                      <tr key={p.id} className="border-b border-gray-200 hover:bg-blue-50 text-center">
+                        <td className="p-1.5 border-r border-gray-300 font-bold">{p.name}</td>
+                        <td className="p-1.5 border-r border-gray-300">{p.chartNo}</td>
+                        <td className="p-1.5 border-r border-gray-300">{p.gender}/{formatAgeDisplay(p.age)}</td>
+                        <td className="p-1.5 border-r border-gray-300">{p.dept}</td>
+                        <td className="p-1.5 border-r border-gray-300">{p.assignedProfessor || p.doctor}</td>
+                        <td className="p-1.5">
+                          <button 
+                            onClick={() => {
+                              selectChemoPatient(p);
+                              setShowChemoPatientSelector(false);
+                            }}
+                            className="bg-blue-600 text-white px-2 py-0.5 text-[11px] font-bold border border-black hover:bg-blue-700"
+                          >
+                            선택
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-3 flex justify-end">
+                <button 
+                  onClick={() => setShowChemoPatientSelector(false)}
+                  className="bg-gray-400 text-white text-xs px-4 py-1 border border-black font-bold"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Submodal 3: BSA Calculator Modal */}
+        {showBsaCalcModal && (
+          <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/50">
+            <div className="bg-[#f0f0f0] w-[380px] border-2 border-black shadow-xl p-3 flex flex-col gap-2">
+              <div className="flex justify-between items-center border-b-2 border-black pb-1 font-bold text-sm bg-gray-200 p-1.5">
+                <span>체표면적 (BSA) 계산기</span>
+                <button onClick={() => setShowBsaCalcModal(false)} className="text-red-600 font-black px-1">✕</button>
+              </div>
+              <div className="bg-white border border-gray-400 p-3 flex flex-col gap-2 text-xs">
+                <div className="text-[11px] text-gray-600 mb-1">
+                  공식: Mosteller 공식 = √((신장(cm) × 체중(kg)) / 3600)
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>신장 (cm):</span>
+                  <input 
+                    type="number"
+                    value={chemoFormData.height}
+                    onChange={(e) => {
+                      const h = e.target.value;
+                      const b = calcBSA(h, chemoFormData.weight);
+                      setChemoFormData(prev => ({ ...prev, height: h, bsa: b }));
+                    }}
+                    className="border border-black px-2 py-1 w-24 text-right"
+                  />
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>체중 (kg):</span>
+                  <input 
+                    type="number"
+                    value={chemoFormData.weight}
+                    onChange={(e) => {
+                      const w = e.target.value;
+                      const b = calcBSA(chemoFormData.height, w);
+                      setChemoFormData(prev => ({ ...prev, weight: w, bsa: b }));
+                    }}
+                    className="border border-black px-2 py-1 w-24 text-right"
+                  />
+                </div>
+                <div className="border-t border-gray-300 pt-2 flex justify-between items-center text-sm font-bold text-red-600">
+                  <span>계산된 BSA:</span>
+                  <span className="text-lg">{calcBSA(chemoFormData.height, chemoFormData.weight) || '0.00'} m²</span>
+                </div>
+              </div>
+              <div className="flex justify-end gap-1 mt-1">
+                <button 
+                  onClick={() => setShowBsaCalcModal(false)}
+                  className="bg-blue-600 text-white text-xs px-4 py-1 border border-black font-bold hover:bg-blue-700"
+                >
+                  적용 및 닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Submodal 4: Weight-based Dose Calculator Modal */}
+        {showWeightCalcModal && (
+          <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/50">
+            <div className="bg-[#f0f0f0] w-[380px] border-2 border-black shadow-xl p-3 flex flex-col gap-2">
+              <div className="flex justify-between items-center border-b-2 border-black pb-1 font-bold text-sm bg-gray-200 p-1.5">
+                <span>체중별 용량 계산기</span>
+                <button onClick={() => setShowWeightCalcModal(false)} className="text-red-600 font-black px-1">✕</button>
+              </div>
+              <div className="bg-white border border-gray-400 p-3 flex flex-col gap-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span>환자 체중 (kg):</span>
+                  <input 
+                    type="number"
+                    value={chemoFormData.weight}
+                    onChange={(e) => setChemoFormData(prev => ({ ...prev, weight: e.target.value }))}
+                    className="border border-black px-2 py-1 w-24 text-right"
+                  />
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>체중당 용량 (mg/kg):</span>
+                  <input 
+                    type="number"
+                    value={weightCalcDosePerKg}
+                    onChange={(e) => setWeightCalcDosePerKg(e.target.value)}
+                    className="border border-black px-2 py-1 w-24 text-right"
+                  />
+                </div>
+                <div className="border-t border-gray-300 pt-2 flex justify-between items-center text-sm font-bold text-blue-700">
+                  <span>총 용량:</span>
+                  <span className="text-lg">
+                    {((parseFloat(chemoFormData.weight) || 0) * (parseFloat(weightCalcDosePerKg) || 0)).toFixed(1)} mg
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-end gap-1 mt-1">
+                <button 
+                  onClick={() => {
+                    const totalDose = ((parseFloat(chemoFormData.weight) || 0) * (parseFloat(weightCalcDosePerKg) || 0)).toFixed(1);
+                    setChemoFormData(prev => ({ ...prev, singleDose: `${totalDose}mg`, dose: `${totalDose}mg` }));
+                    setShowWeightCalcModal(false);
+                  }}
+                  className="bg-blue-600 text-white text-xs px-4 py-1 border border-black font-bold hover:bg-blue-700"
+                >
+                  처방에 적용
+                </button>
+                <button 
+                  onClick={() => setShowWeightCalcModal(false)}
+                  className="bg-gray-400 text-white text-xs px-3 py-1 border border-black font-bold"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Submodal 5: BMI Calculator Modal */}
+        {showBmiCalcModal && (
+          <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/50">
+            <div className="bg-[#f0f0f0] w-[380px] border-2 border-black shadow-xl p-3 flex flex-col gap-2">
+              <div className="flex justify-between items-center border-b-2 border-black pb-1 font-bold text-sm bg-gray-200 p-1.5">
+                <span>BMI 계산기</span>
+                <button onClick={() => setShowBmiCalcModal(false)} className="text-red-600 font-black px-1">✕</button>
+              </div>
+              <div className="bg-white border border-gray-400 p-3 flex flex-col gap-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span>신장 (cm):</span>
+                  <input 
+                    type="number"
+                    value={chemoFormData.height}
+                    onChange={(e) => setChemoFormData(prev => ({ ...prev, height: e.target.value }))}
+                    className="border border-black px-2 py-1 w-24 text-right"
+                  />
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>체중 (kg):</span>
+                  <input 
+                    type="number"
+                    value={chemoFormData.weight}
+                    onChange={(e) => setChemoFormData(prev => ({ ...prev, weight: e.target.value }))}
+                    className="border border-black px-2 py-1 w-24 text-right"
+                  />
+                </div>
+                {(() => {
+                  const hM = (parseFloat(chemoFormData.height) || 0) / 100;
+                  const wKg = parseFloat(chemoFormData.weight) || 0;
+                  const bmi = (hM > 0 && wKg > 0) ? (wKg / (hM * hM)).toFixed(1) : '0.0';
+                  const bmiVal = parseFloat(bmi);
+                  let status = '정상';
+                  if (bmiVal < 18.5) status = '저체중';
+                  else if (bmiVal >= 25) status = '비만';
+                  else if (bmiVal >= 23) status = '과체중';
+                  return (
+                    <div className="border-t border-gray-300 pt-2 flex justify-between items-center text-sm font-bold text-green-700">
+                      <span>BMI:</span>
+                      <span className="text-lg">{bmi} kg/m² ({status})</span>
+                    </div>
+                  );
+                })()}
+              </div>
+              <div className="flex justify-end gap-1 mt-1">
+                <button 
+                  onClick={() => setShowBmiCalcModal(false)}
+                  className="bg-gray-400 text-white text-xs px-4 py-1 border border-black font-bold"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const PatientDetailModal = () => {
     if (!showPatientModal || !selectedPatientId) return null;
 
@@ -6127,10 +7216,16 @@ export default function App() {
                       ))}
                     </div>
                     <div className="flex gap-1">
-                      {['진료', '협진', '퇴원', '예약', '기타'].map(btn => (
+                      {['진료', '협진', '퇴원', '항암', '기타'].map(btn => (
                         <button 
                           key={btn}
-                          onClick={() => addPrescriptionRecord(btn)}
+                          onClick={() => {
+                            if (btn === '항암') {
+                              openChemoModal();
+                            } else {
+                              addPrescriptionRecord(btn);
+                            }
+                          }}
                           className="bg-gray-500 text-white px-4 py-1 text-xs font-bold hover:bg-gray-600 border border-black min-w-[60px]"
                         >
                           {btn}
@@ -8672,6 +9767,7 @@ export default function App() {
       )}
 
       <DietRequestModal />
+      {renderChemoPrescriptionModal()}
 
       {showCalculator && (
         <Calculator onClose={() => setShowCalculator(false)} />
