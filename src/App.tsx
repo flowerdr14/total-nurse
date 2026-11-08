@@ -210,9 +210,9 @@ export interface ClinicalPathologyRecord {
 
 export interface OtherRecordItem {
   id: string;
-  memo: string;
+  memo?: string;
   memoChecked?: boolean;
-  cp: string;
+  cp?: string;
   wardRoom: string;
   patientName: string;
   patientNo: string;
@@ -230,6 +230,21 @@ export interface OtherRecordItem {
     deptDoctorDx?: string;
     otherRecord?: string;
   };
+}
+
+export interface PrescriptionTableItem {
+  id: string;
+  memo?: string;
+  memoChecked?: boolean;
+  cp?: string;
+  wardRoom: string;
+  patientName: string;
+  patientNo: string;
+  genderAge: string;
+  deptDoctorDx: string;
+  color: string;
+  prescriptionContent: string;
+  category?: string;
 }
 
 export interface ConsultRecordItem {
@@ -250,6 +265,7 @@ export interface PrescriptionRecord {
   content: string;
   precautions: string;
   status: string; // '완료' | '진행중' | '대기중' | '진행필요' | '딜레이 가능' | '딜레이 불가능' | '요청함'
+  color?: string;
 }
 
 export interface Patient {
@@ -1144,18 +1160,23 @@ const HeaderButton = ({ icon: Icon, label, onClick, color = "text-black", disabl
   );
 };
 
-const TabButton: React.FC<{ label: string, count: number, active: boolean, onClick: () => void, theme: any }> = ({ label, count, active, onClick, theme }) => (
+
+
+const TabButton: React.FC<{ label: string, count: number, active: boolean, onClick: () => void, theme: any, shortcut?: string, showShortcuts?: boolean }> = ({ label, count, active, onClick, theme, shortcut, showShortcuts }) => (
   <div className="relative flex flex-col items-center font-gulim">
     <button 
       onClick={onClick}
-      className={`px-3 py-2 rounded-md font-bold text-[14px] border transition-all min-w-[100px] ${
+      className={`px-3 py-2 rounded-md font-bold text-[14px] border transition-all min-w-[100px] flex flex-col items-center justify-center ${
         active 
           ? 'text-white border-gray-600 shadow-inner' 
           : 'bg-[#E0E0E0] border-gray-400 text-gray-700 hover:bg-gray-200'
       }`}
       style={{ backgroundColor: active ? theme.color : undefined }}
     >
-      {label}({count})
+      <span>{label}({count})</span>
+      {showShortcuts && shortcut && (
+        <span className="text-[10px] opacity-80 font-normal mt-0.5">{shortcut}</span>
+      )}
     </button>
     {active && (
       <div 
@@ -1480,7 +1501,15 @@ export default function App() {
   const [filterByDept, setFilterByDept] = useState(false);
   const [selectedDeptFilter, setSelectedDeptFilter] = useState('전체');
   const [globalOtherRecords, setGlobalOtherRecords] = useState<OtherRecordItem[]>([]);
+  const [globalPrescriptionRecords, setGlobalPrescriptionRecords] = useState<PrescriptionTableItem[]>([]);
   const [formData, setFormData] = useState<Patient>(INITIAL_FORM_DATA);
+
+  useEffect(() => {
+    if (activeTab === 'prescription') {
+      setSelectedPatientId(null);
+      setGlobalPrescriptionRecords([]);
+    }
+  }, [activeTab]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -1491,6 +1520,21 @@ export default function App() {
   const [showCalculator, setShowCalculator] = useState(false);
   const [printType, setPrintType] = useState<TabType | null>(null);
   const lastSyncedIdRef = useRef<string | null>(null);
+  const [prescriptionBtnPos, setPrescriptionBtnPos] = useState<'left' | 'table_top'>(() => {
+    try {
+      return (localStorage.getItem('prescriptionBtnPos') as 'left' | 'table_top') || 'left';
+    } catch (e) {
+      return 'left';
+    }
+  });
+
+  const [showShortcuts, setShowShortcuts] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('showShortcuts') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
 
   const [showDietRequestModal, setShowDietRequestModal] = useState(false);
   const [dietRequesterType, setDietRequesterType] = useState<'환자' | '보호자'>('환자');
@@ -2089,10 +2133,11 @@ export default function App() {
       id: Date.now().toString(),
       type: type,
       date: new Date().toLocaleDateString('ko-KR').replace(/\. /g, '.').replace(/\.$/, ''),
-      prescriber: '',
+      prescriber: formData.doctor || formData.assignedProfessor || '',
       content: '',
       precautions: '',
-      status: '요청함'
+      status: '요청함',
+      color: '#ffffff'
     };
     const newRecords = [...(formData.prescriptionRecords || []), newRecord];
     updateField('prescriptionRecords', newRecords);
@@ -2111,9 +2156,19 @@ export default function App() {
     
     const currentIndex = PRESCRIPTION_STATUSES.findIndex(s => s.name === record.status);
     const nextIndex = (currentIndex + 1) % PRESCRIPTION_STATUSES.length;
-    const nextStatus = PRESCRIPTION_STATUSES[nextIndex].name;
+    const nextStatus = PRESCRIPTION_STATUSES[nextIndex];
     
-    updatePrescriptionRecord(id, 'status', nextStatus);
+    const newRecords = (formData.prescriptionRecords || []).map(r => 
+      r.id === id ? { ...r, status: nextStatus.name, color: nextStatus.color } : r
+    );
+    updateField('prescriptionRecords', newRecords);
+  };
+
+  const setPrescriptionColor = (id: string, color: string, statusName?: string) => {
+    const newRecords = (formData.prescriptionRecords || []).map(r => 
+      r.id === id ? { ...r, color, ...(statusName ? { status: statusName } : {}) } : r
+    );
+    updateField('prescriptionRecords', newRecords);
   };
 
   const deletePrescriptionRecord = (id: string) => {
@@ -4868,8 +4923,8 @@ export default function App() {
   };
 
   const calcBSA = (h: string | number, w: string | number): string => {
-    const heightNum = parseFloat(String(h));
-    const weightNum = parseFloat(String(w));
+    const heightNum = parseFloat(String(h).replace(/[^0-9.]/g, ''));
+    const weightNum = parseFloat(String(w).replace(/[^0-9.]/g, ''));
     if (!isNaN(heightNum) && !isNaN(weightNum) && heightNum > 0 && weightNum > 0) {
       const bsa = Math.sqrt((heightNum * weightNum) / 3600);
       return bsa.toFixed(2);
@@ -5280,22 +5335,40 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Row 3: Metrics (Read-only), Red BSA Box (Read-only), and ONLY Editable Dosing */}
+              {/* Row 3: Metrics (Weight/Height Editable, Red BSA Box Read-only), and Editable Dosing */}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px]">
                 <div className="flex items-center gap-1">
                   <span>체중 / 키:</span>
                   <input 
                     type="text" 
-                    readOnly
                     value={chemoFormData.weight}
-                    className="border border-black px-1.5 py-0.5 w-20 text-xs text-center bg-gray-100 cursor-not-allowed select-none"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const newBsa = calcBSA(chemoFormData.height, val);
+                      setChemoFormData(prev => ({
+                        ...prev,
+                        weight: val,
+                        bsa: newBsa || prev.bsa
+                      }));
+                    }}
+                    className="border border-black px-1.5 py-0.5 w-20 text-xs text-center bg-white focus:bg-yellow-50 outline-none"
+                    placeholder="체중"
                   />
                   <span>/</span>
                   <input 
                     type="text" 
-                    readOnly
                     value={chemoFormData.height}
-                    className="border border-black px-1.5 py-0.5 w-20 text-xs text-center bg-gray-100 cursor-not-allowed select-none"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const newBsa = calcBSA(val, chemoFormData.weight);
+                      setChemoFormData(prev => ({
+                        ...prev,
+                        height: val,
+                        bsa: newBsa || prev.bsa
+                      }));
+                    }}
+                    className="border border-black px-1.5 py-0.5 w-20 text-xs text-center bg-white focus:bg-yellow-50 outline-none"
+                    placeholder="키"
                   />
                 </div>
 
@@ -7005,155 +7078,214 @@ export default function App() {
         );
       case 'other_record':
         return (
-          <div className="flex-1 flex gap-10 p-4 bg-white overflow-hidden">
-            <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-              <div className="border-2 border-black flex flex-col flex-1 min-h-0 overflow-y-auto bg-white">
-                <div className="bg-[#999] text-white px-4 py-1 font-bold sticky top-0 z-10 flex justify-between items-center">
-                  <span>기타기록</span>
+          <div className="flex-1 flex flex-col p-4 bg-white overflow-hidden font-['Gulim','굴림',sans-serif]">
+            <div className="flex-1 flex flex-col gap-2 overflow-hidden">
+              <div className="flex justify-between items-center mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-base text-gray-800">기타기록</span>
+                  <span className="text-xs text-gray-500">(칸 안에서 Enter를 누르면 다음 행이 자동 추가됩니다)</span>
+                </div>
+                <div className="flex items-center gap-2">
                   <button 
                     onClick={() => {
                       const newRecord: OtherRecordItem = {
                         id: Date.now().toString(),
                         memo: '',
                         cp: '',
-                        wardRoom: '',
-                        patientName: '',
-                        patientNo: '',
-                        genderAge: '',
-                        deptDoctorDx: '',
+                        wardRoom: formData.room || '',
+                        patientName: formData.name || '',
+                        patientNo: formData.chartNo || '',
+                        genderAge: `${formData.gender || 'M'} / ${formatAgeDisplay(formData.age || '40')}`,
+                        deptDoctorDx: `${formData.dept || '내과'} / ${formData.doctor || formData.assignedProfessor || '주치의'}`,
                         otherRecord: '',
                         color: '#ffffff'
                       };
                       setGlobalOtherRecords([...globalOtherRecords, newRecord]);
                     }}
-                    className="bg-gray-200 text-black px-2 py-0.5 text-xs font-bold border border-black hover:bg-gray-300"
+                    className="bg-[#3a92d8] hover:bg-[#2572b0] text-white px-3 py-1 text-xs font-bold border border-black shadow-sm"
                   >
-                    추가
+                    + 행 추가
                   </button>
                 </div>
-                <div className="p-2 border-b-2 border-black flex flex-wrap gap-2 bg-gray-100">
-                  {['Set', 'P-Set', '슬립', 'Anti', 'CAP', 'T-A', 'T-P', '접종', '예약', '협진'].map(btn => (
-                    <button key={btn} className="bg-gray-500 text-white px-4 py-1 text-sm hover:bg-gray-600">
-                      {btn}
-                    </button>
-                  ))}
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-sm">
-                    <thead>
-                      <tr className="bg-gray-200 border-b-2 border-black">
-                        <th className="border-r border-black p-1 w-12">메모</th>
-                        <th className="border-r border-black p-1 w-16">CP</th>
-                        <th className="border-r border-black p-1 w-24">병동/병실</th>
-                        <th className="border-r border-black p-1 w-24">환자명</th>
-                        <th className="border-r border-black p-1 w-28">환자번호</th>
-                        <th className="border-r border-black p-1 w-24">성별/나이</th>
-                        <th className="border-r border-black p-1 w-48">진료과/주치의/진단명</th>
-                        <th className="border-r border-black p-1">기타기록</th>
-                        <th className="p-1 w-12">색상</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {globalOtherRecords.map((record, idx) => {
-                        const renderCell = (field: keyof OtherRecordItem, isTextarea: boolean = true) => {
-                          const cellColor = record.cellColors?.[field as keyof typeof record.cellColors] || 'transparent';
-                          return (
-                            <td className="border-r border-black p-0 relative group align-top" style={{ backgroundColor: cellColor }}>
-                              {isTextarea ? (
-                                <div className="flex items-start w-full h-full">
-                                  {field === 'memo' && (
-                                    <div className="p-1 shrink-0">
-                                      <input 
-                                        type="checkbox" 
-                                        checked={record.memoChecked || false}
-                                        onChange={(e) => {
-                                          const newRecords = [...globalOtherRecords];
-                                          newRecords[idx].memoChecked = e.target.checked;
-                                          setGlobalOtherRecords(newRecords);
-                                        }}
-                                        className="w-4 h-4 mt-1 border-2 border-black rounded-sm cursor-pointer accent-black"
-                                      />
-                                    </div>
-                                  )}
-                                  <AutoHeightTextarea 
-                                    value={record[field] as string} 
-                                    onChange={(e: any) => {
-                                      const newRecords = [...globalOtherRecords];
-                                      (newRecords[idx] as any)[field] = e.target.value;
-                                      setGlobalOtherRecords(newRecords);
-                                    }} 
-                                    className="w-full h-full p-1 focus:outline-none bg-transparent" 
-                                    minHeight="30px"
-                                  />
-                                </div>
-                              ) : (
-                                <div className="p-1 text-center h-full flex items-center justify-center min-h-[30px]">
-                                  {record[field] as string}
-                                </div>
-                              )}
-                              <div className="absolute top-0 right-0 hidden group-hover:flex bg-white border border-black shadow-md z-20">
+              </div>
+
+              {/* Table matching image_242b047c.png and image_56a13189.png */}
+              <div className="border-2 border-black flex-1 overflow-auto bg-[#606770] shadow-sm">
+                <table className="w-full border-collapse text-xs">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-[#808890] text-white font-bold text-center border-b-2 border-black">
+                      <th className="py-1.5 px-2 w-16 border-r border-black">메모</th>
+                      <th className="py-1.5 px-2 w-16 border-r border-black">CP</th>
+                      <th className="py-1.5 px-2 w-24 border-r border-black">병동/병실</th>
+                      <th className="py-1.5 px-2 w-24 border-r border-black">환자명</th>
+                      <th className="py-1.5 px-2 w-28 border-r border-black">환자번호</th>
+                      <th className="py-1.5 px-2 w-24 border-r border-black">성별/나이</th>
+                      <th className="py-1.5 px-2 w-48 border-r border-black">진료과/주치의/진단명</th>
+                      <th className="py-1.5 px-2 w-16 border-r border-black">색상</th>
+                      <th className="py-1.5 px-2 border-r border-black">기타기록</th>
+                      <th className="py-1.5 px-1 w-10 text-center">삭제</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {globalOtherRecords.length > 0 ? (
+                      globalOtherRecords.map((record, idx) => {
+                        const handleKeyDown = (e: React.KeyboardEvent) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const newRecord: OtherRecordItem = {
+                              id: Date.now().toString(),
+                              memo: '',
+                              cp: '',
+                              wardRoom: '',
+                              patientName: '',
+                              patientNo: '',
+                              genderAge: '',
+                              deptDoctorDx: '',
+                              otherRecord: '',
+                              color: ''
+                            };
+                            const next = [...globalOtherRecords];
+                            next.splice(idx + 1, 0, newRecord);
+                            setGlobalOtherRecords(next);
+                          }
+                        };
+
+                        const updateRecord = (field: keyof OtherRecordItem, val: any) => {
+                          const next = globalOtherRecords.map(r => r.id === record.id ? { ...r, [field]: val } : r);
+                          setGlobalOtherRecords(next);
+                        };
+
+                        const isCustomColor = record.color && record.color !== '#ffffff' && record.color !== '';
+                        const baseBg = idx % 2 === 0 ? '#6e757d' : '#555b62';
+                        const rowBg = isCustomColor ? record.color : baseBg;
+                        const isLightColor = isCustomColor && (record.color === '#FFFFFF' || record.color === '#FFFF99' || record.color === '#87CEFA');
+                        const textColor = isLightColor ? 'text-black' : 'text-white';
+                        const placeholderColor = isLightColor ? 'placeholder-gray-500' : 'placeholder-gray-300';
+
+                        return (
+                          <tr 
+                            key={record.id} 
+                            className="border-b border-black last:border-b-0 group transition-colors font-medium"
+                            style={{ backgroundColor: rowBg }}
+                          >
+                            <td className="border-r border-black p-0">
+                              <div className="flex items-center justify-center px-1">
+                                <input 
+                                  type="checkbox" 
+                                  checked={record.memoChecked || false}
+                                  onChange={(e) => updateRecord('memoChecked', e.target.checked)}
+                                  className="w-3.5 h-3.5 mr-1 accent-white cursor-pointer shrink-0"
+                                />
+                                <input 
+                                  type="text"
+                                  value={record.memo || ''}
+                                  onChange={(e) => updateRecord('memo', e.target.value)}
+                                  onKeyDown={handleKeyDown}
+                                  className={`w-full py-1.5 px-1 bg-transparent ${textColor} ${placeholderColor} text-center outline-none`}
+                                />
+                              </div>
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <input 
+                                type="text"
+                                value={record.cp || ''}
+                                onChange={(e) => updateRecord('cp', e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                className={`w-full py-1.5 px-1 bg-transparent ${textColor} ${placeholderColor} text-center outline-none`}
+                              />
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <input 
+                                type="text"
+                                value={record.wardRoom || ''}
+                                onChange={(e) => updateRecord('wardRoom', e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                className={`w-full py-1.5 px-1 bg-transparent ${textColor} ${placeholderColor} text-center outline-none`}
+                              />
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <input 
+                                type="text"
+                                value={record.patientName || ''}
+                                onChange={(e) => updateRecord('patientName', e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                className={`w-full py-1.5 px-1 bg-transparent ${textColor} ${placeholderColor} text-center font-bold outline-none`}
+                              />
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <input 
+                                type="text"
+                                value={record.patientNo || ''}
+                                onChange={(e) => updateRecord('patientNo', e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                className={`w-full py-1.5 px-1 bg-transparent ${textColor} ${placeholderColor} text-center outline-none`}
+                              />
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <input 
+                                type="text"
+                                value={record.genderAge || ''}
+                                onChange={(e) => updateRecord('genderAge', e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                className={`w-full py-1.5 px-1 bg-transparent ${textColor} ${placeholderColor} text-center outline-none`}
+                              />
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <input 
+                                type="text"
+                                value={record.deptDoctorDx || ''}
+                                onChange={(e) => updateRecord('deptDoctorDx', e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                className={`w-full py-1.5 px-1 bg-transparent ${textColor} ${placeholderColor} text-center outline-none`}
+                              />
+                            </td>
+                            <td className="border-r border-black p-0 text-center relative group/color">
+                              <div className="w-full h-full min-h-[28px] flex items-center justify-center cursor-pointer">
+                                <div className="w-4 h-4 border border-black shadow-inner" style={{ backgroundColor: record.color || (idx % 2 === 0 ? '#6e757d' : '#555b62') }}></div>
+                              </div>
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 hidden group-hover/color:flex bg-white border border-black shadow-lg z-30 p-1 gap-1">
                                 {RECORD_COLORS.map(c => (
                                   <button
                                     key={c.color}
-                                    className="w-4 h-4 border-r border-black last:border-r-0 hover:opacity-80"
+                                    className="w-5 h-5 border border-black hover:scale-110 transition-transform"
                                     style={{ backgroundColor: c.color }}
-                                    onClick={() => {
-                                      const newRecords = [...globalOtherRecords];
-                                      if (!newRecords[idx].cellColors) newRecords[idx].cellColors = {};
-                                      newRecords[idx].cellColors![field as keyof typeof record.cellColors] = c.color;
-                                      setGlobalOtherRecords(newRecords);
-                                    }}
+                                    onClick={() => updateRecord('color', c.color)}
                                     title={c.label}
                                   />
                                 ))}
                               </div>
                             </td>
-                          );
-                        };
-
-                        return (
-                          <tr key={record.id} className="border-b border-black" style={{ backgroundColor: record.color }}>
-                            {renderCell('memo')}
-                            {renderCell('cp')}
-                            {renderCell('wardRoom')}
-                            {renderCell('patientName')}
-                            {renderCell('patientNo')}
-                            {renderCell('genderAge')}
-                            {renderCell('deptDoctorDx')}
-                            {renderCell('otherRecord')}
-                            <td className="p-0 text-center align-middle relative group">
-                              <div className="w-full h-full min-h-[30px] flex items-center justify-center cursor-pointer">
-                                <div className="w-4 h-4 border border-black" style={{ backgroundColor: record.color === '#ffffff' ? 'transparent' : record.color }}></div>
-                              </div>
-                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 hidden group-hover:flex bg-white border border-black shadow-md z-20">
-                                {RECORD_COLORS.map(c => (
-                                  <button
-                                    key={c.color}
-                                    className="w-5 h-5 border-r border-black last:border-r-0 hover:opacity-80"
-                                    style={{ backgroundColor: c.color }}
-                                    onClick={() => {
-                                      const newRecords = [...globalOtherRecords];
-                                      newRecords[idx].color = c.color;
-                                      setGlobalOtherRecords(newRecords);
-                                    }}
-                                    title={c.label}
-                                  />
-                                ))}
-                              </div>
+                            <td className="border-r border-black p-0">
+                              <AutoHeightTextarea 
+                                value={record.otherRecord || ''}
+                                onChange={(e: any) => updateRecord('otherRecord', e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder="기타기록 입력..."
+                                className={`w-full py-1 px-2 bg-transparent ${textColor} ${placeholderColor} text-center outline-none`}
+                                minHeight="28px"
+                              />
+                            </td>
+                            <td className="p-1 text-center align-middle">
+                              <button
+                                onClick={() => setGlobalOtherRecords(globalOtherRecords.filter(r => r.id !== record.id))}
+                                className={`${isLightColor ? 'text-gray-500 hover:text-red-500' : 'text-gray-300 hover:text-red-400'} p-0.5`}
+                                title="삭제"
+                              >
+                                <Trash2 size={12} />
+                              </button>
                             </td>
                           </tr>
                         );
-                      })}
-                      {globalOtherRecords.length === 0 && (
-                        <tr>
-                          <td colSpan={9} className="p-4 text-center text-gray-500">
-                            등록된 기타기록이 없습니다.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={10} className="p-8 text-center text-gray-200 italic">
+                          기타기록이 없습니다. 상단의 '+ 행 추가' 버튼을 누르거나 좌측에서 환자를 선택하세요.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -7188,145 +7320,256 @@ export default function App() {
         return renderDefaultPatientView();
       case 'prescription':
         return (
-          <div className="flex-1 flex flex-col p-4 bg-white overflow-auto">
-            <div className="grid grid-cols-4 gap-x-8 gap-y-1 mb-4 font-bold text-sm border-b-2 border-black pb-2">
-              <EditableSummary label="성명" value={formData.name} onChange={(v) => updateField('name', v)} />
-              <EditableSummary label="진료과" value={formData.dept} onChange={(v) => updateField('dept', v)} />
-              <EditableSummary label="키" value={formData.height} onChange={(v) => updateField('height', v)} />
-              <EditableSummary label="나이" value={formData.age} onChange={(v) => updateField('age', v)} />
-              <EditableSummary label="차트번호" value={formData.chartNo} onChange={(v) => updateField('chartNo', v)} />
-              <EditableSummary label="혈액형" value={formData.bloodType} onChange={(v) => updateField('bloodType', v)} />
-              <EditableSummary label="체중" value={formData.weight} onChange={(v) => updateField('weight', v)} />
-              <EditableSummary label="병실" value={formData.room} onChange={(v) => updateField('room', v)} />
-            </div>
-
-            <div className="flex flex-col flex-1">
-                <div className="flex justify-between items-end mb-2">
-                  <div className="flex-1"></div>
-                  <div className="flex flex-col gap-1 items-end">
-                    <div className="flex gap-1">
-                      {['검사', '약물', '처치', '접종'].map(btn => (
-                        <button 
-                          key={btn}
-                          onClick={() => addPrescriptionRecord(btn)}
-                          className="bg-gray-500 text-white px-4 py-1 text-xs font-bold hover:bg-gray-600 border border-black min-w-[60px]"
-                        >
-                          {btn}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex gap-1">
-                      {['진료', '협진', '퇴원', '항암', '기타'].map(btn => (
-                        <button 
-                          key={btn}
-                          onClick={() => {
-                            if (btn === '항암') {
-                              openChemoModal();
-                            } else {
-                              addPrescriptionRecord(btn);
-                            }
-                          }}
-                          className="bg-gray-500 text-white px-4 py-1 text-xs font-bold hover:bg-gray-600 border border-black min-w-[60px]"
-                        >
-                          {btn}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+          <div className="flex-1 flex flex-col p-4 bg-white overflow-hidden font-['Gulim','굴림',sans-serif]">
+            <div className="flex-1 flex flex-col gap-2 overflow-hidden">
+              <div className="flex justify-between items-center mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-base text-gray-800">처방</span>
+                  <span className="text-xs text-gray-500">(칸 안에서 Enter를 누르면 다음 행이 자동 추가되며, 모든 내용은 중앙 정렬됩니다)</span>
                 </div>
-
-                <div className="border-2 border-black overflow-x-auto bg-white">
-                  <table className="w-full border-collapse text-[11px]">
-                    <thead>
-                      <tr className="bg-gray-100 border-b-2 border-black">
-                        <th className="border-r border-black p-1 w-12">No.</th>
-                        <th className="border-r border-black p-1 w-20">종류</th>
-                        <th className="border-r border-black p-1 w-28">처방일자</th>
-                        <th className="border-r border-black p-1 w-20">처방자</th>
-                        <th className="border-r border-black p-1">내용</th>
-                        <th className="border-r border-black p-1 w-48">주의사항</th>
-                        <th className="p-1 w-28">상태 (색상)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(formData.prescriptionRecords || []).length > 0 ? (
-                        formData.prescriptionRecords.map((record, idx) => {
-                          const statusInfo = PRESCRIPTION_STATUSES.find(s => s.name === record.status) || PRESCRIPTION_STATUSES[0];
-                          return (
-                            <tr key={record.id} className="border-b border-black last:border-b-0 hover:bg-gray-50 group">
-                              <td className="border-r border-black p-1 text-center font-bold relative">
-                                {idx + 1}
-                                <button 
-                                  onClick={() => deletePrescriptionRecord(record.id)}
-                                  className="absolute left-0 top-0 hidden group-hover:flex bg-red-500 text-white p-0.5 rounded-br"
-                                >
-                                  <Trash2 size={10} />
-                                </button>
-                              </td>
-                              <td className="border-r border-black p-0">
-                                <input 
-                                  type="text"
-                                  value={record.type}
-                                  onChange={(e) => updatePrescriptionRecord(record.id, 'type', e.target.value)}
-                                  className="w-full p-1 focus:outline-none bg-transparent text-center"
-                                  spellCheck={false}
-                                />
-                              </td>
-                              <td className="border-r border-black p-0">
-                                <input 
-                                  type="text"
-                                  value={record.date}
-                                  onChange={(e) => updatePrescriptionRecord(record.id, 'date', e.target.value)}
-                                  className="w-full p-1 focus:outline-none bg-transparent text-center"
-                                  spellCheck={false}
-                                />
-                              </td>
-                              <td className="border-r border-black p-0">
-                                <input 
-                                  type="text"
-                                  value={record.prescriber}
-                                  onChange={(e) => updatePrescriptionRecord(record.id, 'prescriber', e.target.value)}
-                                  className="w-full p-1 focus:outline-none bg-transparent text-center"
-                                  spellCheck={false}
-                                />
-                              </td>
-                              <td className="border-r border-black p-0">
-                                <AutoHeightTextarea 
-                                  value={record.content}
-                                  onChange={(e: any) => updatePrescriptionRecord(record.id, 'content', e.target.value)}
-                                  className="w-full p-1 focus:outline-none bg-transparent"
-                                  minHeight="24px"
-                                />
-                              </td>
-                              <td className="border-r border-black p-0">
-                                <AutoHeightTextarea 
-                                  value={record.precautions}
-                                  onChange={(e: any) => updatePrescriptionRecord(record.id, 'precautions', e.target.value)}
-                                  className="w-full p-1 focus:outline-none bg-transparent"
-                                  minHeight="24px"
-                                />
-                              </td>
-                              <td 
-                                className="p-1 text-center font-bold cursor-pointer transition-colors select-none"
-                                style={{ backgroundColor: statusInfo.color, color: statusInfo.textColor }}
-                                onClick={() => cyclePrescriptionStatus(record.id)}
-                              >
-                                {record.status}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={7} className="p-8 text-center text-gray-400 italic">
-                            상단의 버튼을 눌러 처방을 추가하세요.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => {
+                      const newRecord: PrescriptionTableItem = {
+                        id: Date.now().toString(),
+                        memo: '',
+                        memoChecked: false,
+                        cp: '',
+                        wardRoom: '',
+                        patientName: '',
+                        patientNo: '',
+                        genderAge: '',
+                        deptDoctorDx: '',
+                        color: '#ffffff',
+                        prescriptionContent: ''
+                      };
+                      setGlobalPrescriptionRecords(prev => [...prev, newRecord]);
+                    }}
+                    className="bg-[#3a92d8] hover:bg-[#2572b0] text-white px-3 py-1 text-xs font-bold border border-black shadow-sm"
+                  >
+                    + 행 추가
+                  </button>
                 </div>
               </div>
+
+              {/* Prescription Action Buttons */}
+              <div className={`flex mb-1 ${prescriptionBtnPos === 'left' ? 'justify-start' : 'justify-end'}`}>
+                <div className={`flex flex-col gap-1 ${prescriptionBtnPos === 'left' ? 'items-start' : 'items-end'}`}>
+                  <div className={`flex gap-1 flex-wrap ${prescriptionBtnPos === 'left' ? 'justify-start' : 'justify-end'}`}>
+                    {['슬립', '검사', '약물', '처치', '진료', '퇴원', '항암', '기타'].map(btn => (
+                      <button 
+                        key={btn}
+                        onClick={() => {
+                          if (btn === '항암') {
+                            openChemoModal();
+                          }
+                          const newRecord: PrescriptionTableItem = {
+                            id: Date.now().toString(),
+                            memo: '',
+                            memoChecked: false,
+                            cp: '',
+                            wardRoom: '',
+                            patientName: '',
+                            patientNo: '',
+                            genderAge: '',
+                            deptDoctorDx: '',
+                            color: '#ffffff',
+                            category: btn,
+                            prescriptionContent: ''
+                          };
+                          setGlobalPrescriptionRecords(prev => [...prev, newRecord]);
+                        }}
+                        className={`text-white px-3 py-1 text-xs font-bold border border-black min-w-[50px] shadow-sm active:translate-y-px ${
+                          btn === '항암' ? 'bg-[#485669] hover:bg-[#384454]' : 'bg-[#5c6978] hover:bg-[#4d5968]'
+                        }`}
+                      >
+                        {btn}
+                      </button>
+                    ))}
+                  </div>
+                  <div className={`flex gap-1 flex-wrap ${prescriptionBtnPos === 'left' ? 'justify-start' : 'justify-end'}`}>
+                    {['Set', 'P-Set', 'Anti', 'CAP', 'T-A', 'T-P', '접종', '예약', '협진'].map(btn => (
+                      <button 
+                        key={btn}
+                        onClick={() => {
+                          const newRecord: PrescriptionTableItem = {
+                            id: Date.now().toString(),
+                            memo: '',
+                            memoChecked: false,
+                            cp: '',
+                            wardRoom: '',
+                            patientName: '',
+                            patientNo: '',
+                            genderAge: '',
+                            deptDoctorDx: '',
+                            color: '#ffffff',
+                            category: btn,
+                            prescriptionContent: ''
+                          };
+                          setGlobalPrescriptionRecords(prev => [...prev, newRecord]);
+                        }}
+                        className="bg-[#5c6978] text-white px-3 py-1 text-xs font-bold hover:bg-[#4d5968] border border-black min-w-[50px] shadow-sm active:translate-y-px"
+                      >
+                        {btn}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Table matching prescription requirements */}
+              <div className="border-2 border-black flex-1 overflow-auto bg-white shadow-sm">
+                <table className="w-full border-collapse text-xs">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-gray-200 text-black font-bold text-center border-b-2 border-black">
+                      <th className="py-1.5 px-2 w-16 border-r border-black">메모</th>
+                      <th className="py-1.5 px-2 w-16 border-r border-black">CP</th>
+                      <th className="py-1.5 px-2 w-24 border-r border-black">병동/병실</th>
+                      <th className="py-1.5 px-2 w-24 border-r border-black">환자명</th>
+                      <th className="py-1.5 px-2 w-28 border-r border-black">환자번호</th>
+                      <th className="py-1.5 px-2 w-24 border-r border-black">성별/나이</th>
+                      <th className="py-1.5 px-2 w-48 border-r border-black">진료과/주치의/진단명</th>
+                      <th className="py-1.5 px-2 w-16 border-r border-black">색상</th>
+                      <th className="py-1.5 px-2 w-24 border-r border-black">구분</th>
+                      <th className="py-1.5 px-2 border-r border-black">처방내용</th>
+                      <th className="py-1.5 px-1 w-10 text-center">삭제</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {globalPrescriptionRecords.length > 0 ? (
+                      globalPrescriptionRecords.map((record, idx) => {
+                        const updateRecord = (field: keyof PrescriptionTableItem, val: any) => {
+                          const next = globalPrescriptionRecords.map(r => r.id === record.id ? { ...r, [field]: val } : r);
+                          setGlobalPrescriptionRecords(next);
+                        };
+
+                        return (
+                          <tr 
+                            key={record.id} 
+                            className="border-b border-black last:border-b-0 group transition-colors font-medium hover:brightness-95 text-sm"
+                            style={{ backgroundColor: record.color || '#ffffff' }}
+                          >
+                            <td className="border-r border-black p-0">
+                              <div className="flex items-center justify-center px-1">
+                                <input 
+                                  type="checkbox" 
+                                  checked={record.memoChecked || false}
+                                  onChange={(e) => updateRecord('memoChecked', e.target.checked)}
+                                  className="w-3.5 h-3.5 mr-1 accent-black cursor-pointer shrink-0"
+                                />
+                                <input 
+                                  type="text"
+                                  value={record.memo || ''}
+                                  onChange={(e) => updateRecord('memo', e.target.value)}
+                                  className="w-full py-2 px-1 bg-transparent text-black text-center outline-none text-sm font-medium"
+                                />
+                              </div>
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <input 
+                                type="text"
+                                value={record.cp || ''}
+                                onChange={(e) => updateRecord('cp', e.target.value)}
+                                className="w-full py-2 px-1 bg-transparent text-black text-center outline-none text-sm font-medium"
+                              />
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <input 
+                                type="text"
+                                value={record.wardRoom || ''}
+                                onChange={(e) => updateRecord('wardRoom', e.target.value)}
+                                className="w-full py-2 px-1 bg-transparent text-black text-center outline-none text-sm font-medium"
+                              />
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <input 
+                                type="text"
+                                value={record.patientName || ''}
+                                onChange={(e) => updateRecord('patientName', e.target.value)}
+                                className="w-full py-2 px-1 bg-transparent text-black text-center font-bold outline-none text-sm"
+                              />
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <input 
+                                type="text"
+                                value={record.patientNo || ''}
+                                onChange={(e) => updateRecord('patientNo', e.target.value)}
+                                className="w-full py-2 px-1 bg-transparent text-black text-center outline-none text-sm font-medium"
+                              />
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <input 
+                                type="text"
+                                value={record.genderAge || ''}
+                                onChange={(e) => updateRecord('genderAge', e.target.value)}
+                                className="w-full py-2 px-1 bg-transparent text-black text-center outline-none text-sm font-medium"
+                              />
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <input 
+                                type="text"
+                                value={record.deptDoctorDx || ''}
+                                onChange={(e) => updateRecord('deptDoctorDx', e.target.value)}
+                                className="w-full py-2 px-1 bg-transparent text-black text-center outline-none text-sm font-medium"
+                              />
+                            </td>
+                            <td className="border-r border-black p-0 text-center relative group/color">
+                              <div className="w-full h-full min-h-[32px] flex items-center justify-center cursor-pointer">
+                                <div className="w-4 h-4 border border-black shadow-inner" style={{ backgroundColor: record.color || '#ffffff' }}></div>
+                              </div>
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 hidden group-hover/color:flex bg-white border border-black shadow-lg z-30 p-1 gap-1">
+                                {RECORD_COLORS.map(c => (
+                                  <button
+                                    key={c.color}
+                                    className="w-5 h-5 border border-black hover:scale-110 transition-transform"
+                                    style={{ backgroundColor: c.color }}
+                                    onClick={() => updateRecord('color', c.color)}
+                                    title={c.label}
+                                  />
+                                ))}
+                              </div>
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <input 
+                                type="text"
+                                value={record.category || ''}
+                                onChange={(e) => updateRecord('category', e.target.value)}
+                                placeholder="구분..."
+                                className="w-full py-2 px-1 bg-transparent text-black text-center outline-none text-sm font-medium"
+                              />
+                            </td>
+                            <td className="border-r border-black p-0">
+                              <AutoHeightTextarea 
+                                value={record.prescriptionContent || ''}
+                                onChange={(e: any) => updateRecord('prescriptionContent', e.target.value)}
+                                placeholder="처방내용 입력..."
+                                className="w-full py-1.5 px-2 bg-transparent text-black text-center outline-none text-sm font-medium"
+                                minHeight="32px"
+                              />
+                            </td>
+                            <td className="p-1 text-center align-middle">
+                              <button
+                                onClick={() => setGlobalPrescriptionRecords(globalPrescriptionRecords.filter(r => r.id !== record.id))}
+                                className="text-gray-400 hover:text-red-500 p-0.5"
+                                title="삭제"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={11} className="p-8 text-center text-gray-400 italic text-sm">
+                          처방기록이 없습니다. 상단의 처방 버튼 또는 '+ 행 추가' 버튼을 눌러 추가하세요.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         );
       case 'er':
@@ -9185,15 +9428,31 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-1">
-              <TabButton label="응급기록" count={tabCounts.er} active={activeTab === 'er'} onClick={() => setActiveTab(activeTab === 'er' ? 'none' : 'er')} theme={currentTheme} />
-              <TabButton label="입원결과" count={tabCounts.admission} active={activeTab === 'admission'} onClick={() => setActiveTab(activeTab === 'admission' ? 'none' : 'admission')} theme={currentTheme} />
-              <TabButton label="수술처치" count={tabCounts.surgery} active={activeTab === 'surgery'} onClick={() => setActiveTab(activeTab === 'surgery' ? 'none' : 'surgery')} theme={currentTheme} />
-              <TabButton label="협진기록" count={tabCounts.consult} active={activeTab === 'consult'} onClick={() => setActiveTab(activeTab === 'consult' ? 'none' : 'consult')} theme={currentTheme} />
-              <TabButton label="퇴원요약" count={tabCounts.discharge} active={activeTab === 'discharge'} onClick={() => setActiveTab(activeTab === 'discharge' ? 'none' : 'discharge')} theme={currentTheme} />
-              <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab(activeTab === 'lab' ? 'none' : 'lab')} theme={currentTheme} />
-              <TabButton label="기타기록" count={tabCounts.other_record} active={activeTab === 'other_record'} onClick={() => setActiveTab(activeTab === 'other_record' ? 'none' : 'other_record')} theme={currentTheme} />
-              <TabButton label="타병원기록" count={tabCounts.other_hospital} active={activeTab === 'other_hospital'} onClick={() => setActiveTab(activeTab === 'other_hospital' ? 'none' : 'other_hospital')} theme={currentTheme} />
-              <TabButton label="처방" count={tabCounts.prescription} active={activeTab === 'prescription'} onClick={() => setActiveTab(activeTab === 'prescription' ? 'none' : 'prescription')} theme={currentTheme} />
+              <TabButton label="응급기록" count={tabCounts.er} active={activeTab === 'er'} onClick={() => setActiveTab(activeTab === 'er' ? 'none' : 'er')} theme={currentTheme} shortcut="Alt+Ctrl+E" showShortcuts={showShortcuts} />
+              <TabButton label="입원결과" count={tabCounts.admission} active={activeTab === 'admission'} onClick={() => setActiveTab(activeTab === 'admission' ? 'none' : 'admission')} theme={currentTheme} shortcut="Alt+A" showShortcuts={showShortcuts} />
+              <TabButton label="수술처치" count={tabCounts.surgery} active={activeTab === 'surgery'} onClick={() => setActiveTab(activeTab === 'surgery' ? 'none' : 'surgery')} theme={currentTheme} shortcut="Alt+O" showShortcuts={showShortcuts} />
+              <TabButton label="협진기록" count={tabCounts.consult} active={activeTab === 'consult'} onClick={() => setActiveTab(activeTab === 'consult' ? 'none' : 'consult')} theme={currentTheme} shortcut="Alt+C" showShortcuts={showShortcuts} />
+              <TabButton label="퇴원요약" count={tabCounts.discharge} active={activeTab === 'discharge'} onClick={() => setActiveTab(activeTab === 'discharge' ? 'none' : 'discharge')} theme={currentTheme} shortcut="Alt+D" showShortcuts={showShortcuts} />
+              <TabButton label="검사결과" count={tabCounts.lab} active={activeTab === 'lab'} onClick={() => setActiveTab(activeTab === 'lab' ? 'none' : 'lab')} theme={currentTheme} shortcut="Alt+L" showShortcuts={showShortcuts} />
+              <TabButton label="기타기록" count={tabCounts.other_record} active={activeTab === 'other_record'} onClick={() => setActiveTab(activeTab === 'other_record' ? 'none' : 'other_record')} theme={currentTheme} shortcut="Alt+Ctrl+O" showShortcuts={showShortcuts} />
+              <TabButton label="타병원기록" count={tabCounts.other_hospital} active={activeTab === 'other_hospital'} onClick={() => setActiveTab(activeTab === 'other_hospital' ? 'none' : 'other_hospital')} theme={currentTheme} shortcut="ALT+O+H" showShortcuts={showShortcuts} />
+              <TabButton 
+                label="처방" 
+                count={tabCounts.prescription} 
+                active={activeTab === 'prescription'} 
+                onClick={() => {
+                  if (activeTab === 'prescription') {
+                    setActiveTab('none');
+                  } else {
+                    setActiveTab('prescription');
+                    setSelectedPatientId(null);
+                    setGlobalPrescriptionRecords([]);
+                  }
+                }} 
+                theme={currentTheme} 
+                shortcut="ALT+O+R"
+                showShortcuts={showShortcuts}
+              />
             </div>
 
             <div className="flex items-center gap-2">
@@ -9402,11 +9661,45 @@ export default function App() {
                               <button 
                                 key={patient.id}
                                 onClick={() => {
-                                  if (activeTab === 'other_record') return;
                                   setSelectedPatientId(patient.id);
                                   setShowPatientModal(false);
                                   setNursingIsWriting(false);
                                   
+                                  if (activeTab === 'other_record') {
+                                    const newRecord: OtherRecordItem = {
+                                      id: Date.now().toString(),
+                                      memo: '',
+                                      cp: '',
+                                      wardRoom: patient.room || patient.ward || '',
+                                      patientName: patient.name,
+                                      patientNo: patient.chartNo,
+                                      genderAge: `${patient.gender} / ${formatAgeDisplay(patient.age)}`,
+                                      deptDoctorDx: `${patient.dept || '내과'} / ${patient.doctor || '주치의'}`,
+                                      otherRecord: '',
+                                      color: ''
+                                    };
+                                    setGlobalOtherRecords(prev => [...prev, newRecord]);
+                                    return;
+                                  }
+
+                                  if (activeTab === 'prescription') {
+                                    const newRecord: PrescriptionTableItem = {
+                                      id: Date.now().toString(),
+                                      memo: '',
+                                      memoChecked: false,
+                                      cp: '',
+                                      wardRoom: patient.room || patient.ward || '',
+                                      patientName: patient.name,
+                                      patientNo: patient.chartNo,
+                                      genderAge: `${patient.gender} / ${formatAgeDisplay(patient.age)}`,
+                                      deptDoctorDx: `${patient.dept || '내과'} / ${patient.doctor || '주치의'}`,
+                                      color: '#ffffff',
+                                      prescriptionContent: ''
+                                    };
+                                    setGlobalPrescriptionRecords(prev => [...prev, newRecord]);
+                                    return;
+                                  }
+
                                   if (activeTopMenu === '의사처방') setActiveTab('doctor_prescription');
                                   else if (activeTopMenu === '지원부서') setActiveTab('support_dept');
                                   else if (activeTopMenu === '활성창') setActiveTab('consent_form');
@@ -9415,7 +9708,6 @@ export default function App() {
                                     setActiveTab('none');
                                   }
                                 }}
-                                disabled={activeTab === 'other_record'}
                                 onContextMenu={(e) => {
                                   e.preventDefault();
                                   setContextMenu({
@@ -9424,9 +9716,7 @@ export default function App() {
                                     patientId: patient.id
                                   });
                                 }}
-                                className={`w-full text-left transition-colors overflow-hidden rounded-sm ${
-                                  activeTab === 'other_record' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
-                                } ${
+                                className={`w-full text-left transition-colors overflow-hidden rounded-sm hover:bg-gray-100 ${
                                   selectedPatientId === patient.id ? 'bg-[#4FC3F7]' : 'bg-transparent'
                                 }`}
                               >
@@ -9450,20 +9740,6 @@ export default function App() {
                   <div className="p-4 text-center text-gray-500 text-sm">환자가 없습니다.</div>
                 )}
               </div>
-              
-              {/* Color Legend */}
-              {activeTab === 'other_record' && (
-                <div className="p-2 border-t-2 border-black bg-white text-xs shrink-0">
-                  <div className="grid grid-cols-2 gap-y-2 gap-x-1">
-                    {RECORD_COLORS.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-1">
-                        <div className="w-4 h-4 border border-black" style={{ backgroundColor: item.color }}></div>
-                        <span>{item.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
@@ -9578,6 +9854,62 @@ export default function App() {
                     title={theme.name}
                   />
                 ))}
+              </div>
+            </div>
+
+            <div className="mb-6 pt-4 border-t-2 border-black">
+              <p className="font-bold mb-2 text-sm">처방탭 버튼 위치</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setPrescriptionBtnPos('left');
+                    localStorage.setItem('prescriptionBtnPos', 'left');
+                  }}
+                  className={`flex-1 py-1.5 px-2 text-xs font-bold border-2 border-black transition-colors ${
+                    prescriptionBtnPos === 'left' ? 'bg-[#5c6978] text-white' : 'bg-gray-100 text-black hover:bg-gray-200'
+                  }`}
+                >
+                  왼쪽 위
+                </button>
+                <button
+                  onClick={() => {
+                    setPrescriptionBtnPos('table_top');
+                    localStorage.setItem('prescriptionBtnPos', 'table_top');
+                  }}
+                  className={`flex-1 py-1.5 px-2 text-xs font-bold border-2 border-black transition-colors ${
+                    prescriptionBtnPos === 'table_top' ? 'bg-[#5c6978] text-white' : 'bg-gray-100 text-black hover:bg-gray-200'
+                  }`}
+                >
+                  표 위 (우측)
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-6 pt-4 border-t-2 border-black">
+              <p className="font-bold mb-2 text-sm">단축키 표시</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowShortcuts(true);
+                    localStorage.setItem('showShortcuts', 'true');
+                  }}
+                  className={`flex-1 py-1.5 px-2 text-xs font-bold border-2 border-black transition-colors ${
+                    showShortcuts ? 'bg-[#5c6978] text-white' : 'bg-gray-100 text-black hover:bg-gray-200'
+                  }`}
+                >
+                  표시함
+                </button>
+                <button
+                  onClick={() => {
+                    setShowShortcuts(false);
+                    localStorage.setItem('showShortcuts', 'false');
+                  }}
+                  className={`flex-1 py-1.5 px-2 text-xs font-bold border-2 border-black transition-colors ${
+                    !showShortcuts ? 'bg-[#5c6978] text-white' : 'bg-gray-100 text-black hover:bg-gray-200'
+                  }`}
+                >
+                  표시 안 함
+                </button>
               </div>
             </div>
 
